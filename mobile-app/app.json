@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Yuzme Mobile",
+    "slug": "yuzme-mobile-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.yuzme.mobileapp",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.yuzme.mobileapp",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Sesli mesaj ve canli sesli aramalar icin mikrofon erisimi gerekir.",
+        "NSPhotoLibraryUsageDescription": "Profil, duyuru ve sohbet paylasimlari icin galerinizden medya secmenize izin vermeniz gerekir."
+      }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil, duyuru ve sohbet paylasimlari icin galerinizden medya secmenize izin verin."
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "microphonePermission": "Canli sesli aramalar icin mikrofon erisimi gerekir."
+        }
+      ],
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9e124f1f-6095-45dd-b5cc-134942a82fc6"
+      }
+    }
+  }
+}

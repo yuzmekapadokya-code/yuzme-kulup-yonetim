@@ -1,0 +1,4025 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swim Timer Pro - Gelişmiş Yüzme Antrenman Sistemi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary: #0066ff;
+            --primary-dark: #0052d4;
+            --secondary: #00d4ff;
+            --accent: #ff3366;
+            --success: #00cc88;
+            --warning: #ffaa00;
+            --danger: #ff3333;
+            --light: #f8f9ff;
+            --dark: #1a1a2e;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --shadow: 0 10px 30px rgba(0, 102, 255, 0.2);
+            --transition: all 0.3s ease;
+        }
+        
+        .dark-mode {
+            --light: #0f1525;
+            --dark: #eef2ff;
+            --card-bg: rgba(15, 25, 45, 0.7);
+            --card-border: rgba(0, 212, 255, 0.15);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html {
+            font-size: 16px;
+            overflow-y: auto;
+            height: 100%;
+            touch-action: pan-y;
+            overscroll-behavior-y: auto;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, #0a0e1a 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            transition: var(--transition);
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: auto;
+        }
+        
+        /* Login Screen - GİZLENDİ */
+        .login-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 50px;
+            user-select: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 102, 255, 0.4);
+        }
+        
+        .btn-primary:hover, .btn-primary:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 102, 255, 0.6);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-secondary:hover, .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Main App */
+        .app-container {
+            display: none;
+            min-height: 100vh;
+            overflow-y: auto;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .app-header {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            min-height: 60px;
+        }
+        
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .club-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .club-logo-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border: 2px solid var(--secondary);
+            flex-shrink: 0;
+        }
+        
+        .app-main {
+            display: flex;
+            min-height: calc(100vh - 60px);
+            overflow-y: auto;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Left Panel - Training Creator */
+        .left-panel {
+            width: 35%;
+            background: rgba(10, 15, 30, 0.7);
+            border-right: 1px solid var(--card-border);
+            padding: 15px;
+            overflow-y: auto;
+            transition: var(--transition);
+            min-height: 100%;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .panel-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .panel-section {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 0.95rem;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--light);
+            font-size: 1rem;
+            transition: var(--transition);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        
+        .time-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .time-input {
+            flex: 1;
+            text-align: center;
+            min-width: 0;
+        }
+        
+        .time-separator {
+            color: var(--secondary);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .set-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--primary);
+            transition: var(--transition);
+        }
+        
+        .set-item:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        .set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .set-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 6px;
+            border-radius: 5px;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .icon-btn:hover, .icon-btn:active {
+            color: var(--secondary);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Right Panel - Timer */
+        .right-panel {
+            width: 65%;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            min-height: 100%;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .timer-container {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            min-height: 300px;
+        }
+        
+        .current-set-title {
+            font-size: 1.8rem;
+            color: var(--secondary);
+            text-align: center;
+            margin-bottom: 10px;
+            z-index: 1;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            line-height: 1.3;
+        }
+        
+        .timer-display {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+            margin: 15px 0;
+            z-index: 1;
+            transition: all 0.3s ease;
+            line-height: 1;
+            text-align: center;
+        }
+        
+        /* Ana Ekran Kulvar Grid Sistemi */
+        .lanes-main-container {
+            display: grid;
+            width: 100%;
+            min-height: 300px;
+            gap: 10px;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            max-height: 500px;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Grid sistemleri - kulvar sayısına göre */
+        .lanes-1 { 
+            grid-template-columns: 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .lanes-2 { 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .lanes-3 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .lanes-4 { 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .lanes-5 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .lanes-5 .lane-timer-container:nth-child(5) {
+            grid-column: 2;
+        }
+        
+        .lanes-6 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .lanes-7 { 
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .lanes-7 .lane-timer-container:nth-child(7) {
+            grid-column: 2 / span 2;
+        }
+        
+        .lanes-8 { 
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        /* Her kulvar için timer container */
+        .lane-timer-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--card-border);
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            min-height: 180px;
+        }
+        
+        .lane-timer-container.active {
+            border-color: var(--secondary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .lane-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .lane-title {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+        
+        .lane-status {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        
+        .lane-timer-display {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            margin: 10px 0;
+            text-align: center;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .lane-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+        
+        .lane-info-item {
+            text-align: center;
+        }
+        
+        .lane-info-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+        }
+        
+        .lane-info-value {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        
+        .timer-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            z-index: 1;
+            flex-wrap: wrap;
+        }
+        
+        .timer-info-item {
+            text-align: center;
+            min-width: 70px;
+        }
+        
+        .timer-info-label {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .timer-info-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+        
+        .timer-controls {
+            display: flex;
+            gap: 10px;
+            z-index: 1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn-lg {
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            min-width: 140px;
+            min-height: 55px;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #00aa66);
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 204, 136, 0.4);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #cc8800);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 170, 0, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #cc0000);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 51, 51, 0.4);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, var(--secondary), #00aacc);
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+        
+        /* Animasyonlar */
+        @keyframes swimmerAnimation {
+            0% { transform: translateX(-100px) translateY(0); opacity: 0.3; }
+            25% { transform: translateX(-50px) translateY(-10px); }
+            50% { transform: translateX(0) translateY(0); opacity: 1; }
+            75% { transform: translateX(50px) translateY(10px); }
+            100% { transform: translateX(100px) translateY(0); opacity: 0.3; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* Tam Ekran Dinlenme Geçiş Bileşeni */
+        .fullscreen-rest-transition {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+            text-align: center;
+            animation: fadeInOut 5s ease-in-out forwards;
+        }
+
+        .next-set-large {
+            font-size: 8vw;
+            font-weight: 900;
+            color: var(--secondary);
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.7);
+            margin-bottom: 20px;
+            line-height: 1.2;
+            animation: pulse 2s infinite;
+        }
+
+        .next-set-distance {
+            font-size: 6vw;
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .next-set-stroke {
+            font-size: 4vw;
+            color: var(--secondary);
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .swimmer-animation-container {
+            width: 100%;
+            height: 150px;
+            position: relative;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+
+        .swimmer-icon {
+            font-size: 5rem;
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary);
+            animation: swimmerAnimation 3s linear infinite;
+            filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.8));
+        }
+
+        .swimmer-icon.freestyle { animation-duration: 2s; }
+        .swimmer-icon.backstroke { animation-duration: 2.5s; animation-direction: reverse; }
+        .swimmer-icon.breaststroke { animation-duration: 3.5s; animation-timing-function: ease-in-out; }
+        .swimmer-icon.butterfly { animation-duration: 2.2s; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .countdown-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 51, 102, 0.9);
+            color: white;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.8);
+            z-index: 101;
+        }
+
+        /* Her kulvar için ayrı geçiş overlay'i */
+        .lane-rest-transition {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 15px;
+            text-align: center;
+            border-radius: 20px;
+        }
+
+        .lane-next-set {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
+        }
+
+        .lane-swimmer-icon {
+            font-size: 3rem;
+            margin: 15px 0;
+            color: var(--secondary);
+        }
+
+        /* Hızlı gerisayım efekti */
+        @keyframes quickCountdown {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .quick-countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-shadow: 0 0 30px rgba(255, 51, 102, 0.9);
+            opacity: 0;
+            z-index: 200;
+            animation: quickCountdown 1s ease-out;
+        }
+
+        /* Mini Timer */
+        .mini-timer-overlay {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 50%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            touch-action: manipulation;
+        }
+        
+        .mini-timer-overlay:active {
+            transform: scale(1.1);
+            border-color: var(--primary);
+        }
+        
+        .mini-timer {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-align: center;
+        }
+        
+        .mini-timer-label {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+            text-align: center;
+            padding: 0 5px;
+        }
+        
+        /* FULLSCREEN MODE - HER KULVAR AYRI GÖSTERİLECEK */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .fullscreen-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        /* Fullscreen grid sistemleri - kulvar sayısına göre */
+        .fullscreen-1 { 
+            grid-template-columns: 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .fullscreen-2 { 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .fullscreen-3 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr;
+        }
+        
+        .fullscreen-4 { 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .fullscreen-5 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .fullscreen-5 .fullscreen-lane:nth-child(5) {
+            grid-column: 2;
+        }
+        
+        .fullscreen-6 { 
+            grid-template-columns: 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .fullscreen-7 { 
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        .fullscreen-7 .fullscreen-lane:nth-child(7) {
+            grid-column: 2 / span 2;
+        }
+        
+        .fullscreen-8 { 
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr;
+        }
+        
+        /* Fullscreen her kulvar */
+        .fullscreen-lane {
+            background: rgba(0, 0, 0, 0.3);
+            border: 3px solid var(--card-border);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+        
+        .fullscreen-lane-title {
+            font-size: 2.5vw;
+            color: var(--secondary);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .fullscreen-lane-timer {
+            font-size: 10vw;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+            margin: 10px 0;
+            text-align: center;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-lane-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 1.5vw;
+        }
+        
+        .fullscreen-lane-info-item {
+            text-align: center;
+        }
+        
+        .fullscreen-lane-info-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2vw;
+        }
+        
+        .fullscreen-lane-info-value {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-top: 5px;
+            font-size: 1.8vw;
+        }
+        
+        /* RENK UYARI SİSTEMİ */
+        .bg-normal {
+            background: linear-gradient(135deg, #1a5fb4, #0d3b66) !important;
+        }
+        
+        .bg-warning {
+            background: linear-gradient(135deg, #ffaa00, #cc8800) !important;
+        }
+        
+        .bg-danger {
+            background: linear-gradient(135deg, #ff3333, #cc0000) !important;
+        }
+        
+        .bg-success {
+            background: linear-gradient(135deg, #00cc88, #00aa66) !important;
+        }
+        
+        .bg-rest {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad) !important;
+        }
+        
+        .bg-paused {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6) !important;
+        }
+        
+        /* Training Library */
+        .library-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .template-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+        
+        .template-card:active {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            border-color: var(--secondary);
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+        }
+        
+        .tab-btn {
+            padding: 10px 15px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-height: 45px;
+        }
+        
+        .tab-btn.active {
+            color: var(--secondary);
+            border-bottom: 3px solid var(--secondary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .library-container,
+        .saved-trainings-list,
+        .training-list,
+        .panel-section {
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+        
+        .status-connected {
+            color: var(--success);
+        }
+        
+        .status-disconnected {
+            color: var(--danger);
+        }
+        
+        /* MOBİL ve TABLET İÇİN RESPONSIVE DÜZENLEMELER */
+        @media (max-width: 1200px) {
+            .app-main {
+                flex-direction: column;
+                min-height: auto;
+                overflow: visible;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
+                min-height: auto;
+                overflow: visible;
+            }
+            
+            .left-panel {
+                height: auto;
+                max-height: none;
+                padding: 12px;
+                border-right: none;
+                border-bottom: 1px solid var(--card-border);
+            }
+            
+            .right-panel {
+                height: auto;
+                min-height: auto;
+                padding: 12px;
+                overflow: visible;
+            }
+            
+            .timer-display {
+                font-size: 4rem;
+            }
+            
+            .current-set-title {
+                font-size: 1.5rem;
+            }
+            
+            .fullscreen-lane-title {
+                font-size: 4vw;
+            }
+            
+            .fullscreen-lane-timer {
+                font-size: 12vw;
+            }
+            
+            .next-set-large {
+                font-size: 12vw;
+            }
+            
+            .next-set-distance {
+                font-size: 9vw;
+            }
+            
+            .next-set-stroke {
+                font-size: 7vw;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .lanes-main-container {
+                gap: 8px;
+            }
+            
+            .lane-timer-container {
+                padding: 10px;
+                min-height: 160px;
+            }
+            
+            .lane-timer-display {
+                font-size: 2.5rem;
+            }
+            
+            .lane-title {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
+            }
+            
+            .app-header {
+                padding: 10px 15px;
+                min-height: 50px;
+            }
+            
+            .header-left, .header-right {
+                gap: 10px;
+            }
+            
+            .club-logo-small {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+            }
+            
+            .app-main {
+                min-height: auto;
+                height: auto;
+                overflow: visible;
+            }
+            
+            .left-panel {
+                height: auto;
+                max-height: none;
+                overflow: visible;
+            }
+            
+            .right-panel {
+                height: auto;
+                min-height: auto;
+                overflow: visible;
+            }
+            
+            .timer-display {
+                font-size: 3.5rem;
+            }
+            
+            .current-set-title {
+                font-size: 1.3rem;
+            }
+            
+            .btn-lg {
+                padding: 12px 15px;
+                font-size: 1rem;
+                min-width: 120px;
+                min-height: 50px;
+            }
+            
+            .timer-controls {
+                gap: 8px;
+            }
+            
+            /* Mobilde kulvar grid sistemini dikey yap */
+            .lanes-2, .lanes-3, .lanes-4, .lanes-5, .lanes-6, .lanes-7, .lanes-8 {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 8px;
+                overflow: visible;
+                padding: 5px;
+                max-height: none;
+            }
+            
+            .lane-timer-container {
+                min-height: 140px;
+            }
+            
+            .lane-timer-display {
+                font-size: 2.2rem;
+            }
+            
+            /* Fullscreen mobilde dikey */
+            .fullscreen-2, .fullscreen-3, .fullscreen-4, .fullscreen-5, .fullscreen-6, .fullscreen-7, .fullscreen-8 {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: repeat(auto-fit, 1fr);
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            .fullscreen-lane-title {
+                font-size: 6vw;
+            }
+            
+            .fullscreen-lane-timer {
+                font-size: 15vw;
+            }
+            
+            .fullscreen-lane-info {
+                font-size: 3vw;
+                gap: 15px;
+            }
+            
+            .fullscreen-lane-info-label {
+                font-size: 2.5vw;
+            }
+            
+            .fullscreen-lane-info-value {
+                font-size: 3.5vw;
+            }
+            
+            .mini-timer-overlay {
+                width: 85px;
+                height: 85px;
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            .mini-timer {
+                font-size: 1.2rem;
+            }
+            
+            .next-set-large {
+                font-size: 15vw;
+            }
+            
+            .next-set-stroke {
+                font-size: 10vw;
+            }
+            
+            .swimmer-animation-container {
+                height: 100px;
+            }
+            
+            .swimmer-icon {
+                font-size: 3.5rem;
+            }
+            
+            .countdown-overlay {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+                top: 10px;
+                right: 10px;
+            }
+            
+            .lane-next-set {
+                font-size: 1.8rem;
+            }
+            
+            .lane-swimmer-icon {
+                font-size: 2rem;
+            }
+            
+            .quick-countdown {
+                font-size: 5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 25px 20px;
+            }
+            
+            .logo {
+                font-size: 1.8rem;
+            }
+            
+            .club-logo-preview {
+                width: 80px;
+                height: 80px;
+                font-size: 1.5rem;
+            }
+            
+            .left-panel {
+                max-height: none;
+                padding: 10px;
+                overflow: visible;
+            }
+            
+            .right-panel {
+                min-height: auto;
+                padding: 10px;
+                overflow: visible;
+            }
+            
+            .timer-display {
+                font-size: 3rem;
+            }
+            
+            .current-set-title {
+                font-size: 1.1rem;
+            }
+            
+            .timer-info {
+                gap: 15px;
+            }
+            
+            .timer-info-item {
+                min-width: 60px;
+            }
+            
+            .timer-info-value {
+                font-size: 1.1rem;
+            }
+            
+            .btn-lg {
+                min-width: 110px;
+                padding: 10px 12px;
+                font-size: 0.95rem;
+            }
+            
+            .tabs {
+                margin-bottom: 10px;
+            }
+            
+            .tab-btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+                min-height: 40px;
+            }
+            
+            .panel-title {
+                font-size: 1.1rem;
+            }
+            
+            .panel-section {
+                padding: 15px;
+            }
+            
+            /* Mobile'da left-panel ve right-panel'ı 60-40 yap */
+            .left-panel {
+                max-height: none;
+            }
+            
+            .right-panel {
+                min-height: auto;
+            }
+        }
+        
+        /* Yatay mod için optimizasyon */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .app-main {
+                flex-direction: row;
+                min-height: auto;
+            }
+            
+            .left-panel {
+                height: auto;
+                width: 40%;
+                max-height: calc(100vh - 60px);
+            }
+            
+            .right-panel {
+                height: auto;
+                width: 60%;
+                min-height: calc(100vh - 60px);
+            }
+            
+            .timer-display {
+                font-size: 3.5rem;
+            }
+            
+            .lanes-2, .lanes-3, .lanes-4 {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr;
+            }
+        }
+        
+        /* Scrollbar stilleri */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-card">
+            <div class="logo-container">
+                <div class="club-logo-preview" id="clubLogoPreview">
+                    <i class="fas fa-swimming-pool"></i>
+                </div>
+                <h1 class="logo">Swim Timer Pro</h1>
+                <p>Gelişmiş Yüzme Antrenman Sistemi</p>
+            </div>
+            
+            <div class="login-form">
+                <input type="email" id="loginEmail" placeholder="E-posta" value="test@swimclub.com">
+                <input type="password" id="loginPassword" placeholder="Şifre" value="123456">
+                <button class="btn btn-primary" id="loginBtn" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Giriş Yap
+                </button>
+                <div style="margin: 15px 0; color: rgba(255,255,255,0.5);">veya</div>
+                <button class="btn btn-secondary" id="registerBtn" style="width: 100%;">
+                    <i class="fas fa-user-plus"></i> Yeni Kulüp Yöneticisi Kaydı
+                </button>
+                <button class="btn btn-warning" id="demoBtn" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-bolt"></i> Demo Modunda Başlat
+                </button>
+            </div>
+            
+            <div style="margin-top: 25px; font-size: 0.85rem; color: rgba(255,255,255,0.5);">
+                <p><i class="fas fa-info-circle"></i> Demo: test@swimclub.com / 123456</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App (hidden until login) -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="club-info">
+                    <div class="club-logo-small" id="clubLogoSmall">
+                        <i class="fas fa-swimming-pool"></i>
+                    </div>
+                    <div>
+                        <h3 id="clubName" style="font-size: 1.1rem;">Kulüp Adı</h3>
+                        <div class="sync-status">
+                            <span id="syncStatus" class="status-connected" style="font-size: 0.8rem;">
+                                <i class="fas fa-wifi"></i> Senkronize
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="icon-btn" id="darkModeToggle" title="Koyu/Açık Mod">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="icon-btn" id="fullscreenToggle" title="Tam Ekran">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button class="btn btn-secondary" id="pdfExportBtn" style="padding: 8px 12px; font-size: 0.9rem;">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="btn btn-primary" id="logoutBtn" style="padding: 8px 12px; font-size: 0.9rem;">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış
+                </button>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Left Panel - Training Creator -->
+            <section class="left-panel">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="create">Antrenman Oluştur</button>
+                    <button class="tab-btn" data-tab="lanes">Kulvar Yönetimi</button>
+                    <button class="tab-btn" data-tab="library">Antrenman Kütüphanesi</button>
+                    <button class="tab-btn" data-tab="stats">İstatistikler</button>
+                    <button class="tab-btn" data-tab="settings">Ayarlar</button>
+                </div>
+                
+                <!-- Tab 1: Create Training -->
+                <div id="create" class="tab-content active">
+                    <h2 class="panel-title"><i class="fas fa-plus-circle"></i> Antrenman Bilgileri</h2>
+                    
+                    <div class="panel-section">
+                        <div class="form-group">
+                            <label class="form-label">Antrenman Adı</label>
+                            <input type="text" class="form-input" id="trainingName" placeholder="Ör: Sprint Antrenmanı">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Şube Seçiniz *</label>
+                            <select class="form-select" id="trainingBranch">
+                                <option value="">-- Şube Seçiniz --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Ders Saati Seçiniz *</label>
+                            <select class="form-select" id="trainingSchedule">
+                                <option value="">-- Ders Saati Seçiniz --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.85rem; color: rgba(255,255,255,0.7);">
+                                <i class="fas fa-info-circle"></i> Seçilen saat ve şubeye kayıtlı tüm sporcu bu antrenmanı görebilecek
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <h2 class="panel-title"><i class="fas fa-plus-circle"></i> Yeni Set Ekle</h2>
+                    
+                    <div class="panel-section">
+                        <div class="form-group">
+                            <label class="form-label">Set Adı</label>
+                            <input type="text" class="form-input" id="setName" placeholder="Ör: Sprint Serisi">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Tekrar Sayısı</label>
+                            <input type="number" class="form-input" id="repCount" min="1" max="50" value="6">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Mesafe (metre)</label>
+                            <select class="form-select" id="distance">
+                                <option value="25">25m</option>
+                                <option value="50" selected>50m</option>
+                                <option value="100">100m</option>
+                                <option value="200">200m</option>
+                                <option value="400">400m</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Stil</label>
+                            <select class="form-select" id="stroke">
+                                <option value="serbest">Serbest</option>
+                                <option value="sırt">Sırtüstü</option>
+                                <option value="kurbağa">Kurbağa</option>
+                                <option value="kelebek">Kelebek</option>
+                                <option value="karışık">Karışık (IM)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Interval Süresi</label>
+                            <div class="time-input-group">
+                                <input type="number" class="form-input time-input" id="intervalMin" placeholder="Dak" min="0" max="59" value="0">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="form-input time-input" id="intervalSec" placeholder="Sn" min="0" max="59" value="35">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="form-input time-input" id="intervalMs" placeholder="Sal" min="0" max="99" value="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="addRest"> Set Sonunda Dinlenme Ekle
+                            </label>
+                            <div class="time-input-group" style="margin-top: 10px;">
+                                <input type="number" class="form-input time-input" id="restTimeMin" placeholder="Dak" min="0" max="59" value="0" disabled>
+                                <span class="time-separator">:</span>
+                                <input type="number" class="form-input time-input" id="restTimeSec" placeholder="Sn" min="5" max="180" value="20" disabled>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Kulvar Seçimi</label>
+                            <select class="form-select" id="laneSelect">
+                                <option value="all">Tüm Kulvarlar</option>
+                                <option value="1">Kulvar 1</option>
+                                <option value="2">Kulvar 2</option>
+                                <option value="3">Kulvar 3</option>
+                                <option value="4">Kulvar 4</option>
+                                <option value="5">Kulvar 5</option>
+                                <option value="6">Kulvar 6</option>
+                                <option value="7">Kulvar 7</option>
+                                <option value="8">Kulvar 8</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="addSetBtn" style="width: 100%;">
+                            <i class="fas fa-plus"></i> Seti Ekle
+                        </button>
+                    </div>
+                    
+                    <!-- Current Training Plan -->
+                    <h2 class="panel-title"><i class="fas fa-list-ol"></i> Antrenman Planı</h2>
+                    <div class="panel-section">
+                        <div id="trainingPlan">
+                            <p class="empty-message">Henüz set eklenmedi. Yukarıdan set ekleyin.</p>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label class="form-label">Antrenman Adı</label>
+                            <input type="text" class="form-input" id="trainingName" placeholder="Ör: Sprint Antrenmanı">
+                        </div>
+                        
+                        <div class="training-actions" style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;">
+                            <button class="btn btn-success" id="saveTrainingBtn">
+                                <i class="fas fa-save"></i> Kaydet
+                            </button>
+                            <button class="btn btn-secondary" id="clearTrainingBtn">
+                                <i class="fas fa-trash"></i> Temizle
+                            </button>
+                            <button class="btn btn-primary" id="startTrainingBtn">
+                                <i class="fas fa-play"></i> Başlat
+                            </button>
+                            <button class="btn btn-info" id="restartTrainingBtn" disabled>
+                                <i class="fas fa-redo"></i> Tekrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 2: Lane Management -->
+                <div id="lanes" class="tab-content">
+                    <h2 class="panel-title"><i class="fas fa-swimming-pool"></i> Kulvar Yönetimi</h2>
+                    
+                    <div class="panel-section">
+                        <div class="form-group">
+                            <label class="form-label">Aktif Kulvar Sayısı</label>
+                            <select class="form-select" id="activeLanesCount">
+                                <option value="1">1 Kulvar</option>
+                                <option value="2">2 Kulvar</option>
+                                <option value="3">3 Kulvar</option>
+                                <option value="4" selected>4 Kulvar</option>
+                                <option value="5">5 Kulvar</option>
+                                <option value="6">6 Kulvar</option>
+                                <option value="7">7 Kulvar</option>
+                                <option value="8">8 Kulvar</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Kulvar İsimleri</label>
+                            <div id="laneNamesContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px;">
+                                <!-- Lane names will be dynamically added here -->
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="applyLanesBtn" style="width: 100%; margin-top: 15px;">
+                            <i class="fas fa-check"></i> Kulvar Ayarlarını Uygula
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Diğer tab'lar -->
+                <div id="library" class="tab-content">
+                    <h2 class="panel-title"><i class="fas fa-book"></i> Kayıtlı Antrenmanlar</h2>
+                    <div class="panel-section">
+                        <div class="library-container" id="savedTrainings"></div>
+                    </div>
+                </div>
+                
+                <div id="stats" class="tab-content">
+                    <h2 class="panel-title"><i class="fas fa-chart-line"></i> İstatistikler</h2>
+                    <div class="panel-section">
+                        <div id="statisticsPanel"></div>
+                    </div>
+                </div>
+                
+                <div id="settings" class="tab-content">
+                    <h2 class="panel-title"><i class="fas fa-cog"></i> Ayarlar</h2>
+                    <div class="panel-section">
+                        <div class="form-group">
+                            <label class="form-label">Kulüp Adı</label>
+                            <input type="text" class="form-input" id="clubNameInput" placeholder="Kulüp Adı" value="Demo Yüzme Kulübü">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="enableMiniTimer" checked> Arka planda mini zamanlayıcı göster
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Uyarı Süreleri</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <label class="form-label" style="font-size: 0.8rem;">Son 10 saniye (turuncu)</label>
+                                    <input type="number" class="form-input" id="warningTime" min="1" max="30" value="10">
+                                </div>
+                                <div>
+                                    <label class="form-label" style="font-size: 0.8rem;">Son 5 saniye (kırmızı)</label>
+                                    <input type="number" class="form-input" id="dangerTime" min="1" max="30" value="5">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="autoFullscreen"> Antrenman başlayınca otomatik tam ekran
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="enableRestTransition" checked> Dinlenme sırasında sıradaki seti göster
+                            </label>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="saveSettingsBtn" style="width: 100%; margin-top: 15px;">
+                            <i class="fas fa-save"></i> Ayarları Kaydet
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Right Panel - Timer -->
+            <section class="right-panel">
+                <!-- Ana Timer Container -->
+                <div class="timer-container bg-normal" id="mainTimerContainer">
+                    <!-- Tek kulvar için normal timer görünümü -->
+                    <div id="singleTimerView" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                        <h2 class="current-set-title" id="currentSetTitle">Antrenman Hazır</h2>
+                        <div class="timer-display" id="timerDisplay">00:00:00</div>
+                        <div class="timer-info">
+                            <div class="timer-info-item">
+                                <div class="timer-info-label">SET</div>
+                                <div class="timer-info-value" id="currentSet">-/-</div>
+                            </div>
+                            <div class="timer-info-item">
+                                <div class="timer-info-label">TEKRAR</div>
+                                <div class="timer-info-value" id="currentRep">-/-</div>
+                            </div>
+                            <div class="timer-info-item">
+                                <div class="timer-info-label">TOPLAM</div>
+                                <div class="timer-info-value" id="totalTime">00:00:00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Çoklu kulvar için grid görünümü -->
+                    <div class="lanes-main-container lanes-1 hidden" id="lanesMainView">
+                        <!-- Kulvarlar burada dinamik olarak oluşturulacak -->
+                    </div>
+                </div>
+                
+                <!-- Timer Kontrolleri -->
+                <div class="panel-section" style="margin-top: 0; padding: 15px;">
+                    <div class="timer-controls">
+                        <button class="btn btn-success btn-lg" id="startGlobalBtn">
+                            <i class="fas fa-play"></i> Tüm Kulvarları Başlat
+                        </button>
+                        <button class="btn btn-warning btn-lg" id="pauseBtn" disabled>
+                            <i class="fas fa-pause"></i> Duraklat
+                        </button>
+                        <button class="btn btn-danger btn-lg" id="stopBtn" disabled>
+                            <i class="fas fa-stop"></i> Durdur
+                        </button>
+                        <button class="btn btn-info btn-lg" id="restartBtn" disabled>
+                            <i class="fas fa-redo"></i> Tekrar Başlat
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 15px; text-align: center;">
+                        <p id="timerStatus" style="font-size: 0.9rem; color: rgba(255,255,255,0.7);">Hazır</p>
+                        <p id="connectedDevices" style="font-size: 0.85rem; color: rgba(255,255,255,0.5);">
+                            Aktif kulvarlar: <span id="activeLanesDisplay">1</span>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Bireysel Kulvar Kontrolleri -->
+                <div class="panel-section">
+                    <h3 class="panel-title"><i class="fas fa-tachometer-alt"></i> Bireysel Kulvar Kontrolleri</h3>
+                    <div id="individualLaneControls" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        <!-- Bireysel kulvar kontrolleri burada oluşturulacak -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- FULLSCREEN MODE - HER KULVAR AYRI -->
+    <div class="fullscreen-mode" id="fullscreenMode">
+        <div class="fullscreen-grid" id="fullscreenGrid">
+            <!-- Fullscreen kulvarlar burada oluşturulacak -->
+        </div>
+        <div style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 2vw;">
+            Çıkmak için ekrana dokunun
+        </div>
+    </div>
+    
+    <!-- Mini Timer Overlay -->
+    <div class="mini-timer-overlay" id="miniTimerOverlay">
+        <div class="mini-timer" id="miniTimer">00:00:00</div>
+        <div class="mini-timer-label">ANTREMAN DEVAM EDİYOR</div>
+    </div>
+
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="../js/config.js"></script>
+    
+    <script>
+        // App State
+        let currentUser = null;
+        let currentAdminId = null;
+        let trainingPlan = [];
+        let currentTraining = null;
+        let isRunning = false;
+        let isPaused = false;
+        let totalElapsedTime = 0;
+        let warningTime = 10;
+        let dangerTime = 5;
+        let activeLanes = 4;
+        let laneTrainings = {};
+        let laneTimers = {};
+        let miniTimerEnabled = true;
+        let enableRestTransition = true;
+        let allBranches = [];
+        let allSchedules = [];
+        let allStudents = [];
+        let currentBranchId = null;
+        let currentScheduleId = null;
+        
+        // Her kulvar için ayrı state
+        class LaneTimer {
+            constructor(laneNumber) {
+                this.laneNumber = laneNumber;
+                this.currentTime = 0;
+                this.totalElapsedTime = 0;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.currentSetIndex = 0;
+                this.currentRep = 1;
+                this.intervalId = null;
+                this.trainingSets = [];
+                this.isResting = false;
+                this.restTimeRemaining = 0;
+                this.laneName = `Kulvar ${laneNumber}`;
+                this.nextSetInfo = null;
+                this.showRestTransition = false;
+            }
+            
+            start() {
+                if (this.trainingSets.length === 0 || this.isRunning) return;
+                
+                this.isRunning = true;
+                this.isPaused = false;
+                this.currentSetIndex = 0;
+                this.currentRep = 1;
+                this.currentTime = this.trainingSets[0].interval;
+                this.totalElapsedTime = 0;
+                this.isResting = false;
+                
+                this.updateDisplay();
+                this.startInterval();
+            }
+            
+            startInterval() {
+                if (this.intervalId) clearInterval(this.intervalId);
+                
+                const startTime = Date.now() - this.totalElapsedTime * 1000;
+                
+                this.intervalId = setInterval(() => {
+                    if (!this.isPaused && this.isRunning) {
+                        this.totalElapsedTime = (Date.now() - startTime) / 1000;
+                        
+                        if (this.isResting) {
+                            this.restTimeRemaining -= 0.01;
+                            if (this.restTimeRemaining < 0) this.restTimeRemaining = 0;
+                            
+                            this.currentTime = this.restTimeRemaining;
+                            
+                            if (this.restTimeRemaining <= 0) {
+                                this.endRest();
+                            }
+                        } else {
+                            this.currentTime -= 0.01;
+                            if (this.currentTime < 0) this.currentTime = 0;
+                            
+                            if (this.currentTime <= 0) {
+                                this.intervalFinished();
+                            }
+                        }
+                        
+                        this.updateDisplay();
+                        this.updateBackgroundColor();
+                    }
+                }, 10);
+            }
+            
+            intervalFinished() {
+                const currentSet = this.trainingSets[this.currentSetIndex];
+                
+                if (this.currentRep < currentSet.reps) {
+                    this.currentRep++;
+                    this.currentTime = currentSet.interval;
+                } else {
+                    if (currentSet.restTime && currentSet.restTime > 0) {
+                        // Dinlenme başlıyor - geçiş gösterimi için hazırlık
+                        const nextSetIndex = this.currentSetIndex + 1;
+                        if (nextSetIndex < this.trainingSets.length) {
+                            // Sıradaki set bilgilerini kaydet
+                            this.nextSetInfo = {
+                                name: this.trainingSets[nextSetIndex].name,
+                                reps: this.trainingSets[nextSetIndex].reps,
+                                distance: this.trainingSets[nextSetIndex].distance,
+                                stroke: this.trainingSets[nextSetIndex].stroke,
+                                interval: this.trainingSets[nextSetIndex].interval
+                            };
+                        }
+                        
+                        this.startRest(currentSet.restTime);
+                    } else {
+                        this.currentSetIndex++;
+                        if (this.currentSetIndex < this.trainingSets.length) {
+                            this.currentRep = 1;
+                            this.currentTime = this.trainingSets[this.currentSetIndex].interval;
+                        } else {
+                            this.completeTraining();
+                        }
+                    }
+                }
+                
+                this.updateDisplay();
+            }
+            
+            startRest(restTime) {
+                this.isResting = true;
+                this.restTimeRemaining = restTime;
+                this.currentTime = restTime;
+                this.showRestTransition = false;
+            }
+            
+            endRest() {
+                this.isResting = false;
+                this.showRestTransition = false;
+                this.hideRestTransition();
+                
+                this.currentSetIndex++;
+                
+                if (this.currentSetIndex < this.trainingSets.length) {
+                    this.currentRep = 1;
+                    this.currentTime = this.trainingSets[this.currentSetIndex].interval;
+                    // Hızlı gerisayım efekti
+                    if (enableRestTransition) {
+                        this.showQuickCountdown(3);
+                    }
+                } else {
+                    this.completeTraining();
+                }
+            }
+            
+            completeTraining() {
+                this.stop();
+                this.updateDisplay();
+                playSound('complete');
+            }
+            
+            pause() {
+                this.isPaused = !this.isPaused;
+                this.updateDisplay();
+            }
+            
+            stop() {
+                this.isRunning = false;
+                this.isPaused = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+                this.hideRestTransition();
+                this.updateDisplay();
+            }
+            
+            reset() {
+                this.stop();
+                this.currentSetIndex = 0;
+                this.currentRep = 1;
+                if (this.trainingSets.length > 0) {
+                    this.currentTime = this.trainingSets[0].interval;
+                } else {
+                    this.currentTime = 0;
+                }
+                this.totalElapsedTime = 0;
+                this.isResting = false;
+                this.restTimeRemaining = 0;
+                this.hideRestTransition();
+                this.updateDisplay();
+            }
+            
+            updateDisplay() {
+                const timerElement = document.getElementById(`laneTimer${this.laneNumber}`);
+                const setElement = document.getElementById(`laneSet${this.laneNumber}`);
+                const repElement = document.getElementById(`laneRep${this.laneNumber}`);
+                const fullscreenTimerElement = document.getElementById(`fullscreenTimer${this.laneNumber}`);
+                const fullscreenSetElement = document.getElementById(`fullscreenSet${this.laneNumber}`);
+                const fullscreenRepElement = document.getElementById(`fullscreenRep${this.laneNumber}`);
+                
+                if (timerElement) timerElement.textContent = formatTime(this.currentTime);
+                if (setElement) setElement.textContent = `${this.currentSetIndex + 1}/${this.trainingSets.length}`;
+                if (repElement) repElement.textContent = `${this.currentRep}/${this.trainingSets[this.currentSetIndex]?.reps || 0}`;
+                
+                if (fullscreenTimerElement) fullscreenTimerElement.textContent = formatTime(this.currentTime);
+                if (fullscreenSetElement) fullscreenSetElement.textContent = `${this.currentSetIndex + 1}/${this.trainingSets.length}`;
+                if (fullscreenRepElement) fullscreenRepElement.textContent = `${this.currentRep}/${this.trainingSets[this.currentSetIndex]?.reps || 0}`;
+                
+                // Dinlenme sırasında geçiş gösterimi
+                if (this.isResting && this.restTimeRemaining <= 5 && this.restTimeRemaining > 0) {
+                    if (!this.showRestTransition && this.nextSetInfo && enableRestTransition) {
+                        this.showRestTransition = true;
+                        this.showNextSetTransition();
+                    }
+                }
+                
+                this.updateBackgroundColor();
+            }
+            
+            showNextSetTransition() {
+                // Ana ekrandaki kulvar için geçiş göster
+                const laneContainer = document.getElementById(`laneTimerContainer${this.laneNumber}`);
+                const fullscreenLane = document.getElementById(`fullscreenLane${this.laneNumber}`);
+                
+                if (laneContainer) {
+                    this.createLaneRestTransition(laneContainer);
+                }
+                
+                if (fullscreenLane && fullscreenMode.style.display === 'flex') {
+                    this.createFullscreenRestTransition(fullscreenLane);
+                }
+                
+                // Gerisayım overlay'ini göster
+                if (enableRestTransition) {
+                    this.showCountdownOverlay();
+                }
+            }
+            
+            createLaneRestTransition(container) {
+                // Eğer zaten varsa temizle
+                const existing = container.querySelector('.lane-rest-transition');
+                if (existing) existing.remove();
+                
+                if (!this.nextSetInfo) return;
+                
+                const strokeIcon = this.getStrokeIcon(this.nextSetInfo.stroke);
+                const strokeClass = this.getStrokeClass(this.nextSetInfo.stroke);
+                
+                const transitionHTML = `
+                    <div class="lane-rest-transition" id="laneRestTransition${this.laneNumber}">
+                        <div class="lane-next-set">${this.nextSetInfo.reps}×${this.nextSetInfo.distance}m</div>
+                        <div class="lane-swimmer-icon ${strokeClass}">${strokeIcon}</div>
+                        <div style="font-size: 1.2rem; color: rgba(255,255,255,0.8);">${this.nextSetInfo.name}</div>
+                        <div style="font-size: 1rem; color: var(--secondary); margin-top: 10px;">
+                            ${this.getStrokeName(this.nextSetInfo.stroke)} • ${formatTime(this.nextSetInfo.interval, false)} interval
+                        </div>
+                    </div>
+                `;
+                
+                container.style.position = 'relative';
+                container.insertAdjacentHTML('beforeend', transitionHTML);
+                
+                const transitionElement = document.getElementById(`laneRestTransition${this.laneNumber}`);
+                if (transitionElement) {
+                    transitionElement.style.display = 'flex';
+                }
+            }
+            
+            createFullscreenRestTransition(container) {
+                // Eğer zaten varsa temizle
+                const existing = container.querySelector('.fullscreen-rest-transition');
+                if (existing) existing.remove();
+                
+                if (!this.nextSetInfo) return;
+                
+                const strokeIcon = this.getStrokeIcon(this.nextSetInfo.stroke);
+                const strokeClass = this.getStrokeClass(this.nextSetInfo.stroke);
+                
+                const transitionHTML = `
+                    <div class="fullscreen-rest-transition" id="fullscreenRestTransition${this.laneNumber}">
+                        <div class="next-set-large">${this.nextSetInfo.reps}×${this.nextSetInfo.distance}m</div>
+                        <div class="next-set-stroke">${this.getStrokeName(this.nextSetInfo.stroke)}</div>
+                        <div class="swimmer-animation-container">
+                            <div class="swimmer-icon ${strokeClass}">${strokeIcon}</div>
+                        </div>
+                        <div style="font-size: 3vw; color: rgba(255,255,255,0.9); margin-top: 20px;">
+                            ${this.nextSetInfo.name}
+                        </div>
+                        <div style="font-size: 2.5vw; color: var(--secondary); margin-top: 10px;">
+                            ${formatTime(this.nextSetInfo.interval, false)} interval
+                        </div>
+                    </div>
+                `;
+                
+                container.style.position = 'relative';
+                container.insertAdjacentHTML('beforeend', transitionHTML);
+                
+                const transitionElement = document.getElementById(`fullscreenRestTransition${this.laneNumber}`);
+                if (transitionElement) {
+                    transitionElement.style.display = 'flex';
+                    // 5 saniye sonra otomatik kapanacak (dinlenme süresine göre)
+                    setTimeout(() => {
+                        if (transitionElement) {
+                            transitionElement.style.display = 'none';
+                        }
+                    }, 5000);
+                }
+            }
+            
+            showCountdownOverlay() {
+                // Gerisayım overlay'ini oluştur veya güncelle
+                let countdownElement = document.getElementById(`countdownOverlay${this.laneNumber}`);
+                
+                if (!countdownElement) {
+                    countdownElement = document.createElement('div');
+                    countdownElement.id = `countdownOverlay${this.laneNumber}`;
+                    countdownElement.className = 'countdown-overlay';
+                    
+                    const container = document.getElementById(`fullscreenLane${this.laneNumber}`) || 
+                                    document.getElementById(`laneTimerContainer${this.laneNumber}`);
+                    if (container) {
+                        container.style.position = 'relative';
+                        container.appendChild(countdownElement);
+                    }
+                }
+                
+                // Her saniye güncelle
+                const updateCountdown = () => {
+                    if (this.isResting && this.restTimeRemaining > 0) {
+                        countdownElement.textContent = Math.ceil(this.restTimeRemaining);
+                        countdownElement.style.display = 'flex';
+                        
+                        // Son 3 saniyede kırmızı yap
+                        if (this.restTimeRemaining <= 3) {
+                            countdownElement.style.background = 'rgba(255, 51, 102, 0.95)';
+                            countdownElement.style.boxShadow = '0 0 25px rgba(255, 51, 102, 1)';
+                        } else {
+                            countdownElement.style.background = 'rgba(0, 102, 255, 0.9)';
+                            countdownElement.style.boxShadow = '0 0 20px rgba(0, 102, 255, 0.8)';
+                        }
+                        
+                        setTimeout(updateCountdown, 100);
+                    } else {
+                        countdownElement.style.display = 'none';
+                    }
+                };
+                
+                updateCountdown();
+            }
+            
+            hideRestTransition() {
+                // Geçiş elementlerini kaldır
+                const laneTransition = document.getElementById(`laneRestTransition${this.laneNumber}`);
+                const fullscreenTransition = document.getElementById(`fullscreenRestTransition${this.laneNumber}`);
+                const countdownElement = document.getElementById(`countdownOverlay${this.laneNumber}`);
+                
+                if (laneTransition) laneTransition.remove();
+                if (fullscreenTransition) fullscreenTransition.remove();
+                if (countdownElement) countdownElement.remove();
+            }
+            
+            showQuickCountdown(seconds) {
+                // Hızlı gerisayım efekti göster
+                const container = document.getElementById(`fullscreenLane${this.laneNumber}`) || 
+                                document.getElementById(`laneTimerContainer${this.laneNumber}`);
+                
+                if (!container) return;
+                
+                const quickCountdown = document.createElement('div');
+                quickCountdown.className = 'quick-countdown';
+                quickCountdown.textContent = seconds;
+                
+                container.appendChild(quickCountdown);
+                
+                // Animasyon bittikten sonra kaldır
+                setTimeout(() => {
+                    if (quickCountdown.parentNode) {
+                        quickCountdown.remove();
+                    }
+                }, 1000);
+            }
+            
+            updateBackgroundColor() {
+                const containerElement = document.getElementById(`laneTimerContainer${this.laneNumber}`);
+                const fullscreenElement = document.getElementById(`fullscreenLane${this.laneNumber}`);
+                
+                const elements = [];
+                if (containerElement) elements.push(containerElement);
+                if (fullscreenElement) elements.push(fullscreenElement);
+                
+                elements.forEach(element => {
+                    element.className = element.className.replace(/bg-\w+/g, '');
+                    
+                    if (!this.isRunning) {
+                        element.classList.add('bg-normal');
+                    } else if (this.isPaused) {
+                        element.classList.add('bg-paused');
+                    } else if (this.isResting) {
+                        element.classList.add('bg-rest');
+                    } else if (this.currentTime <= dangerTime) {
+                        element.classList.add('bg-danger');
+                    } else if (this.currentTime <= warningTime) {
+                        element.classList.add('bg-warning');
+                    } else {
+                        element.classList.add('bg-success');
+                    }
+                });
+            }
+            
+            addTrainingSet(set) {
+                this.trainingSets.push({
+                    ...set,
+                    originalInterval: set.interval
+                });
+            }
+            
+            clearTraining() {
+                this.trainingSets = [];
+                this.reset();
+            }
+            
+            getStrokeIcon(strokeType) {
+                const icons = {
+                    'serbest': '🏊‍♂️',
+                    'sırt': '🤽‍♂️',
+                    'kurbağa': '🏊‍♀️',
+                    'kelebek': '🧜‍♂️',
+                    'karışık': '🏊‍♂️'
+                };
+                return icons[strokeType] || '🏊‍♂️';
+            }
+            
+            getStrokeClass(strokeType) {
+                return strokeType;
+            }
+            
+            getStrokeName(strokeType) {
+                const names = {
+                    'serbest': 'Serbest',
+                    'sırt': 'Sırtüstü',
+                    'kurbağa': 'Kurbağa',
+                    'kelebek': 'Kelebek',
+                    'karışık': 'Karışık'
+                };
+                return names[strokeType] || 'Serbest';
+            }
+        }
+        
+        // DOM Elements
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const demoBtn = document.getElementById('demoBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const clubNameElement = document.getElementById('clubName');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const fullscreenToggle = document.getElementById('fullscreenToggle');
+        const pdfExportBtn = document.getElementById('pdfExportBtn');
+        
+        // Training Creator Elements
+        const setNameInput = document.getElementById('setName');
+        const repCountInput = document.getElementById('repCount');
+        const distanceSelect = document.getElementById('distance');
+        const strokeSelect = document.getElementById('stroke');
+        const intervalMinInput = document.getElementById('intervalMin');
+        const intervalSecInput = document.getElementById('intervalSec');
+        const intervalMsInput = document.getElementById('intervalMs');
+        const addRestCheckbox = document.getElementById('addRest');
+        const restTimeMinInput = document.getElementById('restTimeMin');
+        const restTimeSecInput = document.getElementById('restTimeSec');
+        const laneSelect = document.getElementById('laneSelect');
+        const addSetBtn = document.getElementById('addSetBtn');
+        const trainingPlanElement = document.getElementById('trainingPlan');
+        const trainingNameInput = document.getElementById('trainingName');
+        const saveTrainingBtn = document.getElementById('saveTrainingBtn');
+        const clearTrainingBtn = document.getElementById('clearTrainingBtn');
+        const startTrainingBtn = document.getElementById('startTrainingBtn');
+        const restartTrainingBtn = document.getElementById('restartTrainingBtn');
+        
+        // Lane Management Elements
+        const activeLanesCount = document.getElementById('activeLanesCount');
+        const laneNamesContainer = document.getElementById('laneNamesContainer');
+        const applyLanesBtn = document.getElementById('applyLanesBtn');
+        const activeLanesDisplay = document.getElementById('activeLanesDisplay');
+        
+        // Timer Elements
+        const mainTimerContainer = document.getElementById('mainTimerContainer');
+        const singleTimerView = document.getElementById('singleTimerView');
+        const lanesMainView = document.getElementById('lanesMainView');
+        const currentSetTitle = document.getElementById('currentSetTitle');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const currentSetElement = document.getElementById('currentSet');
+        const currentRepElement = document.getElementById('currentRep');
+        const totalTimeElement = document.getElementById('totalTime');
+        const startGlobalBtn = document.getElementById('startGlobalBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const timerStatus = document.getElementById('timerStatus');
+        
+        // Fullscreen Elements
+        const fullscreenMode = document.getElementById('fullscreenMode');
+        const fullscreenGrid = document.getElementById('fullscreenGrid');
+        
+        // Mini Timer Elements
+        const miniTimerOverlay = document.getElementById('miniTimerOverlay');
+        const miniTimer = document.getElementById('miniTimer');
+        
+        // Settings Elements
+        const clubNameInput = document.getElementById('clubNameInput');
+        const enableMiniTimer = document.getElementById('enableMiniTimer');
+        const warningTimeInput = document.getElementById('warningTime');
+        const dangerTimeInput = document.getElementById('dangerTime');
+        const autoFullscreenCheckbox = document.getElementById('autoFullscreen');
+        const enableRestTransitionCheckbox = document.getElementById('enableRestTransition');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        
+        // Tab Elements
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Individual Lane Controls
+        const individualLaneControls = document.getElementById('individualLaneControls');
+        
+        // Lane Timers Array
+        let laneTimerObjects = [];
+        
+        // Utility Functions
+        function formatTime(totalSeconds, includeMs = true) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            const milliseconds = Math.floor((totalSeconds * 100) % 100);
+            
+            if (includeMs) {
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        function timeToSeconds(minutes, seconds, milliseconds = 0) {
+            return (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0) + (parseInt(milliseconds) || 0) / 100;
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                background: var(--card-bg);
+                border: 1px solid var(--secondary);
+                border-radius: 10px;
+                padding: 12px 16px;
+                color: var(--light);
+                z-index: 10000;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                backdrop-filter: blur(10px);
+                transform: translateX(120%);
+                transition: transform 0.3s ease;
+                max-width: 280px;
+                font-size: 0.9rem;
+            `;
+            notification.innerHTML = `<i class="fas fa-info-circle" style="margin-right: 8px; color: var(--secondary);"></i> ${message}`;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+            
+            setTimeout(() => {
+                notification.style.transform = 'translateX(120%)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+        
+        function playSound(type) {
+            // Ses efekti simülasyonu
+            console.log(`Playing sound: ${type}`);
+        }
+
+        function shouldEnableTouchScrollFallback() {
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isCompactLayout = window.matchMedia('(max-width: 1200px)').matches;
+            return isTouchDevice && isCompactLayout;
+        }
+
+        function isNativeTouchControl(target) {
+            return Boolean(target.closest('input, textarea, select, option, [contenteditable="true"], .tabs, .time-input-group'));
+        }
+
+        function getScrollableTouchAncestor(target) {
+            let current = target instanceof Element ? target : null;
+
+            while (current && current !== document.body) {
+                const style = window.getComputedStyle(current);
+                const overflowY = style.overflowY;
+                const canScrollY = (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay')
+                    && current.scrollHeight > current.clientHeight + 4;
+
+                if (canScrollY) {
+                    return current;
+                }
+
+                current = current.parentElement;
+            }
+
+            return document.scrollingElement || document.documentElement;
+        }
+
+        function setupTouchScrollFallback() {
+            if (!shouldEnableTouchScrollFallback()) {
+                return;
+            }
+
+            const root = document.querySelector('.app-container') || document.body;
+            const scrollState = {
+                startX: 0,
+                startY: 0,
+                lastY: 0,
+                pointerActive: false,
+                gestureLocked: false,
+                verticalIntent: false,
+                ignoreGesture: false,
+                scrollTarget: null
+            };
+
+            const resetTouchScrollState = () => {
+                scrollState.pointerActive = false;
+                scrollState.gestureLocked = false;
+                scrollState.verticalIntent = false;
+                scrollState.ignoreGesture = false;
+                scrollState.scrollTarget = null;
+            };
+
+            root.addEventListener('touchstart', function(e) {
+                if (e.touches.length !== 1) {
+                    resetTouchScrollState();
+                    return;
+                }
+
+                const touch = e.touches[0];
+                scrollState.startX = touch.clientX;
+                scrollState.startY = touch.clientY;
+                scrollState.lastY = touch.clientY;
+                scrollState.pointerActive = true;
+                scrollState.gestureLocked = false;
+                scrollState.verticalIntent = false;
+                scrollState.ignoreGesture = isNativeTouchControl(e.target);
+                scrollState.scrollTarget = getScrollableTouchAncestor(e.target);
+            }, { passive: true });
+
+            root.addEventListener('touchmove', function(e) {
+                if (e.scale && e.scale !== 1) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (!scrollState.pointerActive || scrollState.ignoreGesture || e.touches.length !== 1) {
+                    return;
+                }
+
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - scrollState.startX;
+                const deltaY = touch.clientY - scrollState.startY;
+
+                if (!scrollState.gestureLocked) {
+                    if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) {
+                        return;
+                    }
+
+                    scrollState.gestureLocked = true;
+                    scrollState.verticalIntent = Math.abs(deltaY) > Math.abs(deltaX) * 1.1;
+                }
+
+                if (!scrollState.verticalIntent) {
+                    return;
+                }
+
+                const frameDeltaY = touch.clientY - scrollState.lastY;
+                scrollState.lastY = touch.clientY;
+
+                const target = scrollState.scrollTarget || document.scrollingElement || document.documentElement;
+                if (!target) {
+                    return;
+                }
+
+                if (target === document.documentElement || target === document.body || target === document.scrollingElement) {
+                    window.scrollBy(0, -frameDeltaY);
+                } else {
+                    target.scrollTop -= frameDeltaY;
+                }
+
+                e.preventDefault();
+            }, { passive: false });
+
+            root.addEventListener('touchend', resetTouchScrollState, { passive: true });
+            root.addEventListener('touchcancel', resetTouchScrollState, { passive: true });
+        }
+        
+        // Initialize the app
+        function initApp() {
+            // === SESSION KONTROLÜ - Antrenör oturum kontrolü ===
+            const userId = sessionStorage.getItem('user_id');
+            const userRole = sessionStorage.getItem('user_role');
+            
+            if (!userId || userRole !== 'trainer') {
+                // Oturum açmamış veya antrenör değil
+                window.location.href = '../index.html';
+                return;
+            }
+            
+            currentUser = {
+                id: userId,
+                email: sessionStorage.getItem('user_email'),
+                name: sessionStorage.getItem('user_name')
+            };
+            
+            // Firebase'den antrenöre ait saatleri ve branşları yükle
+            loadTrainerDataFromFirebase();
+            
+            // Event Listeners (Login dinleyicileri artık gerekli değil - hidden)
+            // loginBtn, registerBtn, demoBtn gizli
+            logoutBtn.addEventListener('click', handleLogout);
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+            fullscreenToggle.addEventListener('click', toggleFullscreen);
+            pdfExportBtn.addEventListener('click', generatePDF);
+            
+            // Training Creator Events
+            addRestCheckbox.addEventListener('change', function() {
+                restTimeMinInput.disabled = !this.checked;
+                restTimeSecInput.disabled = !this.checked;
+            });
+            
+            addSetBtn.addEventListener('click', addSetToTraining);
+            saveTrainingBtn.addEventListener('click', saveTraining);
+            clearTrainingBtn.addEventListener('click', clearTraining);
+            startTrainingBtn.addEventListener('click', startAllLanes);
+            restartTrainingBtn.addEventListener('click', restartAllLanes);
+            
+            // Timer Events
+            startGlobalBtn.addEventListener('click', startAllLanes);
+            pauseBtn.addEventListener('click', pauseAllLanes);
+            stopBtn.addEventListener('click', stopAllLanes);
+            restartBtn.addEventListener('click', restartAllLanes);
+            
+            // Lane Management Events
+            activeLanesCount.addEventListener('change', function() {
+                activeLanes = parseInt(this.value);
+                activeLanesDisplay.textContent = activeLanes;
+                updateLaneNamesInputs();
+                updateLaneDisplays();
+            });
+            
+            applyLanesBtn.addEventListener('click', applyLaneSettings);
+            
+            // Mini Timer Click Event
+            miniTimerOverlay.addEventListener('click', function() {
+                window.focus();
+                showNotification("Uygulamaya dönüldü");
+            });
+            
+            // Settings Events
+            saveSettingsBtn.addEventListener('click', saveSettings);
+            
+            // Tab Events
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.getAttribute('data-tab');
+                    switchTab(tabId);
+                });
+            });
+
+            // Eğer URL hash veya ?tab parametresi varsa o sekmeyi aç
+            try {
+                const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
+                const urlTab = new URLSearchParams(window.location.search).get('tab');
+                const startTab = hash || urlTab;
+                if (startTab) {
+                    // küçük güvenlik: yalnızca geçerli bir tab ise çağır
+                    const valid = Array.from(tabButtons).some(b => b.getAttribute('data-tab') === startTab);
+                    if (valid) switchTab(startTab);
+                }
+            } catch (e) {
+                console.warn('Tab başlangıcı okunamadı:', e);
+            }
+            
+            // Fullscreen exit
+            fullscreenMode.addEventListener('click', exitFullscreen);
+            
+            // Initialize lane timers
+            initLaneTimers();
+            
+            // Apply default settings
+            applySettings();
+            
+            // Sayfa görünürlüğü değiştiğinde mini timer'ı güncelle
+            document.addEventListener('visibilitychange', function() {
+                const anyRunning = laneTimerObjects.some(lane => lane.isRunning);
+                if (document.hidden && anyRunning && miniTimerEnabled) {
+                    updateMiniTimer();
+                } else {
+                    miniTimerOverlay.style.display = 'none';
+                }
+            });
+            
+            // Touch event optimizations
+            document.addEventListener('touchstart', function() {}, {passive: true});
+            document.addEventListener('touchmove', function(e) {
+                if (e.scale !== 1) e.preventDefault();
+            }, {passive: false});
+
+            setupTouchScrollFallback();
+        }
+        
+        function initLaneTimers() {
+            laneTimerObjects = [];
+            for (let i = 1; i <= 8; i++) {
+                const laneTimer = new LaneTimer(i);
+                laneTimerObjects.push(laneTimer);
+            }
+            updateLaneDisplays();
+            updateIndividualLaneControls();
+        }
+        
+        function updateLaneDisplays() {
+            // Ana ekran kulvar görünümü
+            if (activeLanes === 1) {
+                singleTimerView.style.display = 'flex';
+                lanesMainView.classList.add('hidden');
+            } else {
+                singleTimerView.style.display = 'none';
+                lanesMainView.classList.remove('hidden');
+                
+                // Grid class'ını güncelle
+                lanesMainView.className = `lanes-main-container lanes-${activeLanes}`;
+                
+                // Kulvar elementlerini oluştur
+                let lanesHTML = '';
+                for (let i = 1; i <= activeLanes; i++) {
+                    const laneTimer = laneTimerObjects[i-1];
+                    const laneName = localStorage.getItem(`laneName_${i}`) || `Kulvar ${i}`;
+                    
+                    lanesHTML += `
+                    <div class="lane-timer-container bg-normal" id="laneTimerContainer${i}" style="position: relative;">
+                        <div class="lane-header">
+                            <div class="lane-title">${laneName}</div>
+                            <div class="lane-status">${laneTimer.trainingSets.length > 0 ? 'Hazır' : 'Plan Yok'}</div>
+                        </div>
+                        <div class="lane-timer-display" id="laneTimer${i}">${formatTime(laneTimer.currentTime)}</div>
+                        <div class="lane-info">
+                            <div class="lane-info-item">
+                                <div class="lane-info-label">SET</div>
+                                <div class="lane-info-value" id="laneSet${i}">${laneTimer.currentSetIndex + 1}/${laneTimer.trainingSets.length}</div>
+                            </div>
+                            <div class="lane-info-item">
+                                <div class="lane-info-label">TEKRAR</div>
+                                <div class="lane-info-value" id="laneRep${i}">${laneTimer.currentRep}/${laneTimer.trainingSets[laneTimer.currentSetIndex]?.reps || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }
+                
+                lanesMainView.innerHTML = lanesHTML;
+            }
+            
+            // Fullscreen görünümü güncelle
+            updateFullscreenDisplay();
+        }
+        
+        function updateFullscreenDisplay() {
+            let fullscreenHTML = '';
+            
+            for (let i = 1; i <= activeLanes; i++) {
+                const laneTimer = laneTimerObjects[i-1];
+                const laneName = localStorage.getItem(`laneName_${i}`) || `Kulvar ${i}`;
+                
+                fullscreenHTML += `
+                <div class="fullscreen-lane bg-normal" id="fullscreenLane${i}" style="position: relative;">
+                    <div class="fullscreen-lane-title">${laneName}</div>
+                    <div class="fullscreen-lane-timer" id="fullscreenTimer${i}">${formatTime(laneTimer.currentTime)}</div>
+                    <div class="fullscreen-lane-info">
+                        <div class="fullscreen-lane-info-item">
+                            <div class="fullscreen-lane-info-label">SET</div>
+                            <div class="fullscreen-lane-info-value" id="fullscreenSet${i}">${laneTimer.currentSetIndex + 1}/${laneTimer.trainingSets.length}</div>
+                        </div>
+                        <div class="fullscreen-lane-info-item">
+                            <div class="fullscreen-lane-info-label">TEKRAR</div>
+                            <div class="fullscreen-lane-info-value" id="fullscreenRep${i}">${laneTimer.currentRep}/${laneTimer.trainingSets[laneTimer.currentSetIndex]?.reps || 0}</div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+            
+            fullscreenGrid.innerHTML = fullscreenHTML;
+            fullscreenGrid.className = `fullscreen-grid fullscreen-${activeLanes}`;
+        }
+        
+        function updateIndividualLaneControls() {
+            let controlsHTML = '';
+            
+            for (let i = 1; i <= activeLanes; i++) {
+                const laneTimer = laneTimerObjects[i-1];
+                const laneName = localStorage.getItem(`laneName_${i}`) || `Kulvar ${i}`;
+                
+                controlsHTML += `
+                <div class="panel-section" style="padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: var(--secondary);">${laneName}</span>
+                        <span style="font-size: 0.8rem; color: ${laneTimer.trainingSets.length > 0 ? 'var(--success)' : 'var(--danger)'};">${laneTimer.trainingSets.length} set</span>
+                    </div>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="startLane(${i})" style="padding: 8px; font-size: 0.8rem; flex: 1;">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button class="btn btn-warning" onclick="pauseLane(${i})" style="padding: 8px; font-size: 0.8rem; flex: 1;">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                        <button class="btn btn-danger" onclick="stopLane(${i})" style="padding: 8px; font-size: 0.8rem; flex: 1;">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <button class="btn btn-info" onclick="resetLane(${i})" style="padding: 8px; font-size: 0.8rem; flex: 1;">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }
+            
+            individualLaneControls.innerHTML = controlsHTML;
+        }
+        
+        // Bireysel kulvar kontrol fonksiyonları
+        window.startLane = function(laneNumber) {
+            const laneTimer = laneTimerObjects[laneNumber-1];
+            if (laneTimer.trainingSets.length === 0) {
+                showNotification(`${laneTimer.laneName} için antrenman planı yok!`);
+                return;
+            }
+            laneTimer.start();
+            updateControlButtons();
+            showNotification(`${laneTimer.laneName} başlatıldı`);
+        };
+        
+        window.pauseLane = function(laneNumber) {
+            const laneTimer = laneTimerObjects[laneNumber-1];
+            laneTimer.pause();
+            showNotification(`${laneTimer.laneName} ${laneTimer.isPaused ? 'duraklatıldı' : 'devam ettiriliyor'}`);
+        };
+        
+        window.stopLane = function(laneNumber) {
+            const laneTimer = laneTimerObjects[laneNumber-1];
+            laneTimer.stop();
+            updateControlButtons();
+            showNotification(`${laneTimer.laneName} durduruldu`);
+        };
+        
+        window.resetLane = function(laneNumber) {
+            const laneTimer = laneTimerObjects[laneNumber-1];
+            laneTimer.reset();
+            updateControlButtons();
+            showNotification(`${laneTimer.laneName} sıfırlandı`);
+        };
+        
+        function updateControlButtons() {
+            const anyRunning = laneTimerObjects.slice(0, activeLanes).some(lane => lane.isRunning);
+            const allStopped = laneTimerObjects.slice(0, activeLanes).every(lane => !lane.isRunning);
+            
+            startGlobalBtn.disabled = anyRunning;
+            pauseBtn.disabled = !anyRunning;
+            stopBtn.disabled = allStopped;
+            restartBtn.disabled = allStopped;
+        }
+        
+        function startAllLanes() {
+            let startedCount = 0;
+            laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                if (laneTimer.trainingSets.length > 0) {
+                    laneTimer.start();
+                    startedCount++;
+                }
+            });
+            
+            if (startedCount > 0) {
+                updateControlButtons();
+                showNotification(`${startedCount} kulvar başlatıldı`);
+                
+                if (autoFullscreenCheckbox.checked) {
+                    enterFullscreen();
+                }
+            } else {
+                showNotification("Başlatmak için en az bir kulvara antrenman planı ekleyin!");
+            }
+        }
+        
+        function pauseAllLanes() {
+            const anyPaused = laneTimerObjects.slice(0, activeLanes).some(lane => lane.isPaused);
+            
+            laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                if (laneTimer.isRunning) {
+                    laneTimer.pause();
+                }
+            });
+            
+            pauseBtn.innerHTML = anyPaused ? '<i class="fas fa-pause"></i> Duraklat' : '<i class="fas fa-play"></i> Devam';
+            showNotification(anyPaused ? "Tüm kulvarlar devam ettiriliyor" : "Tüm kulvarlar duraklatıldı");
+        }
+        
+        function stopAllLanes() {
+            if (confirm("Tüm kulvarlardaki antrenmanları durdurmak istediğinize emin misiniz?")) {
+                laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                    laneTimer.stop();
+                });
+                
+                updateControlButtons();
+                showNotification("Tüm kulvarlar durduruldu");
+                
+                if (fullscreenMode.style.display === 'flex') {
+                    exitFullscreen();
+                }
+            }
+        }
+        
+        function restartAllLanes() {
+            laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                laneTimer.reset();
+            });
+            
+            updateControlButtons();
+            showNotification("Tüm kulvarlar sıfırlandı");
+        }
+        
+        function updateMiniTimer() {
+            const anyRunning = laneTimerObjects.some(lane => lane.isRunning);
+            if (!miniTimerEnabled || !anyRunning) {
+                miniTimerOverlay.style.display = 'none';
+                return;
+            }
+            
+            // İlk çalışan kulvarın zamanını göster
+            const runningLane = laneTimerObjects.find(lane => lane.isRunning);
+            if (runningLane) {
+                miniTimer.textContent = formatTime(runningLane.currentTime);
+                miniTimerOverlay.style.display = 'flex';
+            }
+        }
+        
+        // Auth Functions
+        function loadTrainerDataFromFirebase() {
+            // Firebase'den antrenöre ait şube ve ders saatlerini yükle
+            if (typeof db === 'undefined') {
+                // Firebase yüklü değil - demo moduna geç
+                console.log("Firebase yüklü değil, demo moduna geçiliyor");
+                enableDemoMode();
+                return;
+            }
+            
+            try {
+                // İlk olarak antrenörün trainer kaydını bulup adminId'sini alalım
+                db.collection('trainers')
+                    .where('uid', '==', currentUser.id)
+                    .limit(1)
+                    .get()
+                    .then((trainerSnap) => {
+                        if (trainerSnap.empty) {
+                            throw new Error('Antrenör kaydı bulunamadı!');
+                        }
+                        
+                        const trainerData = trainerSnap.docs[0].data();
+                        currentUser.adminId = trainerData.adminId;
+                        
+                        console.log("Antrenör adminId:", currentUser.adminId);
+                        
+                        // Antrenöre atanmış ders saatlerini yükle (sadece kendi admininin)
+                        return db.collection('schedules')
+                            .where('trainerId', '==', currentUser.id)
+                            .where('adminId', '==', currentUser.adminId)
+                            .get();
+                    })
+                    .then((querySnapshot) => {
+                        allSchedules = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                        
+                        // Şubeleri yükle (sadece kendi admininin)
+                        return db.collection('branches')
+                            .where('adminId', '==', currentUser.adminId)
+                            .get();
+                    })
+                    .then((querySnapshot) => {
+                        allBranches = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                        
+                        // Öğrencileri yükle (sadece kendi admininin)
+                        return db.collection('students')
+                            .where('adminId', '==', currentUser.adminId)
+                            .get();
+                    })
+                    .then((querySnapshot) => {
+                        allStudents = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                        
+                        // UI'yi güncelle
+                        updateBranchSelects();
+                        showApp();
+                        applySettings();
+                        
+                        // Antrenöre ait örnek antrenmanları yükle
+                        loadSavedTrainings();
+                        
+                        console.log("Antrenör verileri yüklendi:");
+                        console.log("Şubeler:", allBranches.length);
+                        console.log("Ders saatleri:", allSchedules.length);
+                        console.log("Öğrenciler:", allStudents.length);
+                    })
+                    .catch((error) => {
+                        console.error("Veri yükleme hatası:", error);
+                        alert("Veri yüklenemedi: " + error.message);
+                        // Demo moduna geç
+                        enableDemoMode();
+                    });
+            } catch (error) {
+                console.error("Firebase yükleme hatası:", error);
+                enableDemoMode();
+            }
+        }
+        
+        function updateBranchSelects() {
+            const branchSelect = document.getElementById('trainingBranch');
+            const scheduleSelect = document.getElementById('trainingSchedule');
+            
+            // Branş seçimi güncelle
+            branchSelect.innerHTML = '<option value="">-- Şube Seçiniz --</option>';
+            allBranches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.id;
+                option.textContent = branch.name;
+                branchSelect.appendChild(option);
+            });
+            
+            // Branş değiştiğinde ders saatleri güncelle
+            branchSelect.addEventListener('change', function() {
+                const selectedBranchId = this.value;
+                currentBranchId = selectedBranchId;
+                
+                scheduleSelect.innerHTML = '<option value="">-- Ders Saati Seçiniz --</option>';
+                
+                if (selectedBranchId) {
+                    const branchSchedules = allSchedules.filter(s => s.branchId === selectedBranchId);
+                    branchSchedules.forEach(schedule => {
+                        const option = document.createElement('option');
+                        option.value = schedule.id;
+                        option.textContent = schedule.time;
+                        scheduleSelect.appendChild(option);
+                    });
+                }
+            });
+            
+            // Ders saati değiştiğinde seç
+            scheduleSelect.addEventListener('change', function() {
+                currentScheduleId = this.value;
+            });
+        }
+        
+        window.savedTrainingLibraryIndex = window.savedTrainingLibraryIndex || {};
+
+        function loadSavedTrainings() {
+            // Kaydedilmiş antrenmanları Firestore'dan yükle
+            console.log("loadSavedTrainings - Yeni sürüm çalışıyor - index gerektirmeyen sorgu");
+            if (typeof db === 'undefined') {
+                console.log("Firebase db tanımlı değil");
+                return;
+            }
+
+            if (!currentUser) {
+                console.log("currentUser tanımlı değil");
+                return;
+            }
+
+            // currentUser.adminId'yi kullan (loadTrainerDataFromFirebase'de ayarlandı)
+            const trainerId = currentUser.id;
+            const adminId = currentUser.adminId;
+
+            console.log("Filtreleme için:", {trainerId, adminId, currentUser});
+
+            // Tüm sorguları istemci tarafında yap - index gereksinimi yok
+            console.log("Sorgu başlatılıyor - workouts ve satın alınan kütüphane kayıtları çekiliyor");
+            Promise.all([
+                db.collection('workouts').get(),
+                db.collection('workout_library').where('buyerId', '==', trainerId).get().catch(() => null),
+                db.collection('purchased_workouts').where('buyerId', '==', trainerId).get().catch(() => null)
+            ])
+                .then(([querySnapshot, workoutLibrarySnapshot, purchasedSnapshot]) => {
+                    const savedTrainingsContainer = document.getElementById('savedTrainings');
+                    window.savedTrainingLibraryIndex = {};
+
+                    // Tüm filtreleri istemci tarafında uygula
+                    let workouts = [];
+                    querySnapshot.forEach(doc => {
+                        const training = {id: doc.id, ...doc.data()};
+                        // TrainerId ve adminId filtresi
+                        if (training.trainerId === trainerId && (!currentUser.adminId || training.adminId === currentUser.adminId)) {
+                            workouts.push(training);
+                        }
+                    });
+
+                    const purchasedWorkouts = [];
+
+                    if (workoutLibrarySnapshot && !workoutLibrarySnapshot.empty) {
+                        workoutLibrarySnapshot.forEach(doc => {
+                            const training = {id: doc.id, ...doc.data()};
+                            purchasedWorkouts.push({
+                                id: `library-${doc.id}`,
+                                sourceCollection: 'workout_library',
+                                sourceId: doc.id,
+                                name: training.workoutName || training.name || 'Satın Alınan Antrenman',
+                                exercises: Array.isArray(training.exercises) ? training.exercises : [],
+                                createdAt: training.purchasedAt || training.createdAt || '',
+                                sellerName: training.sellerName || '',
+                                purchased: true
+                            });
+                        });
+                    }
+
+                    if (purchasedSnapshot && !purchasedSnapshot.empty) {
+                        purchasedSnapshot.forEach(doc => {
+                            const training = {id: doc.id, ...doc.data()};
+                            purchasedWorkouts.push({
+                                id: `purchased-${doc.id}`,
+                                sourceCollection: 'purchased_workouts',
+                                sourceId: doc.id,
+                                name: training.name || 'Satın Alınan Antrenman',
+                                exercises: Array.isArray(training.exercises) ? training.exercises : [],
+                                createdAt: training.purchasedAt || training.createdAt || '',
+                                sellerName: training.sellerName || '',
+                                purchased: true
+                            });
+                        });
+                    }
+
+                    const allLibraryItems = workouts
+                        .map(training => ({ ...training, sourceCollection: 'workouts', sourceId: training.id, purchased: false }))
+                        .concat(purchasedWorkouts);
+
+                    if (allLibraryItems.length === 0) {
+                        savedTrainingsContainer.innerHTML = '<p class="empty-message">Henüz antrenman kaydedilmemiş</p>';
+                        return;
+                    }
+
+                    // Oluşturma tarihine göre sırala (en yeni en üstte)
+                    allLibraryItems.sort((a, b) => {
+                        const dateA = new Date(a.createdAt || 0);
+                        const dateB = new Date(b.createdAt || 0);
+                        return dateB - dateA;
+                    });
+
+                    let html = '';
+                    allLibraryItems.forEach(training => {
+                        window.savedTrainingLibraryIndex[training.id] = training;
+                        const totalDistance = training.exercises ? training.exercises.reduce((sum, ex) => sum + (ex.distance || 0), 0) : 0;
+                        const secondaryLine = training.purchased
+                            ? `Satın alınan antrenman${training.sellerName ? ` • Satıcı: ${training.sellerName}` : ''}`
+                            : `${training.createdAt ? new Date(training.createdAt).toLocaleDateString('tr-TR') : 'Tarih yok'}`;
+                        const deleteButton = training.purchased
+                            ? ''
+                            : `<button class="icon-btn delete-workout-btn" onclick="deleteSavedTraining('${training.sourceId}', '${training.name || 'İsimsiz Antrenman'}')" title="Sil" style="position: absolute; top: 10px; right: 10px; background: rgba(255, 51, 51, 0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                <i class="fas fa-trash"></i>
+                            </button>`;
+
+                        html += `
+                        <div class="template-card" style="position: relative;">
+                            <div onclick="loadSavedTraining('${training.id}')" style="cursor: pointer; flex: 1;">
+                                <h4>${training.name || 'İsimsiz Antrenman'}</h4>
+                                <p style="font-size: 0.85rem; color: rgba(255,255,255,0.7);">
+                                    ${training.exercises ? training.exercises.length : 0} egzersiz • ${totalDistance}m
+                                </p>
+                                <p style="font-size: 0.75rem; color: rgba(255,255,255,0.5);">
+                                    ${secondaryLine}
+                                </p>
+                            </div>
+                            ${deleteButton}
+                        </div>
+                        `;
+                    });
+
+                    savedTrainingsContainer.innerHTML = html;
+                })
+                .catch((error) => {
+                    console.error("Antrenmanlar yüklenemedi:", error);
+                    // Hata durumunda boş mesaj göster
+                    const savedTrainingsContainer = document.getElementById('savedTrainings');
+                    savedTrainingsContainer.innerHTML = '<p class="empty-message" style="color: #e74c3c;">Antrenmanlar yüklenirken hata oluştu</p>';
+                });
+        }
+        
+        function handleLogin() {
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            
+            if (!email || !password) {
+                alert('Lütfen e-posta ve şifre girin.');
+                return;
+            }
+            
+            currentUser = { 
+                uid: 'demo-user-' + Date.now(), 
+                email: email,
+                displayName: email.split('@')[0]
+            };
+            
+            showApp();
+            showNotification("Başarıyla giriş yapıldı!");
+            
+            // Örnek antrenmanlar ekle
+            addSampleTrainings();
+            
+            clubNameElement.textContent = "Demo Yüzme Kulübü";
+            clubNameInput.value = "Demo Yüzme Kulübü";
+        }
+        
+        function handleRegister() {
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            
+            if (!email || !password) {
+                alert('Lütfen e-posta ve şifre girin.');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Şifre en az 6 karakter olmalıdır.');
+                return;
+            }
+            
+            currentUser = { 
+                uid: 'new-user-' + Date.now(), 
+                email: email,
+                displayName: email.split('@')[0]
+            };
+            
+            showApp();
+            showNotification("Yeni kulüp yöneticisi hesabı oluşturuldu!");
+            
+            const clubName = email.split('@')[0] + " Yüzme Kulübü";
+            clubNameElement.textContent = clubName;
+            clubNameInput.value = clubName;
+        }
+        
+        function enableDemoMode() {
+            currentUser = { 
+                uid: 'demo-user', 
+                email: 'demo@swimtimer.com',
+                displayName: 'Demo Kullanıcı'
+            };
+            
+            showApp();
+            
+            // Örnek antrenmanlar ekle
+            addSampleTrainings();
+            
+            clubNameElement.textContent = "Demo Yüzme Kulübü";
+            clubNameInput.value = "Demo Yüzme Kulübü";
+            
+            showNotification("Demo modu etkinleştirildi! Örnek antrenmanlar yüklendi.");
+        }
+        
+        function addSampleTrainings() {
+            // Kulvar 1 için örnek antrenman (6×50m sırtüstü - yeni özelliği test etmek için)
+            laneTimerObjects[0].addTrainingSet({
+                id: Date.now(),
+                name: "Sprint 50m Sırt",
+                reps: 6,
+                distance: 50,
+                stroke: "sırt",
+                interval: 35,
+                restTime: 20
+            });
+            
+            // Dinlenmeden sonraki set
+            laneTimerObjects[0].addTrainingSet({
+                id: Date.now() + 1,
+                name: "Teknik 100m Serbest",
+                reps: 4,
+                distance: 100,
+                stroke: "serbest",
+                interval: 90,
+                restTime: 30
+            });
+            
+            // Kulvar 2 için örnek antrenman
+            laneTimerObjects[1].addTrainingSet({
+                id: Date.now() + 2,
+                name: "Dayanıklılık 100m",
+                reps: 4,
+                distance: 100,
+                stroke: "serbest",
+                interval: 80,
+                restTime: 30
+            });
+            
+            // Kulvar 3 için örnek antrenman
+            laneTimerObjects[2].addTrainingSet({
+                id: Date.now() + 3,
+                name: "Teknik 25m",
+                reps: 8,
+                distance: 25,
+                stroke: "kurbağa",
+                interval: 25,
+                restTime: 15
+            });
+            
+            // Kulvar 4 için örnek antrenman
+            laneTimerObjects[3].addTrainingSet({
+                id: Date.now() + 4,
+                name: "Kelebek Sprint",
+                reps: 6,
+                distance: 50,
+                stroke: "kelebek",
+                interval: 40,
+                restTime: 25
+            });
+            
+            updateTrainingPlanDisplay();
+            updateLaneDisplays();
+            updateIndividualLaneControls();
+            updateStatistics();
+        }
+        
+        function handleLogout() {
+            stopAllLanes();
+            
+            currentUser = null;
+            trainingPlan = [];
+            
+            // Tüm kulvar timer'larını temizle
+            laneTimerObjects.forEach(laneTimer => {
+                laneTimer.clearTraining();
+            });
+            
+            updateTrainingPlanDisplay();
+            updateLaneDisplays();
+            updateIndividualLaneControls();
+            
+            // Firebase'den çıkış yap
+            if (typeof auth !== 'undefined') {
+                auth.signOut().then(() => {
+                    sessionStorage.clear();
+                    window.location.href = '../index.html';
+                }).catch(() => {
+                    window.location.href = '../index.html';
+                });
+            } else {
+                sessionStorage.clear();
+                window.location.href = '../index.html';
+            }
+        }
+        
+        function showLogin() {
+            loginScreen.style.display = 'flex';
+            appContainer.style.display = 'none';
+            miniTimerOverlay.style.display = 'none';
+        }
+        
+        function showApp() {
+            loginScreen.style.display = 'none';
+            appContainer.style.display = 'block';
+        }
+        
+        // Training Creator Functions
+        function addSetToTraining() {
+            const setName = setNameInput.value || "Set " + (trainingPlan.length + 1);
+            const reps = parseInt(repCountInput.value) || 1;
+            const distance = parseInt(distanceSelect.value) || 50;
+            const stroke = strokeSelect.value || "serbest";
+            
+            const interval = timeToSeconds(
+                intervalMinInput.value,
+                intervalSecInput.value,
+                intervalMsInput.value
+            );
+            
+            const hasRest = addRestCheckbox.checked;
+            const restTime = hasRest ? timeToSeconds(restTimeMinInput.value, restTimeSecInput.value) : 0;
+            const lane = laneSelect.value;
+            
+            const newSet = {
+                id: Date.now(),
+                name: setName,
+                reps: reps,
+                distance: distance,
+                stroke: stroke,
+                interval: interval,
+                restTime: restTime,
+                lane: lane,
+                completed: false
+            };
+            
+            if (lane === 'all') {
+                // Tüm kulvarlara ekle
+                trainingPlan.push(newSet);
+                laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                    laneTimer.addTrainingSet(newSet);
+                });
+            } else {
+                const laneNum = parseInt(lane);
+                if (laneNum <= activeLanes) {
+                    trainingPlan.push({...newSet, laneName: `Kulvar ${lane}`});
+                    laneTimerObjects[laneNum-1].addTrainingSet(newSet);
+                } else {
+                    showNotification(`Seçtiğiniz kulvar aktif değil!`);
+                    return;
+                }
+            }
+            
+            updateTrainingPlanDisplay();
+            updateLaneDisplays();
+            updateIndividualLaneControls();
+            
+            // Clear form
+            setNameInput.value = "";
+            repCountInput.value = 6;
+            intervalMinInput.value = "0";
+            intervalSecInput.value = "35";
+            intervalMsInput.value = "0";
+            addRestCheckbox.checked = false;
+            restTimeMinInput.disabled = true;
+            restTimeSecInput.disabled = true;
+            restTimeMinInput.value = "0";
+            restTimeSecInput.value = "20";
+            
+            showNotification("Set başarıyla eklendi!");
+        }
+        
+        function updateTrainingPlanDisplay() {
+            if (trainingPlan.length === 0) {
+                trainingPlanElement.innerHTML = '<p class="empty-message">Henüz set eklenmedi. Yukarıdan set ekleyin.</p>';
+                return;
+            }
+            
+            let html = '';
+            let totalDistance = 0;
+            let totalTime = 0;
+            
+            trainingPlan.forEach((set, index) => {
+                totalDistance += set.reps * set.distance;
+                totalTime += (set.reps * set.interval) + (set.restTime || 0);
+                
+                const strokeNames = {
+                    "serbest": "Serbest",
+                    "sırt": "Sırtüstü",
+                    "kurbağa": "Kurbağa",
+                    "kelebek": "Kelebek",
+                    "karışık": "Karışık"
+                };
+                
+                const laneInfo = set.laneName ? `<span style="color: var(--secondary); font-size: 0.8rem; background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 10px; margin-left: 5px;">${set.laneName}</span>` : '<span style="color: var(--secondary); font-size: 0.8rem; background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 10px; margin-left: 5px;">Tüm Kulvarlar</span>';
+                
+                html += `
+                <div class="set-item" data-id="${set.id}">
+                    <div class="set-header">
+                        <div style="flex: 1;">
+                            <h4 style="display: flex; align-items: center; flex-wrap: wrap; gap: 5px;">${set.name} ${laneInfo}</h4>
+                            <p style="font-size: 0.9rem; margin-top: 5px;">${set.reps} x ${set.distance}m ${strokeNames[set.stroke]} | ${formatTime(set.interval)} interval ${set.restTime ? `| ${formatTime(set.restTime, false)} dinlenme` : ''}</p>
+                        </div>
+                        <div class="set-actions">
+                            <button class="icon-btn delete-set" data-index="${index}" title="Sil">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            html += `
+            <div class="set-item" style="background: rgba(0, 102, 255, 0.1); border-left-color: var(--primary);">
+                <div class="set-header">
+                    <div>
+                        <h4>Antrenman Özeti</h4>
+                        <p>Toplam: ${trainingPlan.length} set, ${totalDistance}m, ${formatTime(totalTime, false)}</p>
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            trainingPlanElement.innerHTML = html;
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.delete-set').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    deleteSet(index);
+                });
+            });
+        }
+        
+        function deleteSet(index) {
+            if (confirm("Bu seti silmek istediğinize emin misiniz?")) {
+                const set = trainingPlan[index];
+                
+                // Kulvarlardan da sil
+                if (set.lane === 'all') {
+                    laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                        laneTimer.trainingSets = laneTimer.trainingSets.filter(s => s.id !== set.id);
+                    });
+                } else {
+                    const laneNum = parseInt(set.lane);
+                    if (laneTimerObjects[laneNum-1]) {
+                        laneTimerObjects[laneNum-1].trainingSets = laneTimerObjects[laneNum-1].trainingSets.filter(s => s.id !== set.id);
+                    }
+                }
+                
+                trainingPlan.splice(index, 1);
+                updateTrainingPlanDisplay();
+                updateLaneDisplays();
+                updateIndividualLaneControls();
+                showNotification("Set silindi!");
+            }
+        }
+        
+        function saveTraining() {
+            const trainingName = trainingNameInput.value || "Antrenman " + new Date().toLocaleDateString('tr-TR');
+            
+            if (trainingPlan.length === 0) {
+                alert("Kaydetmek için en az bir set eklemelisiniz.");
+                return;
+            }
+            
+            if (!currentBranchId || !currentScheduleId) {
+                alert("Kaydetmek için lütfen şube ve ders saati seçiniz.");
+                return;
+            }
+            
+            if (!currentUser) {
+                alert("Kaydetmek için giriş yapmalısınız.");
+                return;
+            }
+            
+            // Firebase'e antrenman kaydet
+            if (typeof db === 'undefined') {
+                // Demo modunda local storage'a kaydet
+                const trainings = JSON.parse(localStorage.getItem('swimTrainings') || '[]');
+                const trainingData = {
+                    id: Date.now(),
+                    name: trainingName,
+                    sets: trainingPlan,
+                    createdAt: new Date().toISOString(),
+                    totalDistance: trainingPlan.reduce((sum, set) => sum + (set.reps * set.distance), 0),
+                    totalTime: trainingPlan.reduce((sum, set) => sum + (set.reps * set.interval) + (set.restTime || 0), 0)
+                };
+                trainings.push(trainingData);
+                localStorage.setItem('swimTrainings', JSON.stringify(trainings));
+                showNotification("Antrenman başarıyla kaydedildi!");
+                return;
+            }
+            
+            try {
+                // Firestore'a antrenman dokü ekle
+                const exercises = trainingPlan.map(set => ({
+                    distance: set.distance,
+                    reps: set.reps,
+                    style: set.stroke,
+                    restSeconds: Math.floor(set.restTime || 0),
+                    intervalSeconds: Math.floor(set.interval || 0),
+                    lanes: set.lanes || []
+                }));
+                
+                db.collection('workouts').add({
+                    name: trainingName,
+                    exercises: exercises,
+                    scheduleId: currentScheduleId,
+                    branchId: currentBranchId,
+                    trainerId: currentUser.id,
+                    adminId: currentUser.adminId,
+                    published: true,
+                    createdAt: new Date().toISOString(),
+                    sharedAt: new Date().toISOString()
+                }).then((docRef) => {
+                    console.log("Antrenman kaydedildi, ID:", docRef.id);
+                    // Antrenman kaydedildi - Şimdi ilgili öğrencileri bilgilendir
+                    notifyStudentsAboutWorkout(docRef.id, trainingName, exercises, currentBranchId, currentScheduleId);
+
+                    showNotification("Antrenman başarıyla kaydedildi ve öğrencilere gönderildi!");
+
+                    // Formu temizle
+                    trainingNameInput.value = "";
+                    document.getElementById('trainingBranch').value = "";
+                    document.getElementById('trainingSchedule').value = "";
+                    currentBranchId = null;
+                    currentScheduleId = null;
+                    trainingPlan = [];
+                    updateTrainingPlanDisplay();
+
+                    // Kaydedilmiş antrenmanları yenile
+                    loadSavedTrainings();
+                }).catch((error) => {
+                    console.error("Antrenman kaydetme hatası:", error);
+                    alert("Antrenman kaydedilirken hata: " + error.message);
+                });
+            } catch (error) {
+                console.error("Hata:", error);
+                alert("Hata: " + error.message);
+            }
+        }
+        
+        function notifyStudentsAboutWorkout(workoutId, trainingName, exercises, branchId, scheduleId) {
+            // Seçilen saat ve şubeye kayıtlı tüm öğrencileri bilgilendir
+            if (typeof db === 'undefined') return;
+            
+            try {
+                // Doğru şube ve saate kayıtlı öğrencileri filtrele
+                const studentsInSchedule = allStudents.filter(s => {
+                    return s.scheduleId === scheduleId && s.branchId === branchId;
+                });
+                
+                console.log(`Seçili şube: ${branchId}, Ders saati: ${scheduleId}`);
+                console.log(`${studentsInSchedule.length} öğrenci bulundu`);
+                
+                if (studentsInSchedule.length === 0) {
+                    console.warn("Bu saat ve şubeye kayıtlı öğrenci bulunamadı!");
+                    return;
+                }
+                
+                studentsInSchedule.forEach(student => {
+                    db.collection('student_workouts').add({
+                        studentId: student.id,
+                        studentName: student.name + ' ' + student.surname,
+                        workoutId: workoutId,
+                        scheduleId: scheduleId,
+                        branchId: branchId,
+                        trainerId: currentUser.id,
+                        workoutName: trainingName,
+                        workoutDate: new Date().toISOString(),
+                        exercisesSummary: exercises.map(e => `${e.reps}x${e.distance}m ${e.style}`).join(', '),
+                        exercisesCount: exercises.length,
+                        createdAt: new Date().toISOString(),
+                        completed: false
+                    }).then(() => {
+                        console.log(`Antrenman ${student.name} öğrencisine gönderildi`);
+                    }).catch(error => {
+                        console.warn(`Öğrenci bildirimi eklenemedi (${student.name}):`, error);
+                    });
+                });
+                
+                console.log(`${studentsInSchedule.length} öğrenci antrenmanı hakkında bilgilendirildi`);
+            } catch (error) {
+                console.error("Öğrenci bilgilendirme hatası:", error);
+            }
+        }
+        
+        function clearTraining() {
+            if (trainingPlan.length === 0) return;
+            
+            if (confirm("Antrenman planını temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
+                trainingPlan = [];
+                laneTimerObjects.forEach(laneTimer => {
+                    laneTimer.clearTraining();
+                });
+                updateTrainingPlanDisplay();
+                trainingNameInput.value = "";
+                updateLaneDisplays();
+                updateIndividualLaneControls();
+                showNotification("Antrenman planı temizlendi!");
+            }
+        }
+        
+        // Lane Management Functions
+        function updateLaneNamesInputs() {
+            laneNamesContainer.innerHTML = '';
+            
+            for (let i = 1; i <= 8; i++) {
+                const laneName = localStorage.getItem(`laneName_${i}`) || `Kulvar ${i}`;
+                
+                laneNamesContainer.innerHTML += `
+                    <div>
+                        <label class="form-label" style="font-size: 0.8rem;">Kulvar ${i}</label>
+                        <input type="text" class="form-input lane-name-input" data-lane="${i}" value="${laneName}" placeholder="Kulvar ${i}">
+                    </div>
+                `;
+            }
+        }
+        
+        function applyLaneSettings() {
+            document.querySelectorAll('.lane-name-input').forEach(input => {
+                const laneNum = input.getAttribute('data-lane');
+                const laneName = input.value;
+                localStorage.setItem(`laneName_${laneNum}`, laneName);
+                
+                // Lane timer objesini güncelle
+                if (laneTimerObjects[laneNum-1]) {
+                    laneTimerObjects[laneNum-1].laneName = laneName;
+                }
+            });
+            
+            activeLanes = parseInt(activeLanesCount.value);
+            activeLanesDisplay.textContent = activeLanes;
+            
+            updateLaneDisplays();
+            updateIndividualLaneControls();
+            
+            showNotification("Kulvar ayarları uygulandı!");
+        }
+        
+        // Fullscreen Functions
+        function enterFullscreen() {
+            fullscreenMode.style.display = 'flex';
+            updateFullscreenDisplay();
+        }
+        
+        function exitFullscreen() {
+            fullscreenMode.style.display = 'none';
+        }
+        
+        function toggleFullscreen() {
+            if (fullscreenMode.style.display === 'flex') {
+                exitFullscreen();
+            } else {
+                enterFullscreen();
+            }
+        }
+        
+        // Settings Functions
+        function applySettings() {
+            clubNameElement.textContent = "Demo Yüzme Kulübü";
+            clubNameInput.value = "Demo Yüzme Kulübü";
+            enableMiniTimer.checked = true;
+            miniTimerEnabled = true;
+            warningTimeInput.value = "10";
+            dangerTimeInput.value = "5";
+            warningTime = 10;
+            dangerTime = 5;
+            enableRestTransitionCheckbox.checked = true;
+            enableRestTransition = true;
+            
+            const savedSettings = localStorage.getItem('swimTimerSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                clubNameInput.value = settings.clubName || "Demo Yüzme Kulübü";
+                enableMiniTimer.checked = settings.miniTimerEnabled !== false;
+                miniTimerEnabled = settings.miniTimerEnabled !== false;
+                warningTimeInput.value = settings.warningTime || 10;
+                dangerTimeInput.value = settings.dangerTime || 5;
+                warningTime = settings.warningTime || 10;
+                dangerTime = settings.dangerTime || 5;
+                enableRestTransitionCheckbox.checked = settings.enableRestTransition !== false;
+                enableRestTransition = settings.enableRestTransition !== false;
+                
+                clubNameElement.textContent = settings.clubName || "Demo Yüzme Kulübü";
+            }
+            
+            // Load lane settings
+            for (let i = 1; i <= 8; i++) {
+                const laneName = localStorage.getItem(`laneName_${i}`);
+                if (laneName && laneTimerObjects[i-1]) {
+                    laneTimerObjects[i-1].laneName = laneName;
+                }
+            }
+            
+            updateLaneNamesInputs();
+        }
+        
+        function saveSettings() {
+            const clubName = clubNameInput.value || "Yüzme Kulübü";
+            miniTimerEnabled = enableMiniTimer.checked;
+            warningTime = parseInt(warningTimeInput.value) || 10;
+            dangerTime = parseInt(dangerTimeInput.value) || 5;
+            enableRestTransition = enableRestTransitionCheckbox.checked;
+            
+            clubNameElement.textContent = clubName;
+            
+            localStorage.setItem('swimTimerSettings', JSON.stringify({
+                clubName: clubName,
+                miniTimerEnabled: miniTimerEnabled,
+                warningTime: warningTime,
+                dangerTime: dangerTime,
+                enableRestTransition: enableRestTransition
+            }));
+            
+            showNotification("Ayarlar kaydedildi!");
+        }
+        
+        // Tab Functions
+        function switchTab(tabId) {
+            tabButtons.forEach(button => {
+                if (button.getAttribute('data-tab') === tabId) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            
+            tabContents.forEach(content => {
+                if (content.id === tabId) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Statistics Functions
+        function updateStatistics() {
+            if (!trainingPlan || trainingPlan.length === 0) {
+                document.getElementById('statisticsPanel').innerHTML = '<p class="empty-message">İstatistikler için antrenman planı oluşturun.</p>';
+                return;
+            }
+            
+            const totalSets = trainingPlan.length;
+            const totalReps = trainingPlan.reduce((sum, set) => sum + set.reps, 0);
+            const totalDistance = trainingPlan.reduce((sum, set) => sum + (set.reps * set.distance), 0);
+            const totalWorkTime = trainingPlan.reduce((sum, set) => sum + (set.reps * set.interval), 0);
+            const totalRestTime = trainingPlan.reduce((sum, set) => sum + (set.restTime || 0), 0);
+            const totalTime = totalWorkTime + totalRestTime;
+            const avgInterval = totalWorkTime / totalReps;
+            
+            document.getElementById('statisticsPanel').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div class="stat-card">
+                        <div class="stat-value">${totalDistance}m</div>
+                        <div class="stat-label">TOPLAM MESAFE</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatTime(totalTime, false)}</div>
+                        <div class="stat-label">TOPLAM SÜRE</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalSets}</div>
+                        <div class="stat-label">SET SAYISI</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalReps}</div>
+                        <div class="stat-label">TEKRAR SAYISI</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatTime(avgInterval)}</div>
+                        <div class="stat-label">ORT. INTERVAL</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // PDF Export Functions
+        function generatePDF() {
+            if (trainingPlan.length === 0) {
+                alert("PDF oluşturmak için önce antrenman planı oluşturun.");
+                return;
+            }
+            
+            try {
+                const {jsPDF} = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: "portrait",
+                    unit: "mm",
+                    format: "a4"
+                });
+                
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const margin = 10;
+                let yPosition = margin;
+                
+                // === SAĞ ÜST KÖŞE: KULÜP ADI ===
+                const clubName = clubNameInput.value || "Yüzme Kulübü";
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.text(clubName, pageWidth - margin - 5, margin + 5, {align: "right"});
+                
+                // === ÜSTTE ORTADA: KULÜP LOGOSU ===
+                const logoSize = 30;
+                const logoX = (pageWidth - logoSize) / 2;
+                const logoY = margin + 10;
+                
+                // Logo simülasyonu - yüzme havuzu ikonu
+                doc.setDrawColor(0, 102, 255);
+                doc.setLineWidth(2);
+                doc.rect(logoX, logoY, logoSize, logoSize);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(16);
+                doc.text("🏊", logoX + logoSize/2, logoY + logoSize/2 + 5, {align: "center"});
+                
+                yPosition = logoY + logoSize + 10;
+                
+                // === LOGODAN ALTINDA: TARİH ===
+                const today = new Date();
+                const dateStr = today.toLocaleDateString('tr-TR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.text(`Tarih: ${dateStr}`, pageWidth / 2, yPosition, {align: "center"});
+                yPosition += 10;
+                
+                // === TARİHİN ALTINDA: "ANTRENMAN" BAŞLIĞI ===
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(14);
+                doc.text("ANTRENMAN PLANI", pageWidth / 2, yPosition, {align: "center"});
+                yPosition += 12;
+                
+                // === ANTRENMAN ADI ===
+                const trainingName = trainingNameInput.value || "Antrenman " + dateStr;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.text(`Program: ${trainingName}`, margin, yPosition);
+                yPosition += 8;
+                
+                // === ANTRENMAN ÖZETİ ===
+                const totalDistance = trainingPlan.reduce((sum, set) => sum + (set.reps * set.distance), 0);
+                const totalTime = trainingPlan.reduce((sum, set) => sum + (set.reps * set.interval) + (set.restTime || 0), 0);
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.text(`Toplam Mesafe: ${totalDistance}m | Toplam Süre: ${formatTime(totalTime, false)}`, margin, yPosition);
+                yPosition += 6;
+                doc.text(`Set Sayısı: ${trainingPlan.length} | Toplam Tekrar: ${trainingPlan.reduce((sum, set) => sum + set.reps, 0)}`, margin, yPosition);
+                yPosition += 10;
+                
+                // === SET DETAYLARI TABLOSU ===
+                const columns = ["Set", "Tekrar", "Mesafe", "Stil", "Interval", "Dinlenme"];
+                const data = trainingPlan.map((set, idx) => {
+                    const strokeNames = {
+                        "serbest": "Serbest",
+                        "sırt": "Sırtüstü",
+                        "kurbağa": "Kurbağa",
+                        "kelebek": "Kelebek",
+                        "karışık": "Karışık"
+                    };
+                    
+                    return [
+                        (idx + 1).toString(),
+                        set.reps.toString(),
+                        `${set.distance}m`,
+                        strokeNames[set.stroke],
+                        formatTime(set.interval),
+                        set.restTime ? formatTime(set.restTime, false) : "-"
+                    ];
+                });
+                
+                // === MANUEL TABLO OLUŞTUR (autoTable plug-in yüklü değil) ===
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(255, 255, 255);
+                
+                const cellWidth = pageWidth - (margin * 2);
+                const colWidths = [10, 12, 18, 25, 20, 25];
+                const colSum = colWidths.reduce((a, b) => a + b);
+                const colScales = colWidths.map(w => (w / colSum) * cellWidth);
+                
+                let tableX = margin;
+                
+                // Başlık satırı
+                doc.setFillColor(0, 102, 255);
+                let cellX = tableX;
+                columns.forEach((col, idx) => {
+                    doc.rect(cellX, yPosition, colScales[idx], 8, 'F');
+                    doc.text(col, cellX + 2, yPosition + 5, {maxWidth: colScales[idx] - 4});
+                    cellX += colScales[idx];
+                });
+                
+                yPosition += 8;
+                
+                // Veri satırları
+                doc.setTextColor(0, 0, 0);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                
+                data.forEach((row, idx) => {
+                    // Alternatif renkler
+                    if (idx % 2 === 0) {
+                        doc.setFillColor(240, 245, 255);
+                        doc.rect(tableX, yPosition, cellWidth, 7, 'F');
+                    }
+                    
+                    cellX = tableX;
+                    row.forEach((cell, colIdx) => {
+                        doc.text(cell.toString(), cellX + 2, yPosition + 4.5, {
+                            maxWidth: colScales[colIdx] - 4,
+                            align: 'center'
+                        });
+                        cellX += colScales[colIdx];
+                    });
+                    yPosition += 7;
+                });
+                
+                yPosition += 5;
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.text(`Antrenör: ${currentUser.name}`, margin, yPosition);
+                doc.text(`Oluşturma Tarihi: ${new Date().toLocaleString('tr-TR')}`, margin, yPosition + 5);
+                
+                // PDF'i indir
+                doc.save(`${trainingName.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+                showNotification("PDF başarıyla indirildi!");
+                
+            } catch (error) {
+                console.error("PDF oluşturma hatası:", error);
+                alert("PDF oluşturulurken hata: " + error.message);
+            }
+        }
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const icon = darkModeToggle.querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.className = 'fas fa-sun';
+                showNotification("Koyu mod etkinleştirildi");
+            } else {
+                icon.className = 'fas fa-moon';
+                showNotification("Açık mod etkinleştirildi");
+            }
+        }
+        
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            
+            // Demo moduna otomatik geçişi kontrol et
+            setTimeout(() => {
+                if (!currentUser) {
+                    console.log("Swim Timer Pro - Session kontrolü başarısız");
+                }
+            }, 1000);
+        });
+        
+        // Kaydedilmiş antrenmanı yükle
+        window.loadSavedTraining = function(workoutId) {
+            if (!workoutId) {
+                showNotification("Geçersiz antrenman ID!");
+                return;
+            }
+
+            if (typeof db === 'undefined') {
+                showNotification("Veritabanı bağlantısı yok!");
+                return;
+            }
+
+            showNotification("Antrenman yükleniyor...");
+
+            const libraryEntry = window.savedTrainingLibraryIndex && window.savedTrainingLibraryIndex[workoutId];
+            if (libraryEntry && libraryEntry.sourceCollection !== 'workouts') {
+                const workoutData = libraryEntry;
+
+                trainingPlan = [];
+                laneTimerObjects.forEach(laneTimer => {
+                    laneTimer.clearTraining();
+                });
+
+                trainingNameInput.value = workoutData.name || "";
+
+                if (workoutData.exercises && Array.isArray(workoutData.exercises)) {
+                    workoutData.exercises.forEach((exercise, index) => {
+                        const setData = {
+                            id: Date.now() + index,
+                            name: `Set ${index + 1}`,
+                            reps: exercise.reps || 1,
+                            distance: exercise.distance || 50,
+                            stroke: exercise.style || "serbest",
+                            interval: exercise.intervalSeconds || 30,
+                            restTime: exercise.restSeconds || 0,
+                            lane: "all",
+                            completed: false
+                        };
+
+                        trainingPlan.push(setData);
+                        laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                            laneTimer.addTrainingSet(setData);
+                        });
+                    });
+                }
+
+                updateTrainingPlanDisplay();
+                updateLaneDisplays();
+                updateIndividualLaneControls();
+                switchTab('create');
+                showNotification("Satın alınan antrenman başarıyla yüklendi!");
+                return;
+            }
+
+            db.collection('workouts').doc(workoutId).get()
+                .then((doc) => {
+                    if (!doc.exists) {
+                        showNotification("Antrenman bulunamadı!");
+                        return;
+                    }
+
+                    const workoutData = doc.data();
+                    console.log("Yüklenen antrenman:", workoutData);
+
+                    // Mevcut antrenman planını temizle
+                    trainingPlan = [];
+                    laneTimerObjects.forEach(laneTimer => {
+                        laneTimer.clearTraining();
+                    });
+
+                    // Antrenman adını ayarla
+                    trainingNameInput.value = workoutData.name || "";
+
+                    // Exercises'ları training plan'a dönüştür
+                    if (workoutData.exercises && Array.isArray(workoutData.exercises)) {
+                        workoutData.exercises.forEach((exercise, index) => {
+                            const setData = {
+                                id: Date.now() + index,
+                                name: `Set ${index + 1}`,
+                                reps: exercise.reps || 1,
+                                distance: exercise.distance || 50,
+                                stroke: exercise.style || "serbest",
+                                interval: exercise.intervalSeconds || 30,
+                                restTime: exercise.restSeconds || 0,
+                                lane: "all", // Tüm kulvarlara uygula
+                                completed: false
+                            };
+
+                            trainingPlan.push(setData);
+
+                            // Tüm aktif kulvarlara ekle
+                            laneTimerObjects.slice(0, activeLanes).forEach(laneTimer => {
+                                laneTimer.addTrainingSet(setData);
+                            });
+                        });
+                    }
+
+                    // UI'yi güncelle
+                    updateTrainingPlanDisplay();
+                    updateLaneDisplays();
+                    updateIndividualLaneControls();
+
+                    // Library tab'ından create tab'ına geç
+                    switchTab('create');
+
+                    showNotification("Antrenman başarıyla yüklendi!");
+                })
+                .catch((error) => {
+                    console.error("Antrenman yükleme hatası:", error);
+                    showNotification("Antrenman yüklenirken hata oluştu!");
+                });
+        };
+
+        // Kaydedilmiş antrenmanı sil
+        window.deleteSavedTraining = function(workoutId, workoutName) {
+            if (!workoutId) {
+                showNotification("Geçersiz antrenman ID!");
+                return;
+            }
+
+            if (typeof db === 'undefined') {
+                showNotification("Veritabanı bağlantısı yok!");
+                return;
+            }
+
+            const confirmMessage = `"${workoutName}" antrenmanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`;
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            showNotification("Antrenman siliniyor...");
+
+            db.collection('workouts').doc(workoutId).delete()
+                .then(() => {
+                    console.log("Antrenman başarıyla silindi:", workoutId);
+                    showNotification(`"${workoutName}" antrenmanı başarıyla silindi!`);
+
+                    // Antrenman listesini yenile
+                    loadSavedTrainings();
+                })
+                .catch((error) => {
+                    console.error("Antrenman silme hatası:", error);
+                    showNotification("Antrenman silinirken hata oluştu!");
+                });
+        };
+    </script>
+</body>
+</html>

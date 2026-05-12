@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>404 | Sayfa Bulunamadı</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #020617;
+            --primary: #38bdf8;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #020617, var(--bg));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 500px;
+            width: 90%;
+            background: rgba(2, 6, 23, 0.9);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.15);
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error-code {
+            font-size: 96px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: var(--danger);
+            text-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+        }
+
+        h1 {
+            margin-top: 10px;
+            font-size: 24px;
+        }
+
+        p {
+            margin: 15px 0 30px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 22px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #020617;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: var(--muted);
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="error-code">404</div>
+    <h1>Sayfa Bulunamadı</h1>
+    <p>
+        Aradığınız sayfa silinmiş olabilir, taşınmış olabilir
+        ya da erişim yetkiniz bulunmuyor.
+    </p>
+
+    <div class="actions">
+        <a href="/panel" class="btn btn-primary">Panele Dön</a>
+        <a href="javascript:history.back()" class="btn btn-secondary">Geri Git</a>
+    </div>
+
+    <div class="footer">
+        © 2026 Kulüp Yönetim Paneli
+    </div>
+</div>
+
+</body>
+</html>

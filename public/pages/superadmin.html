@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Paneli</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .admin-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .admin-list-table th {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .admin-list-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .admin-list-table tr:hover {
+            background: #f5f5f5;
+        }
+        .payment-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #ffe0e0;
+            color: #c0392b;
+        }
+        .status-partial {
+            background: #fff4e0;
+            color: #f39c12;
+        }
+        .status-paid {
+            background: #e0ffe0;
+            color: #27ae60;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #95a5a6;
+        }
+        .detail-item {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .detail-value {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <h3>🔐 SUPER ADMIN</h3>
+            <ul class="nav-menu">
+                <li><a class="nav-link active" data-page="dashboard">Dashboard</a></li>
+                <li><a class="nav-link" data-page="admins">Yöneticiler</a></li>
+                <li><a class="nav-link" data-page="applications">Başvurular</a></li>
+                <li><a class="nav-link" data-page="credits">Kredi Yönetimi</a></li>
+                <li><a class="nav-link" data-page="market">Market</a></li>
+                <li><a class="nav-link" data-page="credit-packages">Kredi Paketleri</a></li>
+                <li><a class="nav-link" data-page="cash-withdrawal">💸 Kredi Bozdurma</a></li>
+                <li><a class="nav-link" data-page="ai-knowledge">AI Bilgi Bankasi</a></li>
+                <li><a class="nav-link" data-page="standards">🎯 Barajlar</a></li>
+                <li><a class="nav-link" data-page="race-results">Yarış Sonuçları Yükleme</a></li>
+                <li><a class="nav-link" data-page="advertisements">Reklam Yönetimi</a></li>
+                <li><a class="nav-link" data-page="orders">Siparişler</a></li>
+                <li><a class="nav-link" data-page="chat">Sohbet</a></li>
+            </ul>
+            <button class="logout-btn" id="logoutBtn">Çıkış Yap</button>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>Super Admin Paneli</h1>
+                <div class="user-info">
+                    <span id="saName">Super Admin</span>
+                    <div class="user-avatar" id="userAvatar">S</div>
+                </div>
+            </div>
+
+            <!-- Yönetici Oluştur Bölümü -->
+            <div class="card">
+                <h2>Yeni Yönetici Oluştur</h2>
+                <form id="createAdminForm">
+                    <div class="form-group">
+                        <label>Ad Soyad:</label>
+                        <input type="text" id="adminName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon:</label>
+                        <input type="tel" id="adminPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Kulüp Adresi:</label>
+                        <textarea id="adminClubAddress" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail:</label>
+                        <input type="email" id="adminEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Şifre:</label>
+                        <input type="password" id="adminPassword" minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Üyelik Başlangıç:</label>
+                        <input type="date" id="membershipStart" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Üyelik Bitiş:</label>
+                        <input type="date" id="membershipEnd" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Üyelik Ücreti (₺):</label>
+                        <input type="number" id="membershipPrice" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Taksit Sayısı:</label>
+                        <input type="number" id="membershipInstallments" min="1" value="1" required>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-success">Yönetici Oluştur</button>
+                    </div>
+                </form>
+
+                <div id="resultMessage" style="margin-top: 15px;"></div>
+            </div>
+
+            <!-- Yönetici Listesi Bölümü -->
+            <div class="card">
+                <h2>Kayıtlı Yöneticiler</h2>
+                <table class="admin-list-table">
+                    <thead>
+                        <tr>
+                            <th>Ad Soyadı</th>
+                            <th>E-mail</th>
+                            <th>Üyelik Durumu</th>
+                            <th>Ödeme</th>
+                            <th>İşlemler</th>
+                            <th>Sil</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminListBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #95a5a6;">Yönetici yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Üyelik Başvuruları Bölümü -->
+            <div class="card">
+                <h2>Üyelik Başvuruları</h2>
+                <table class="admin-list-table">
+                    <thead>
+                        <tr>
+                            <th>Ad Soyadı</th>
+                            <th>Spor Branşı</th>
+                            <th>İl/İlçe</th>
+                            <th>Başvuru Tarihi</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicationsBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #95a5a6;">Başvuru yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Kredi Yönetimi Bölümü -->
+            <div id="credits-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Kredi Yönetimi</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openCreditModal()">+ Kredi Ekle</button>
+                    </div>
+
+                    <!-- Kredi Talepleri -->
+                    <div style="margin-top: 30px;">
+                        <h3>Kredi Talepleri</h3>
+                        <div id="creditRequestsContainer"></div>
+                    </div>
+
+                    <!-- Antrenör Kredi Bakiyeleri -->
+                    <div style="margin-top: 30px;">
+                        <h3>Antrenör Kredi Bakiyeleri</h3>
+                        <table class="admin-list-table">
+                            <thead>
+                                <tr>
+                                    <th>Antrenör Adı</th>
+                                    <th>E-mail</th>
+                                    <th>Kredi Bakiyesi</th>
+                                    <th>Son İşlem</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainerCreditsBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #95a5a6;">Antrenörler yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Bölümü -->
+            <div id="market-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Market Yönetimi</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Ürün Ekle</button>
+                    </div>
+                    <div id="productsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <!-- Ürünler burada listelenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kredi Paketleri Yönetimi Bölümü -->
+            <div id="credit-packages-page" class="page-content" style="display:none;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Kredi Paketleri Yönetimi</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openCreditPackageModal()">+ Kredi Paketi Ekle</button>
+                    </div>
+                    <div style="margin-top: 24px; padding: 18px; border-radius: 12px; background: #f8fbff; border: 1px solid #dce8f5;">
+                        <h3 style="margin-top: 0;">Antrenör EFT / Havale Bilgileri</h3>
+                        <p style="color: #66788a; margin-bottom: 16px;">Antrenörlerin kredi paketi satın alırken gördüğü güncel banka bilgileri burada yönetilir.</p>
+                        <form id="creditPurchaseBankForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                            <div class="form-group">
+                                <label>Banka Adı</label>
+                                <input type="text" id="creditPurchaseBankName" placeholder="Örn: Ziraat Bankası" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Hesap Sahibi</label>
+                                <input type="text" id="creditPurchaseAccountHolder" placeholder="Ad Soyad / Şirket" required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>IBAN</label>
+                                <input type="text" id="creditPurchaseIban" placeholder="TR.." required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Ek Açıklama</label>
+                                <textarea id="creditPurchaseBankNote" rows="3" placeholder="Gönderim açıklaması, mesai bilgisi veya ek notlar..."></textarea>
+                            </div>
+                            <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <div id="creditPurchaseBankMeta" style="color: #6b7b8b; font-size: 0.9em;">Henüz kayıt yok.</div>
+                                <button type="submit" class="btn btn-success">Banka Bilgilerini Kaydet</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div id="creditPackagesList" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+
+            <div id="ai-knowledge-page" class="page-content" style="display:none;">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; flex-wrap:wrap; margin-bottom:18px;">
+                        <div>
+                            <h2 style="margin-bottom:8px;">Global AI Bilgi Bankasi</h2>
+                            <p style="margin:0; color:#6f8091; line-height:1.6; max-width:880px;">
+                                Buradan yuklenen PDF, HTML, TXT, MD ve JSON belgeleri tum antrenorlerin kullandigi ortak AI havuzuna gider.
+                                Sistem ayni zamanda workout ve workout satis orneklerini de bu havuza otomatik ekler.
+                            </p>
+                        </div>
+                        <div id="globalAiKnowledgeStateBadge" style="padding:8px 14px; border-radius:999px; background:#eef6ff; color:#2c5d8a; font-weight:700;">Bilgi bankasi hazirlaniyor</div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:minmax(320px, 1.05fr) minmax(280px, 0.95fr); gap:18px; margin-bottom:20px;">
+                        <div style="padding:18px; border:1px solid #dbe7f3; border-radius:14px; background:#f8fbff;">
+                            <h3 style="margin-top:0; margin-bottom:12px;">Belge Yukleme</h3>
+                            <p style="margin:0 0 12px; color:#5f6c7b; line-height:1.6;">Tek seferde birden fazla kaynak yukleyebilirsin. HTML, PDF, TXT, MD ve JSON dosyalari okunur; yabanci belgeler mümkün oldugunda otomatik Turkceye cevrilerek ayni global havuza yazilir.</p>
+                            <div class="form-group">
+                                <label>Kaynak dosyalari</label>
+                                <input type="file" id="globalAiKnowledgeFiles" multiple accept=".pdf,.txt,.md,.html,.htm,.json">
+                            </div>
+                            <div class="form-group">
+                                <label>Paket etiketi (opsiyonel)</label>
+                                <input type="text" id="globalAiKnowledgeLabel" placeholder="Orn: 2026 teknik kaynak paketi">
+                            </div>
+                            <div class="form-group">
+                                <label>Referans linkleri (opsiyonel)</label>
+                                <textarea id="globalAiKnowledgeReferenceLinks" rows="4" placeholder="Her satira bir orijinal link yazabilirsin"></textarea>
+                            </div>
+                            <div class="btn-group" style="justify-content:flex-start; margin-top:8px;">
+                                <button type="button" class="btn btn-success" id="globalAiUploadBtn">Belgeleri Global Havuzda Islet</button>
+                            </div>
+                            <div id="globalAiImportStatus" style="margin-top:12px; color:#5f6c7b;"></div>
+                            <div style="margin-top:14px;">
+                                <div style="font-weight:700; color:#2c3e50; margin-bottom:8px;">Ice aktarma notlari</div>
+                                <ul id="globalAiImportErrors" style="margin:0; padding-left:18px; color:#6f8091;"></ul>
+                            </div>
+                        </div>
+
+                        <div style="padding:18px; border:1px solid #dbe7f3; border-radius:14px; background:#ffffff;">
+                            <h3 style="margin-top:0; margin-bottom:12px;">Havuz Ici Arama</h3>
+                            <p style="margin:0 0 12px; color:#5f6c7b; line-height:1.6;">Antrenorlerin gorecegi ortak havuzda hangi kaynaklarin onde geldigini test et.</p>
+                            <div class="form-group">
+                                <label>Arama sorgusu</label>
+                                <input type="text" id="globalAiSearchQuery" placeholder="Orn: 9-10 yas serbest teknik nefes ritmi">
+                            </div>
+                            <div class="btn-group" style="justify-content:flex-start; margin-top:8px;">
+                                <button type="button" class="btn btn-info" id="globalAiSearchBtn">Kaynak Tara</button>
+                            </div>
+                            <div id="globalAiSearchStatus" style="margin-top:12px; color:#5f6c7b;"></div>
+                            <div id="globalAiSearchResults" style="margin-top:12px;"></div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:minmax(320px, 1fr) minmax(320px, 1fr); gap:18px; margin-bottom:20px;">
+                        <div style="padding:18px; border:1px solid #dbe7f3; border-radius:14px; background:#ffffff;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                                <div>
+                                    <h3 style="margin:0 0 8px;">Toplu Workout Metni</h3>
+                                    <p style="margin:0; color:#5f6c7b; line-height:1.6;">Bir kerede uzun workout listeleri, set kataloglari veya not paketleri yapistirarak bilgi bankasina ekleyebilirsin.</p>
+                                </div>
+                                <div id="globalAiSeedStatus" style="padding:8px 12px; border-radius:999px; background:#f6f8fa; color:#5f6c7b; font-weight:700;">Seed kontrol ediliyor</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Paket basligi</label>
+                                <input type="text" id="globalAiManualKnowledgeTitle" placeholder="Orn: 2026 yaris oncesi set paketi">
+                            </div>
+                            <div class="form-group">
+                                <label>Workout metni</label>
+                                <textarea id="globalAiManualKnowledgeText" rows="10" placeholder="Buraya uzun workout setlerini veya antrenman kataloglarini yapistir"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Ilgili referans linkleri (opsiyonel)</label>
+                                <textarea id="globalAiManualKnowledgeLinks" rows="3" placeholder="Her satira bir referans link ekleyebilirsin"></textarea>
+                            </div>
+                            <div class="btn-group" style="justify-content:flex-start; margin-top:8px;">
+                                <button type="button" class="btn btn-success" id="globalAiManualImportBtn">Metni Global Havuzda Islet</button>
+                            </div>
+                            <div id="globalAiManualImportStatus" style="margin-top:12px; color:#5f6c7b;"></div>
+                        </div>
+
+                        <div style="padding:18px; border:1px solid #dbe7f3; border-radius:14px; background:#f8fbff;">
+                            <h3 style="margin-top:0; margin-bottom:12px;">Izlenen Linkler</h3>
+                            <p style="margin:0 0 12px; color:#5f6c7b; line-height:1.6;">Buraya ekledigim linkler panel acildiginda veya "Tum Linkleri Simdi Tara" dediginde okunur. Tarayici kisitlari nedeniyle gercek arka plan cron yerine acilis/zaman-geldi mantigi kullanilir.</p>
+                            <div class="form-group">
+                                <label>Web adresi</label>
+                                <input type="url" id="globalAiFeedUrl" placeholder="https://example.com/swim-sets">
+                            </div>
+                            <div class="form-group">
+                                <label>Kisa etiket</label>
+                                <input type="text" id="globalAiFeedLabel" placeholder="Orn: Federation teknik blogu">
+                            </div>
+                            <div style="display:grid; grid-template-columns:minmax(140px, 180px) 1fr; gap:12px;">
+                                <div class="form-group">
+                                    <label>Tarama periyodu</label>
+                                    <select id="globalAiFeedInterval">
+                                        <option value="6">6 saatte bir</option>
+                                        <option value="12">12 saatte bir</option>
+                                        <option value="24" selected>24 saatte bir</option>
+                                        <option value="72">3 gunde bir</option>
+                                        <option value="168">7 gunde bir</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Izleme notu</label>
+                                    <input type="text" id="globalAiFeedNote" placeholder="Orn: Dayaniklilik ve teknik setlerini takip et">
+                                </div>
+                            </div>
+                            <div class="btn-group" style="justify-content:flex-start; margin-top:8px;">
+                                <button type="button" class="btn btn-success" id="globalAiFeedSaveBtn">Linki Kaydet ve Tara</button>
+                                <button type="button" class="btn btn-info" id="globalAiFeedSyncDueBtn">Tum Linkleri Simdi Tara</button>
+                            </div>
+                            <div id="globalAiFeedStatus" style="margin-top:12px; color:#5f6c7b;"></div>
+                            <div id="globalAiFeedList" style="margin-top:14px;"></div>
+                        </div>
+                    </div>
+
+                    <div id="globalAiKnowledgeStats"></div>
+                </div>
+            </div>
+
+            <!-- Kredi Paketi Ekleme Modal -->
+            <div id="creditPackageModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Kredi Paketi Ekle</h2>
+                        <button class="close-btn" onclick="closeCreditPackageModal()">&times;</button>
+                    </div>
+                    <form id="creditPackageForm">
+                        <div class="form-group">
+                            <label>Kredi Miktarı:</label>
+                            <input type="number" id="packageCredit" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Fiyat (₺):</label>
+                            <input type="number" id="packagePrice" min="1" step="0.01" required>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Paketi Ekle</button>
+                            <button type="button" class="btn btn-primary" onclick="closeCreditPackageModal()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reklam Yönetimi Bölümü -->
+            <div id="standards-page" class="page-content" style="display:none;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>🎯 Barajlar (Hedef Zamanlar)</h2>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+                            <button class="btn btn-info" onclick="openBulkStandardImportModal()">PDF ile Toplu Yükle</button>
+                            <button class="btn btn-success" onclick="openAddStandardModal()">+ Yeni Baraj Ekle</button>
+                        </div>
+                    </div>
+
+                    <div style="background: #eef7ff; border: 1px solid #cfe2ff; color: #2c3e50; padding: 12px 14px; border-radius: 8px; margin-bottom: 18px;">
+                        PDF içe aktarma önce ön izleme üretir. Onay verdiğinizde kayıtlar toplu eklenir ve mevcut kayıtlarla birebir aynı olanlar atlanır.
+                    </div>
+
+                    <!-- Filtre Bölümü -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Baraj Adı:</label>
+                                <input type="text" id="standardNameFilter" placeholder="Ara..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Cinsiyet:</label>
+                                <select id="standardGenderFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Erkek">Erkek</option>
+                                    <option value="Kız">Kız</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Stil:</label>
+                                <select id="standardStyleFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Serbest">Serbest</option>
+                                    <option value="Kurbağalama">Kurbağalama</option>
+                                    <option value="Sırtüstü">Sırtüstü</option>
+                                    <option value="Kelebekçe">Kelebekçe</option>
+                                    <option value="Karma">Karma</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Mesafe:</label>
+                                <select id="standardDistanceFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="50">50m</option>
+                                    <option value="100">100m</option>
+                                    <option value="200">200m</option>
+                                    <option value="400">400m</option>
+                                    <option value="800">800m</option>
+                                    <option value="1500">1500m</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Doğum Yılı:</label>
+                                <input type="number" id="standardBirthYearFilter" placeholder="Yıl (ör: 2010)" min="1990" max="2030" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                        </div>
+                        <button class="btn btn-info btn-sm" onclick="filterStandardsSuperAdmin()" style="margin-top: 10px;">Filtrele</button>
+                    </div>
+
+                    <!-- Barajlar Tablosu -->
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Baraj Adı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Doğum Yılı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Cinsiyet</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Stil</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Mesafe</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Baraj Zamanı</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="standardsTableBody">
+                                <tr>
+                                    <td colspan="7" style="padding: 20px; text-align: center; color: #95a5a6;">Barajlar yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="race-results-page" class="page-content" style="display:none;">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:18px;">
+                        <div>
+                            <h2 style="margin-bottom:6px;">Yarış Sonuçları Yükleme</h2>
+                            <p style="color:#6b7b8b; margin:0;">PDF dosyasını yükleyin; sistem sporcu, kulüp, branş ve derece bilgilerini otomatik eşleştirip sporcu profiline eklesin.</p>
+                        </div>
+                        <div id="raceResultsSummaryBadge" style="padding:8px 12px; border-radius:999px; background:#eef6ff; color:#2c5d8a; font-weight:600;">Henüz analiz yapılmadı</div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:minmax(280px, 360px) 1fr; gap:20px; align-items:start;">
+                        <div style="padding:18px; border:1px solid #dce6f0; border-radius:12px; background:#f9fbfd;">
+                            <div class="form-group">
+                                <label>PDF Dosyası</label>
+                                <input type="file" id="raceResultsPdfInput" accept="application/pdf">
+                            </div>
+                            <div class="form-group">
+                                <label>OCR Yedeği</label>
+                                <label style="display:flex; align-items:center; gap:8px; font-weight:400; margin:0;">
+                                    <input type="checkbox" id="raceResultsEnableOcr" checked>
+                                    Metin okunamayan sayfalarda OCR kullan
+                                </label>
+                            </div>
+                            <div class="btn-group" style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-info" id="analyzeRaceResultsBtn">PDF'i Analiz Et</button>
+                                <button type="button" class="btn btn-success" id="saveRaceResultsBtn" disabled>Uygun Sonuçları Kaydet</button>
+                            </div>
+                            <div id="raceResultsStatus" style="margin-top:14px; min-height:24px; color:#5f6c7b;">Sonuç dosyası bekleniyor.</div>
+                            <div id="raceResultsProgress" style="margin-top:12px; display:none;">
+                                <div style="height:10px; border-radius:999px; background:#e6edf5; overflow:hidden;">
+                                    <div id="raceResultsProgressBar" style="height:100%; width:0%; background:#3498db; transition:width 0.2s ease;"></div>
+                                </div>
+                                <div id="raceResultsProgressText" style="margin-top:6px; font-size:0.9em; color:#7b8a9b;">Hazırlanıyor...</div>
+                            </div>
+                            <div id="raceResultsMeta" style="margin-top:16px; padding:14px; border-radius:10px; background:#ffffff; border:1px solid #e6edf5; color:#58708a; font-size:0.92em;">
+                                PDF analizi sonrasında eşleşen ve eşleşmeyen kayıt özetini burada göreceksiniz.
+                            </div>
+                        </div>
+
+                        <div style="display:grid; gap:20px;">
+                            <div style="padding:18px; border:1px solid #dce6f0; border-radius:12px; background:#fff;">
+                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; align-items:end;">
+                                    <div>
+                                        <label style="display:block; margin-bottom:8px; font-weight:600;">PDF Kulübü</label>
+                                        <select id="raceResultsPdfClubFilter" style="width:100%; padding:9px 10px; border:1px solid #d7dee8; border-radius:8px;">
+                                            <option value="">-- Tüm PDF Kulüpleri --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display:block; margin-bottom:8px; font-weight:600;">Sistem Kulübü</label>
+                                        <select id="raceResultsSystemClubFilter" style="width:100%; padding:9px 10px; border:1px solid #d7dee8; border-radius:8px;">
+                                            <option value="">-- Tüm Sistem Kulüpleri --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display:block; margin-bottom:8px; font-weight:600;">Eşleşmeme Nedeni</label>
+                                        <select id="raceResultsReasonFilter" style="width:100%; padding:9px 10px; border:1px solid #d7dee8; border-radius:8px;">
+                                            <option value="">-- Tüm Nedenler --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-secondary" id="resetRaceResultsFiltersBtn">Filtreleri Temizle</button>
+                                    </div>
+                                </div>
+                                <div id="raceResultsFilterSummary" style="margin-top:12px; color:#6b7b8b; font-size:0.92em;">Henüz filtre uygulanmadı.</div>
+                            </div>
+
+                            <div style="padding:18px; border:1px solid #dce6f0; border-radius:12px; background:#fff;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                                    <h3 style="margin:0;">Eşleşen Sonuçlar</h3>
+                                    <span id="matchedResultsCount" style="color:#5f6c7b; font-size:0.92em;">0 kayıt</span>
+                                </div>
+                                <div id="matchedRaceResults" style="display:grid; gap:12px;">
+                                    <div style="padding:18px; border:1px dashed #d9e3ec; border-radius:10px; color:#8a97a6; text-align:center;">Henüz eşleşen kayıt yok.</div>
+                                </div>
+                            </div>
+
+                            <div style="padding:18px; border:1px solid #dce6f0; border-radius:12px; background:#fff;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                                    <h3 style="margin:0;">Eşleşmeyen Sporcular</h3>
+                                    <span id="unmatchedResultsCount" style="color:#5f6c7b; font-size:0.92em;">0 kayıt</span>
+                                </div>
+                                <div id="unmatchedRaceResults" style="display:grid; gap:12px;">
+                                    <div style="padding:18px; border:1px dashed #d9e3ec; border-radius:10px; color:#8a97a6; text-align:center;">Henüz eşleşmeyen kayıt yok.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kredi Bozdurma Yönetimi -->
+            <div id="cash-withdrawal-page" class="page-content" style="display:none;">
+                <div class="card">
+                    <h2>💸 Kredi Bozdurma Yönetimi</h2>
+                    
+                    <!-- Bozdurma Oranı Ayarlama -->
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 30px; border-left: 4px solid #27ae60;">
+                        <h3 style="margin-top: 0; color: #27ae60;">Bozdurma Oranı Ayarla</h3>
+                        <form id="exchangeRateForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: flex-end;">
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 8px;">Kredi Miktarı</label>
+                                <input type="number" id="creditAmount" placeholder="ör: 100" min="1" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 8px;">Türk Lirası Tutarı (₺)</label>
+                                <input type="number" id="turAmount" placeholder="ör: 50" step="0.01" min="0.01" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                            <button type="submit" class="btn btn-success" style="height: 40px;">Oranı Kaydet</button>
+                        </form>
+                        <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 5px; border-left: 3px solid #3498db;">
+                            <p style="margin: 0; font-size: 0.95em; color: #555;">
+                                <strong>Mevcut Oran:</strong> <span id="currentExchangeRate" style="color: #27ae60; font-weight: 600;">Yükleniyor...</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bozdurma Talepleri -->
+                    <div style="margin-top: 30px;">
+                        <h3>Bekleme Halindeki Bozdurma Talepleri</h3>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">Antrenör Adı</th>
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">Kredi Miktarı</th>
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">TL Tutarı</th>
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">Ödeme Yöntemi</th>
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">Durum</th>
+                                        <th style="padding: 12px; text-align: left; font-weight: 600;">Talep Tarihi</th>
+                                        <th style="padding: 12px; text-align: center; font-weight: 600;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="withdrawalRequestsTableBody">
+                                    <tr>
+                                        <td colspan="7" style="padding: 20px; text-align: center; color: #95a5a6;">Talepler yükleniyor...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Baraj Ekleme Modal -->
+            <div id="addStandardModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Yeni Baraj Ekle</h3>
+                        <button type="button" class="close-btn" onclick="closeAddStandardModal()">&times;</button>
+                    </div>
+                    <form id="addStandardForm">
+                        <div class="form-group">
+                            <label>Baraj Adı</label>
+                            <input type="text" id="standardName" placeholder="ör: Yaz Kampı 50m Serbest" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Doğum Yılı</label>
+                            <input type="number" id="standardBirthYear" placeholder="ör: 2010" min="1990" max="2030" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Cinsiyet</label>
+                            <select id="standardGender" required>
+                                <option value="">Seçiniz</option>
+                                <option value="Erkek">Erkek</option>
+                                <option value="Kız">Kız</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Stil</label>
+                            <select id="standardStyle" required>
+                                <option value="">Seçiniz</option>
+                                <option value="Serbest">Serbest</option>
+                                <option value="Kurbağalama">Kurbağalama</option>
+                                <option value="Sırtüstü">Sırtüstü</option>
+                                <option value="Kelebekçe">Kelebekçe</option>
+                                <option value="Karma">Karma</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mesafe</label>
+                            <select id="standardDistance" required>
+                                <option value="">Seçiniz</option>
+                                <option value="50">50m</option>
+                                <option value="100">100m</option>
+                                <option value="200">200m</option>
+                                <option value="400">400m</option>
+                                <option value="800">800m</option>
+                                <option value="1500">1500m</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Baraj Zamanı (MM:SS.CC)</label>
+                            <input type="text" id="standardTime" placeholder="ör: 00:28.50" required>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Barajı Ekle</button>
+                            <button type="button" class="btn btn-primary" onclick="closeAddStandardModal()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Baraj Düzenleme Modal -->
+            <div id="editStandardModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Barajı Düzenle</h3>
+                        <button type="button" class="close-btn" onclick="closeEditStandardModal()">&times;</button>
+                    </div>
+                    <form id="editStandardForm">
+                        <input type="hidden" id="editStandardId">
+                        <div class="form-group">
+                            <label>Baraj Adı</label>
+                            <input type="text" id="editStandardName" placeholder="ör: Yaz Kampı 50m Serbest" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Doğum Yılı</label>
+                            <input type="number" id="editStandardBirthYear" placeholder="ör: 2010" min="1990" max="2030" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Cinsiyet</label>
+                            <select id="editStandardGender" required>
+                                <option value="">Seçiniz</option>
+                                <option value="Erkek">Erkek</option>
+                                <option value="Kız">Kız</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Stil</label>
+                            <select id="editStandardStyle" required>
+                                <option value="">Seçiniz</option>
+                                <option value="Serbest">Serbest</option>
+                                <option value="Kurbağalama">Kurbağalama</option>
+                                <option value="Sırtüstü">Sırtüstü</option>
+                                <option value="Kelebekçe">Kelebekçe</option>
+                                <option value="Karma">Karma</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mesafe</label>
+                            <select id="editStandardDistance" required>
+                                <option value="">Seçiniz</option>
+                                <option value="50">50m</option>
+                                <option value="100">100m</option>
+                                <option value="200">200m</option>
+                                <option value="400">400m</option>
+                                <option value="800">800m</option>
+                                <option value="1500">1500m</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Baraj Zamanı (MM:SS.CC)</label>
+                            <input type="text" id="editStandardTime" placeholder="ör: 00:28.50" required>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                            <button type="button" class="btn btn-primary" onclick="closeEditStandardModal()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="bulkStandardImportModal" class="modal" style="display: none;">
+                <div class="modal-content" style="width: min(1100px, 96vw); max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3>PDF ile Toplu Baraj Yükle</h3>
+                        <button type="button" class="close-btn" onclick="closeBulkStandardImportModal()">&times;</button>
+                    </div>
+
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label>PDF Dosyası</label>
+                            <input type="file" id="standardsPdfFile" accept="application/pdf" multiple>
+                        </div>
+                        <div class="btn-group" style="justify-content: flex-start; margin-top: 10px;">
+                            <button type="button" class="btn btn-info" onclick="parseStandardsPdf()">PDF'yi Oku</button>
+                            <button type="button" class="btn btn-success" id="importParsedStandardsBtn" onclick="importParsedStandards()" disabled>Ön İzlemeyi Kaydet</button>
+                            <button type="button" class="btn btn-primary" onclick="closeBulkStandardImportModal()">Kapat</button>
+                        </div>
+                        <div id="standardImportStatus" style="margin-top: 12px; color: #7f8c8d;">Henüz dosya seçilmedi.</div>
+                    </div>
+
+                    <div id="standardImportSummary" style="display: none; margin-bottom: 20px;"></div>
+
+                    <div id="standardImportErrorsContainer" style="display: none; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: #c0392b;">İnceleme Gereken Satırlar</h4>
+                        <div id="standardImportErrors" style="background: #fff5f5; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+
+                    <div id="standardImportPreviewContainer" style="display: none;">
+                        <h4 style="margin-bottom: 10px;">Ön İzleme</h4>
+                        <div style="overflow-x: auto; border: 1px solid #eee; border-radius: 8px;">
+                            <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
+                                <thead>
+                                    <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                        <th style="padding: 10px; text-align: left;">Baraj Adı</th>
+                                        <th style="padding: 10px; text-align: left;">Grup</th>
+                                        <th style="padding: 10px; text-align: left;">Doğum Yılı</th>
+                                        <th style="padding: 10px; text-align: left;">Cinsiyet</th>
+                                        <th style="padding: 10px; text-align: left;">Stil</th>
+                                        <th style="padding: 10px; text-align: left;">Mesafe</th>
+                                        <th style="padding: 10px; text-align: center;">Baraj</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="standardImportPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bulkEditStandardGroupModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 760px; width: 95%;">
+                    <div class="modal-header">
+                        <h3>Toplu Baraj Düzelt</h3>
+                        <button type="button" class="close-btn" onclick="closeBulkEditStandardGroupModal()">&times;</button>
+                    </div>
+                    <form id="bulkEditStandardGroupForm">
+                        <input type="hidden" id="bulkEditStandardGroupKey">
+                        <div id="bulkEditStandardSummary" style="margin-bottom: 12px; color: #556677; font-size: 0.92em;">0 kayıt seçildi</div>
+                        <div class="form-group">
+                            <label>Yeni Baraj Adı (isteğe bağlı)</label>
+                            <input type="text" id="bulkEditStandardName" placeholder="Örn: 2026 Türkiye Yıldız Genç Açık Yaş Şampiyonası">
+                        </div>
+                        <div class="form-group">
+                            <label>Doğum Yılı Eşlemesi (isteğe bağlı)</label>
+                            <textarea id="bulkEditBirthYearMap" rows="4" placeholder="Örn:\n2006=2007\n2010=2009"></textarea>
+                            <small style="color:#6c7a89; display:block; margin-top:6px;">Her satırda eski=yeni biçimi kullanın. Virgül veya noktalı virgül ile de ayırabilirsiniz.</small>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Toplu Güncelle</button>
+                            <button type="button" class="btn btn-primary" onclick="closeBulkEditStandardGroupModal()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reklam Yönetimi Bölümü -->
+            <div id="advertisements-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Reklam Yönetimi</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openAdvertisementModal()">+ Reklam Ekle</button>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <h3>Aktif Reklamlar</h3>
+                        <div id="advertisementsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                            <!-- Reklamlar burada listelenecek -->
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <h3>Reklam Alanları</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                            <div class="ad-slot" style="border: 2px dashed #3498db; padding: 20px; border-radius: 10px; text-align: center; background: #f8f9fa;">
+                                <h4>🏊 Ana Sayfa Reklam Alanı</h4>
+                                <p style="color: #666; margin: 10px 0;">index.html üzerindeki reklam alanı</p>
+                                <div id="homepageAdSlot" class="ad-drop-zone" style="min-height: 100px; border: 1px solid #ddd; border-radius: 5px; background: white; display: flex; align-items: center; justify-content: center; color: #999;">
+                                    Reklam sürükleyip bırakın
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Siparişler Bölümü -->
+            <div id="orders-page" class="page-content">
+                <div class="card">
+                    <h2>Sipariş Yönetimi</h2>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sipariş No</th>
+                                    <th>Müşteri</th>
+                                    <th>Ürün</th>
+                                    <th>Tutar</th>
+                                    <th>Durum</th>
+                                    <th>Tarih</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #95a5a6;">Sipariş yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Page -->
+            <div id="chat-page" class="page-content">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2>💬 Mesajlaşma</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openNewGroupChatModal()">+ Grup Sohbeti</button>
+                            <button class="btn btn-info btn-sm" onclick="openNewChatEmailPage()">+ Kişisel Sohbet</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-split">
+                        <!-- Chat List -->
+                        <div class="panel-box">
+                            <h4 style="margin-bottom: 15px;">Sohbetlerim</h4>
+                            <div id="superAdminChatListContainer" class="panel-scroll">
+                                <p style="color: #95a5a6; text-align: center;">Sohbetler yükleniyor...</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat View -->
+                        <div class="panel-box">
+                            <div id="superAdminChatViewContainer">
+                                <div style="text-align: center; padding: 50px; color: #95a5a6;">
+                                    <h4>Sohbet Seçiniz</h4>
+                                    <p>Sol taraftan bir sohbet seçerek mesajlaşmaya başlayabilirsiniz.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat View Page (Hidden by default) -->
+            <div id="super-admin-chat-view-page" class="page-content" style="display: none;">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2 id="superAdminChatViewTitle">💬 Sohbet</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-info btn-sm" id="superAdminGroupManageBtn" onclick="openSuperAdminGroupManagement()" style="display: none;">⚙️ Grup Ayarları</button>
+                            <button class="btn btn-secondary btn-sm" onclick="closeSuperAdminChatView()">← Geri Dön</button>
+                        </div>
+                    </div>
+
+                    <div class="chat-shell">
+                        <div id="superAdminChatMessages" class="chat-messages">
+                            <p style="color: #95a5a6; text-align: center;">Mesajlar yükleniyor...</p>
+                        </div>
+
+                        <form id="superAdminChatForm" class="chat-form-inline">
+                            <input type="text" id="superAdminChatMessageInput" placeholder="Mesajınızı yazın..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+                            <button type="submit" class="btn btn-success">Gönder</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+    <!-- New Chat Email Page -->
+    <div id="super-admin-new-chat-email-page" class="page-content" style="display: none;">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Yeni Kişisel Sohbet</h2>
+                <button class="btn btn-secondary btn-sm" onclick="closeSuperAdminNewChatEmailPage()">← Geri Dön</button>
+            </div>
+
+            <form id="superAdminNewChatEmailForm">
+                <div class="form-group">
+                    <label>Kullanıcı Email Adresi:</label>
+                    <input type="email" id="superAdminChatEmailInput" placeholder="kullanici@email.com" required>
+                    <div id="superAdminChatEmailUserInfo" style="margin-top: 5px; font-size: 0.9em;"></div>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Sohbet Başlat</button>
+                    <button type="button" class="btn btn-primary" onclick="closeSuperAdminNewChatEmailPage()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Group Chat Modal -->
+    <div id="superAdminNewGroupChatModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Grup Sohbeti Başlat</h2>
+                <button class="close-btn" onclick="closeSuperAdminNewGroupChatModal()">&times;</button>
+            </div>
+            <form id="superAdminNewGroupChatForm">
+                <div class="form-group">
+                    <label>Grup Adı:</label>
+                    <input type="text" id="superAdminGroupChatName" placeholder="Grup adı giriniz" required>
+                </div>
+                <div class="form-group">
+                    <label>Grup Profil Fotoğrafı:</label>
+                    <input type="file" id="superAdminGroupChatPhoto" accept="image/*">
+                    <small style="color: #666;">İsteğe bağlı - yüklemeyi başarısız olursa varsayılan fotoğraf kullanılır</small>
+                </div>
+                <div class="form-group">
+                    <label>Katılımcı Email Adresleri (virgülle ayırın):</label>
+                    <textarea id="superAdminGroupChatUserEmails" placeholder="email1@example.com, email2@example.com" rows="4" required></textarea>
+                    <small style="color: #666;">Sistemde kayıtlı kullanıcıların email adreslerini giriniz.</small>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Grup Oluştur</button>
+                    <button type="button" class="btn btn-primary" onclick="closeSuperAdminNewGroupChatModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div id="superAdminGroupManagementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Grup Ayarları</h2>
+                <button class="close-btn" onclick="closeSuperAdminGroupManagementModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img id="superAdminGroupCurrentPhoto" src="" alt="Grup Fotoğrafı" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #ddd;">
+                </div>
+                <form id="superAdminGroupManagementForm">
+                    <div class="form-group">
+                        <label>Grup Adı:</label>
+                        <input type="text" id="superAdminGroupManageName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Profil Fotoğrafı:</label>
+                        <input type="file" id="superAdminGroupManagePhoto" accept="image/*">
+                        <small style="color: #666;">Değiştirmek istemiyorsanız boş bırakın</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Üye Ekle (Email):</label>
+                        <input type="email" id="superAdminGroupAddMemberEmail" placeholder="uye@email.com">
+                        <button type="button" class="btn btn-info btn-sm" onclick="addSuperAdminGroupMember()" style="margin-top: 5px;">Üye Ekle</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Mevcut Üyeler:</label>
+                        <div id="superAdminGroupMembersList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                            <!-- Üyeler burada listelenecek -->
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteSuperAdminGroup()">Grubu Sil</button>
+                        <button type="button" class="btn btn-primary" onclick="closeSuperAdminGroupManagementModal()">İptal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+
+    <!-- Detay Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="detailTitle">Yönetici Detayları</h2>
+                <button class="close-btn" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Ödeme Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Taksit Öde</h2>
+                <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+            </div>
+            <form id="paymentForm">
+                <div class="detail-item">
+                    <div class="detail-label">Yönetici Adı:</div>
+                    <div class="detail-value" id="paymentAdminName"></div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Taksit Tutarı (₺):</div>
+                    <div class="detail-value" id="paymentInstallmentAmount"></div>
+                </div>
+                <div class="form-group">
+                    <label>Ödeme Tutarı (₺):</label>
+                    <input type="number" id="paymentAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Ödeme Tarihi:</label>
+                    <input type="date" id="paymentDate" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Ödeme Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closePaymentModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Üyelik Onay Modal -->
+    <div id="membershipApprovalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Üyelik Onayı</h2>
+                <button class="close-btn" onclick="closeMembershipApprovalModal()">&times;</button>
+            </div>
+            <div id="applicationDetails"></div>
+            <form id="membershipApprovalForm">
+                <div class="form-group">
+                    <label>Üyelik Başlangıç Tarihi:</label>
+                    <input type="date" id="approvalMembershipStart" required>
+                </div>
+                <div class="form-group">
+                    <label>Üyelik Bitiş Tarihi:</label>
+                    <input type="date" id="approvalMembershipEnd" required>
+                </div>
+                <div class="form-group">
+                    <label>Üyelik Ücreti (₺):</label>
+                    <input type="number" id="approvalMembershipPrice" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Taksit Sayısı:</label>
+                    <input type="number" id="approvalMembershipInstallments" min="1" value="1" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Üyelik Aç</button>
+                    <button type="button" class="btn btn-danger" onclick="rejectApplication()">Reddet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeMembershipApprovalModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ürün Ekleme Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ürün Ekle</h2>
+                <button class="close-btn" onclick="closeProductModal()">&times;</button>
+            </div>
+            <form id="productForm">
+                <div class="form-group">
+                    <label>Ürün Adı:</label>
+                    <input type="text" id="productName" required>
+                </div>
+                <div class="form-group">
+                    <label>Gerçek Fiyat (₺) - Müşteriler Görür:</label>
+                    <input type="number" id="productPrice" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Kredi Maliyeti - Sadece Antrenörler Görür:</label>
+                    <input type="number" id="productCreditCost" min="1" required>
+                    <small style="color: #666; font-size: 0.9em;">Antrenörlerin bu ürünü satın almak için harcaması gereken kredi miktarı</small>
+                </div>
+                <div class="form-group">
+                    <label>Ürün Fotoğrafı:</label>
+                    <input type="file" id="productImage" accept="image/*">
+                    <small style="color: #666; font-size: 0.9em;">İsteğe bağlı - yüklemeyi başarısız olursa placeholder kullanılır</small>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="productDescription" rows="3"></textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Ürün Ekle</button>
+                    <button type="button" class="btn btn-primary" onclick="closeProductModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sipariş Detay Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Sipariş Detayları</h2>
+                <button class="close-btn" onclick="closeOrderModal()">&times;</button>
+            </div>
+            <div id="orderDetails"></div>
+            <div class="form-group">
+                <label>Ödeme Yöntemi:</label>
+                <select id="paymentMethod" required>
+                    <option value="">Seçiniz...</option>
+                    <option value="iban">IBAN</option>
+                    <option value="credit_card">Kredi Kartı</option>
+                    <option value="cash">Nakit</option>
+                </select>
+            </div>
+            <div id="paymentDetails" style="display: none;">
+                <div class="detail-item">
+                    <div class="detail-label">Ödeme Bilgileri:</div>
+                    <div class="detail-value" id="paymentInfo"></div>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-success" onclick="confirmOrder()">Siparişi Onayla</button>
+                <button type="button" class="btn btn-primary" onclick="closeOrderModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kredi Ekleme Modal -->
+    <div id="creditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Kredi Ekle</h2>
+                <button class="close-btn" onclick="closeCreditModal()">&times;</button>
+            </div>
+            <form id="creditForm">
+                <div class="form-group">
+                    <label>Antrenör Seç:</label>
+                    <select id="creditTrainerSelect" required>
+                        <option value="">-- Antrenör Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Kredi Miktarı:</label>
+                    <input type="number" id="creditAmount" required>
+                    <small style="color: #666; font-size: 0.9em;">Pozitif değer kredi ekler, negatif değer kredi düşer.</small>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="creditDescription" rows="3" placeholder="Kredi ekleme nedeni..."></textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kredi Ekle</button>
+                    <button type="button" class="btn btn-primary" onclick="closeCreditModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Reklam Ekleme Modal -->
+    <div id="advertisementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reklam Ekle</h2>
+                <button class="close-btn" onclick="closeAdvertisementModal()">&times;</button>
+            </div>
+            <form id="advertisementForm">
+                <div class="form-group">
+                    <label>Reklam Başlığı (isteğe bağlı):</label>
+                    <input type="text" id="adTitle">
+                </div>
+                <div class="form-group" style="display:none;">
+                    <label>Açıklama (görünmeyecek):</label>
+                    <textarea id="adDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Hedef Link (görsele tıklandığında açılacak):</label>
+                    <input type="url" id="adLink" placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label>Reklam Görseli:</label>
+                    <input type="file" id="adImage" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Reklam Videosu:</label>
+                    <input type="file" id="adVideo" accept="video/*">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Reklam Ekle</button>
+                    <button type="button" class="btn btn-primary" onclick="closeAdvertisementModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script defer src="../js/config.js"></script>
+    <script defer src="../js/mobile-responsive.js"></script>
+    <script defer src="../js/global-ai.js"></script>
+    <script defer src="../js/superadmin.js"></script>
+    <script defer src="../js/profile-common.js"></script>
+    <script defer src="../js/chat-common.js"></script>
+</body>
+</html>

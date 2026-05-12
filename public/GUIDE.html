@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yüzme Kurs - Başlangıç Rehberi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .step {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .step h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .code-box {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+        }
+        
+        .credential-box {
+            background: #e8f4f8;
+            border: 1px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .credential-box p {
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .feature-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .feature-card h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #155724;
+        }
+        
+        .footer {
+            background: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            color: #7f8c8d;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏊 Yüzme Kurs Yönetim Sistemi</h1>
+            <p>Profesyonel Web Uygulaması - Başlangıç Rehberi</p>
+        </div>
+        
+        <div class="content">
+            <!-- Quick Start Section -->
+            <div class="section">
+                <h2>🚀 Hızlı Başlangıç</h2>
+                
+                <div class="success-message">
+                    <strong>✓ Proje Hazır!</strong> Tüm dosyalar başarıyla oluşturulmuştur. Şimdi Firebase'i kurmaya başla.
+                </div>
+                
+                <div class="button-group">
+                    <a href="setup.html" class="btn btn-success" target="_blank">
+                        📋 Firebase Setup Sayfasına Git
+                    </a>
+                    <a href="index.html" class="btn btn-primary" target="_blank">
+                        🔐 Giriş Sayfasına Git
+                    </a>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="section">
+                <h2>✨ Ana Özellikler</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>👨‍💼 Yönetici</h3>
+                        <p>Şube, antrenör, fiyat ve duyuru yönetimi</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📝 Sekreter</h3>
+                        <p>Öğrenci kayıt ve taksit yönetimi</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>👨‍👩‍👧 Veli</h3>
+                        <p>Ödeme ve devam durumu takibi</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🏊 Antrenör</h3>
+                        <p>Kronometer ile antrenman yönetimi</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setup Instructions -->
+            <div class="section">
+                <h2>📋 Kurulum Adımları</h2>
+                
+                <div class="step">
+                    <h3>Adım 1: setup.html Sayfasını Aç</h3>
+                    <p>Browser'da <strong>setup.html</strong> dosyasını açın. Bu sayfa Firebase'i otomatik olarak kuracaktır.</p>
+                </div>
+                
+                <div class="step">
+                    <h3>Adım 2: Firebase Setup'ı Başlat</h3>
+                    <p>"Firebase Setup Başla" butonuna tıklayın. Bu otomatik olarak:</p>
+                    <ul>
+                        <li>Admin, Sekreter ve Antrenör kullanıcılarını oluşturacak</li>
+                        <li>Örnek şube ve ders saatlerini ekleyecek</li>
+                        <li>Fiyatlandırmayı yapılandıracak</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h3>Adım 3: Test Verisi Ekle</h3>
+                    <p>"Test Verisi Ekle" butonuna tıklayın. Bu örnek bir öğrenci ve duyuru oluşturacaktır.</p>
+                </div>
+                
+                <div class="step">
+                    <h3>Adım 4: Firebase Güvenlik Kurallarını Kopyala</h3>
+                    <p>Firebase Console → Firestore Database → Rules sekmesine gidin ve setup.html'de gösterilen güvenlik kurallarını yapıştırın.</p>
+                </div>
+            </div>
+
+            <!-- Test Credentials -->
+            <div class="section">
+                <h2>🔐 Test Hesapları</h2>
+                <p>Setup tamamlandıktan sonra aşağıdaki hesapları kullanabilirsiniz:</p>
+                
+                <div class="credential-box">
+                    <h4>� Super Admin</h4>
+                    <p>Email: <strong>superadmin@yuzme.com</strong></p>
+                    <p>Şifre: <strong>SuperAdmin123</strong></p>
+                    <p style="font-size: 0.85em; color: #666; margin-top: 10px;"><em>Yönetici oluşturma, üyelik yönetimi ve sistem yönetimi için</em></p>
+                </div>
+                
+                <div class="credential-box">
+                    <h4>�👨‍💼 Yönetici</h4>
+                    <p>Email: <strong>admin@yuzme.com</strong></p>
+                    <p>Şifre: <strong>Admin123</strong></p>
+                </div>
+                
+                <div class="credential-box">
+                    <h4>📝 Sekreter</h4>
+                    <p>Email: <strong>secretary@yuzme.com</strong></p>
+                    <p>Şifre: <strong>Secretary123</strong></p>
+                </div>
+                
+                <div class="credential-box">
+                    <h4>🏊 Antrenör</h4>
+                    <p>Email: <strong>trainer@yuzme.com</strong></p>
+                    <p>Şifre: <strong>Trainer123</strong></p>
+                </div>
+                
+                <div class="credential-box">
+                    <h4>👨‍👩‍👧 Veli (Örnek)</h4>
+                    <p>Email: <strong>parent@yuzme.com</strong></p>
+                    <p>Şifre: <strong>Parent123</strong></p>
+                </div>
+            </div>
+
+            <!-- File Structure -->
+            <div class="section">
+                <h2>📁 Dosya Yapısı</h2>
+                <div class="code-box">yüzme/
+├── index.html           # Giriş sayfası
+├── setup.html           # Firebase kurulum
+├── README.md            # Döküman
+├── pages/
+│   ├── admin.html       # Yönetici paneli
+│   ├── secretary.html   # Sekreter paneli
+│   ├── parent.html      # Veli paneli
+│   └── trainer.html     # Antrenör paneli
+├── js/
+│   ├── config.js        # Firebase ayarları
+│   ├── auth.js          # Giriş sistemi
+│   ├── admin.js
+│   ├── secretary.js
+│   ├── parent.js
+│   └── trainer.js
+└── css/
+    ├── style.css
+    ├── admin.css
+    ├── secretary.css
+    ├── parent.css
+    └── trainer.css</div>
+            </div>
+
+            <!-- Features Detail -->
+            <div class="section">
+                <h2>🎯 Detaylı Özellikler</h2>
+                
+                <h3>Yönetici Paneli</h3>
+                <ul>
+                    <li>✓ Şube yönetimi (Yeni, düzenle, sil)</li>
+                    <li>✓ Antrenör yönetimi (Birden fazla şubeye atama)</li>
+                    <li>✓ Ders saatleri (Şube ve antrenöre göre)</li>
+                    <li>✓ Fiyatlandırma (Her saat için ayrı fiyat)</li>
+                    <li>✓ Duyuru sistemi (Herkese, antrenörlere, belirli saatlere)</li>
+                    <li>✓ Gelir/Gider grafiği ve tablosu</li>
+                    <li>✓ Dashboard istatistikleri</li>
+                </ul>
+                
+                <h3>Sekreter Paneli</h3>
+                <ul>
+                    <li>✓ Öğrenci kayıt formu (Adı, soyadı, yaş, telefon, adres)</li>
+                    <li>✓ Veli bilgileri ve taksit yönetimi</li>
+                    <li>✓ Otomatik veli hesabı oluşturma</li>
+                    <li>✓ Kayıtlı öğrencileri görüntüleme</li>
+                </ul>
+                
+                <h3>Veli Paneli</h3>
+                <ul>
+                    <li>✓ Ödeme durumu (Toplam, ödenen, kalan)</li>
+                    <li>✓ Taksit planı gösterimi</li>
+                    <li>✓ Devam yüzdesi ve ders takibi</li>
+                    <li>✓ Duyuru görüntüleme</li>
+                </ul>
+                
+                <h3>Antrenör Paneli</h3>
+                <ul>
+                    <li>✓ Antrenman oluşturma (Mesafe, stil, mola)</li>
+                    <li>✓ Antrenman yayınlama/kaldırma</li>
+                    <li>✓ Profesyonel kronometer</li>
+                    <li>✓ Otomatik mola ve geri sayış</li>
+                    <li>✓ Sırada olan egzersizi gösterme</li>
+                    <li>✓ Öğrenci devam kaydı</li>
+                </ul>
+            </div>
+
+            <!-- Important Notes -->
+            <div class="section">
+                <h2>⚠️ Önemli Bilgiler</h2>
+                
+                <div class="warning">
+                    <strong>Güvenlik:</strong> Üretim ortamında şifreleri değiştirin ve Firebase güvenlik kurallarını gözden geçirin.
+                </div>
+                
+                <div class="warning">
+                    <strong>Browser:</strong> Modern tarayıcı (Chrome, Firefox, Safari, Edge) kullanın. JavaScript etkin olmalıdır.
+                </div>
+                
+                <div class="warning">
+                    <strong>Internet Bağlantısı:</strong> Firebase bulut hizmetine bağlanmak için internet bağlantısı gereklidir.
+                </div>
+            </div>
+
+            <!-- Next Steps -->
+            <div class="section">
+                <h2>📞 Sonraki Adımlar</h2>
+                
+                <ol>
+                    <li><a href="setup.html" target="_blank"><strong>setup.html</strong></a> sayfasını aç ve kurulum komutlarını çalıştır</li>
+                    <li>Test hesaplarını kullanarak her paneli kontrol et</li>
+                    <li>Özel şubeler, antrenörler ve öğrencileri ekle</li>
+                    <li>Fiyatlandırmayı ve duyuruları yapılandır</li>
+                    <li>Kronometer ile antrenman başlat</li>
+                </ol>
+            </div>
+
+            <div class="button-group">
+                <a href="setup.html" class="btn btn-success" target="_blank">
+                    ➡️ Setup Sayfasına Başla
+                </a>
+                <a href="index.html" class="btn btn-primary" target="_blank">
+                    🔐 Giriş Yap
+                </a>
+                <a href="README.md" class="btn btn-warning" target="_blank">
+                    📖 Dökümanı Oku
+                </a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🏊 Yüzme Kurs Yönetim Sistemi v1.0 | Firebase + Vanilla JavaScript | 2026</p>
+        </div>
+    </div>
+</body>
+</html>

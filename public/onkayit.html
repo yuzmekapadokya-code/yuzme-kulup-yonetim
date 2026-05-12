@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kulup On Kayit Formu</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f4f8fc 0%, #dfeefa 100%);
+            color: #1f2d3d;
+        }
+
+        .pre-registration-shell {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 16px;
+        }
+
+        .pre-registration-card {
+            width: min(860px, 100%);
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 48px rgba(28, 76, 128, 0.12);
+            padding: 28px;
+        }
+
+        .pre-registration-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #eef7ff;
+            color: #24619c;
+            font-weight: 700;
+            font-size: 0.92em;
+            margin-bottom: 14px;
+        }
+
+        .pre-registration-card h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            color: #183b63;
+        }
+
+        .pre-registration-card p {
+            margin: 0 0 18px;
+            color: #5f6c7b;
+            line-height: 1.7;
+        }
+
+        .pre-registration-status {
+            display: none;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        .pre-registration-status.visible {
+            display: block;
+        }
+
+        .pre-registration-status.info {
+            background: #eef7ff;
+            border: 1px solid #cfe3f7;
+            color: #1f4f82;
+        }
+
+        .pre-registration-status.success {
+            background: #edf9f0;
+            border: 1px solid #c9ead1;
+            color: #1d6c37;
+        }
+
+        .pre-registration-status.error {
+            background: #fff1f1;
+            border: 1px solid #f3c8c8;
+            color: #8a2d2d;
+        }
+
+        .pre-registration-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .pre-registration-form-grid .full {
+            grid-column: 1 / -1;
+        }
+
+        .pre-registration-help {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #f8fbff;
+            border: 1px solid #d9e7f4;
+            color: #5f6c7b;
+            line-height: 1.7;
+        }
+
+        .pre-registration-inline-note {
+            margin: 6px 0 0;
+            font-size: 0.9em;
+            color: #6c7a89;
+        }
+
+        @media (max-width: 720px) {
+            .pre-registration-card {
+                padding: 22px 18px;
+            }
+
+            .pre-registration-form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pre-registration-form-grid .full {
+                grid-column: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="pre-registration-shell">
+        <section class="pre-registration-card">
+            <div class="pre-registration-eyebrow">On kayit formu</div>
+            <h1 id="preRegistrationTitle">Kulup on kayit formu</h1>
+            <p id="preRegistrationDescription">Bilgilerinizi gonderin. Kulup ekibi basvurunuzu sekreter ekraninda gorup uygun ders grubunu, odeme planini ve antrenor atamasini sizinle teyit ederek tamamlayacaktir.</p>
+
+            <div id="preRegistrationStatus" class="pre-registration-status info visible">Form hazirlaniyor...</div>
+
+            <form id="publicPreRegistrationForm" style="display: none;">
+                <div class="pre-registration-form-grid">
+                    <div class="form-group">
+                        <label for="publicStudentName">Ogrenci Adi</label>
+                        <input type="text" id="publicStudentName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicStudentSurname">Ogrenci Soyadi</label>
+                        <input type="text" id="publicStudentSurname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicBirthYear">Dogum Yili</label>
+                        <input type="number" id="publicBirthYear" min="1990" max="2035" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicGender">Cinsiyet</label>
+                        <select id="publicGender" required>
+                            <option value="">-- Cinsiyet Seciniz --</option>
+                            <option value="Erkek">Erkek</option>
+                            <option value="Kız">Kiz</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label for="publicStudentPhone">Ogrenci Telefonu</label>
+                        <input type="tel" id="publicStudentPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicInstallmentCount">Odeme Dusunceniz</label>
+                        <select id="publicInstallmentCount" required>
+                            <option value="">-- Seciniz --</option>
+                            <option value="cash">Pesin / elden</option>
+                            <option value="1">1 taksit</option>
+                            <option value="2">2 taksit</option>
+                            <option value="3">3 taksit</option>
+                            <option value="4">4 taksit</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label for="publicParentName">Veli Ad Soyad</label>
+                        <input type="text" id="publicParentName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicParentEmail">Veli E-mail</label>
+                        <input type="email" id="publicParentEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicParentPhone">Veli Telefon</label>
+                        <input type="tel" id="publicParentPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicParentPassword">Veli Sifresi</label>
+                        <input type="password" id="publicParentPassword" minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicParentPasswordConfirm">Sifre Tekrar</label>
+                        <input type="password" id="publicParentPasswordConfirm" minlength="6" required>
+                    </div>
+                    <div class="form-group full">
+                        <label for="publicAddress">Adres</label>
+                        <textarea id="publicAddress" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="publicPaymentMethodPreference">Odeme Tercihi</label>
+                        <select id="publicPaymentMethodPreference" required>
+                            <option value="">-- Odeme Sekli Seciniz --</option>
+                            <option value="Pesin / Nakit">Pesin / Nakit</option>
+                            <option value="Havale / EFT">Havale / EFT</option>
+                            <option value="Fark etmez">Fark etmez</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <div class="pre-registration-inline-note" style="margin-top: 12px;">Saat tercihi sormuyoruz; sizi arayip uygun grup ve saatleri birlikte netlestirecegiz.</div>
+                    </div>
+                    <div class="form-group full">
+                        <label for="publicApplicationNote">Ek Notunuz</label>
+                        <textarea id="publicApplicationNote" placeholder="Saglik notu, odeme notu veya sekreterin bilmesini istediginiz ek bilgileri yazabilirsiniz"></textarea>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 24px; justify-content: flex-start;">
+                    <button type="submit" id="publicPreRegistrationSubmit" class="btn btn-success">Basvuruyu Gonder</button>
+                </div>
+            </form>
+
+            <div class="pre-registration-help">
+                Bu form kesin kayit olusturmaz. Basvurunuz once sekreter ekranina duser; kulup ekibi odeme plani, uygun ders grubu ve antrenor atamasini netlestirdikten sonra sizinle iletisime gecer.
+            </div>
+        </section>
+    </main>
+
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="js/config.js"></script>
+    <script defer src="js/public-pre-registration.js"></script>
+</body>
+</html>

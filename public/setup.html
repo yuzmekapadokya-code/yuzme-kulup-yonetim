@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #3498db;
+        }
+        .code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+        button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #229954;
+        }
+        .danger-btn {
+            background: #e74c3c;
+        }
+        .danger-btn:hover {
+            background: #c0392b;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .warning {
+            color: #f39c12;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏊 Yüzme Kurs - Firebase Setup</h1>
+        
+        <div class="section">
+            <h2>Firestore Veritabanı Konfigürasyonu</h2>
+            <p>Lütfen aşağıdaki adımları sırayla uygulayın:</p>
+            
+            <h3>1. Koleksiyonlar ve Dokümanlar Oluştur</h3>
+            <button onclick="setupFirebase()">Firebase Setup Başla</button>
+            <div id="setupLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Firestore Güvenlik Kuralları</h2>
+            <p>Firebase Console'da Firestore → Rules kısmına aşağıdaki kodu yapıştırın:</p>
+            <div class="code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+  }
+}</div>
+        </div>
+
+        <div class="section">
+            <h2>Test Verisi Oluştur</h2>
+            <button onclick="createTestData()">Test Verisi Ekle</button>
+            <div id="testLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Firebase Verilerini Sıfırla</h2>
+            <p>Bu işlem Firestore verilerini, bilinen storage klasörlerini ve varsayılan test hesaplarını temizler. İşlem geri alınamaz.</p>
+            <button class="danger-btn" onclick="resetFirebaseData()">Tüm Verileri Temizle</button>
+            <div id="resetLog"></div>
+        </div>
+
+        <div class="section">
+            <h2>Koleksiyon Yapısı</h2>
+            <div class="code">
+users/
+├── {uid}
+│   ├── name (string)
+│   ├── email (string)
+│   ├── role (string: admin, secretary, trainer, parent)
+│   └── ...
+
+branches/
+├── {branchId}
+│   ├── name (string)
+│   ├── address (string)
+│   ├── phone (string)
+│   └── createdAt (timestamp)
+
+trainers/
+├── {trainerId}
+│   ├── name (string)
+│   ├── email (string)
+│   ├── role (string: trainer)
+│   ├── branches (array of branchIds)
+│   └── createdAt (timestamp)
+
+schedules/
+├── {scheduleId}
+│   ├── branchId (string)
+│   ├── time (string: HH:MM)
+│   ├── trainerId (string)
+│   ├── capacity (number)
+│   └── createdAt (timestamp)
+
+students/
+├── {studentId}
+│   ├── name (string)
+│   ├── surname (string)
+│   ├── age (number)
+│   ├── phone (string)
+│   ├── parentName (string)
+│   ├── parentEmail (string)
+│   ├── parentPhone (string)
+│   ├── address (string)
+│   ├── branchId (string)
+│   ├── scheduleId (string)
+│   ├── monthlyPrice (number)
+│   ├── installmentCount (number)
+│   ├── totalAmount (number)
+│   ├── totalPaid (number)
+│   ├── attendedClasses (number)
+│   ├── missedClasses (number)
+│   ├── parentUid (string)
+│   ├── status (string: active, inactive)
+│   └── createdAt (timestamp)
+
+prices/
+├── {branchId}_{time}
+│   ├── price (number)
+│   └── updatedAt (timestamp)
+
+workouts/
+├── {workoutId}
+│   ├── name (string)
+│   ├── trainerId (string)
+│   ├── exercises (array)
+│   │   ├── distance (number)
+│   │   ├── style (string)
+│   │   └── restSeconds (number)
+│   ├── published (boolean)
+│   └── createdAt (timestamp)
+
+announcements/
+├── {announcementId}
+│   ├── title (string)
+│   ├── content (string)
+│   ├── target (string: all, trainers, schedule)
+│   ├── branchId (string - optional)
+│   ├── scheduleId (string - optional)
+│   └── createdAt (timestamp)
+
+expenses/
+├── {expenseId}
+│   ├── description (string)
+│   ├── amount (number)
+│   ├── date (string: YYYY-MM-DD)
+│   └── createdAt (timestamp)
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEk3rweB33vuXh2j2vVLfCeYcoFCDJ5YU",
+            authDomain: "course-abfe3.firebaseapp.com",
+            projectId: "course-abfe3",
+            storageBucket: "course-abfe3.appspot.com",
+            messagingSenderId: "1093027241421",
+            appId: "1:1093027241421:web:bb72890d59e40812c33884",
+            measurementId: "G-CX86K5746H"
+        };
+
+        window.firebaseApp = firebase.initializeApp(firebaseConfig);
+        window.auth = firebase.auth();
+        window.db = firebase.firestore();
+        window.storage = firebase.storage();
+        
+        const app = window.firebaseApp;
+        const auth = window.auth;
+        const db = window.db;
+        const storage = window.storage;
+
+        const KNOWN_TEST_ACCOUNTS = [
+            { email: 'superadmin@yuzme.com', password: 'SuperAdmin123' },
+            { email: 'admin@yuzme.com', password: 'Admin123' },
+            { email: 'secretary@yuzme.com', password: 'Secretary123' },
+            { email: 'trainer@yuzme.com', password: 'Trainer123' },
+            { email: 'parent@yuzme.com', password: 'Parent123' }
+        ];
+
+        const RESET_COLLECTIONS = [
+            'active_workouts',
+            'announcements',
+            'applications',
+            'app_settings',
+            'attendance',
+            'branches',
+            'calls',
+            'cash_withdrawal_requests',
+            'chats',
+            'clubProfiles',
+            'credit_packages',
+            'credit_requests',
+            'credit_transactions',
+            'discounts',
+            'events',
+            'expenses',
+            'homepage_settings',
+            'incomes',
+            'lesson_comments',
+            'notifications',
+            'orders',
+            'payments',
+            'performances',
+            'prices',
+            'products',
+            'purchased_workouts',
+            'schedules',
+            'standards',
+            'students',
+            'student_workouts',
+            'trainers',
+            'user_credits',
+            'workout_library',
+            'workout_sales',
+            'workouts'
+        ];
+
+        const COLLECTION_SUBCOLLECTIONS = {
+            chats: ['messages'],
+            calls: ['offerCandidates', 'answerCandidates']
+        };
+
+        const STORAGE_PREFIXES = [
+            'advertisements',
+            'chat-media',
+            'group-photos'
+        ];
+
+        function appendLog(target, message, type) {
+            const className = type ? ` class="${type}"` : '';
+            target.innerHTML += `<p${className}>${message}</p>`;
+        }
+
+        function shouldSkipBrowserStorageCleanup() {
+            const { protocol, hostname } = window.location;
+            return protocol === 'file:' || hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1';
+        }
+
+        async function signInForReset(log) {
+            try {
+                if (auth.currentUser) {
+                    await auth.signOut();
+                }
+            } catch (error) {
+                console.warn('Önceki oturum kapatılamadı:', error);
+            }
+
+            for (const account of KNOWN_TEST_ACCOUNTS) {
+                try {
+                    await auth.signInWithEmailAndPassword(account.email, account.password);
+                    appendLog(log, `✓ Temizlik için oturum açıldı: ${account.email}`, 'success');
+                    return account;
+                } catch (error) {
+                    const ignorable = ['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-login-credentials'];
+                    if (!ignorable.includes(error.code)) {
+                        appendLog(log, `⚠ ${account.email} ile giriş denemesi başarısız: ${error.message || error.code}`, 'warning');
+                    }
+                }
+            }
+
+            throw new Error('Bilinen test hesaplarıyla giriş yapılamadı. En az bir varsayılan test hesabı Firebase Authentication içinde mevcut olmalı.');
+        }
+
+        async function deleteCollectionRecursive(collectionRef, childCollections = []) {
+            let deletedCount = 0;
+
+            while (true) {
+                const snapshot = await collectionRef.limit(50).get();
+                if (snapshot.empty) {
+                    break;
+                }
+
+                for (const doc of snapshot.docs) {
+                    for (const child of childCollections) {
+                        deletedCount += await deleteCollectionRecursive(doc.ref.collection(child));
+                    }
+                    await doc.ref.delete();
+                    deletedCount += 1;
+                }
+            }
+
+            return deletedCount;
+        }
+
+        async function deleteStorageFolder(folderRef) {
+            let deletedCount = 0;
+            const result = await folderRef.listAll();
+
+            for (const prefix of result.prefixes) {
+                deletedCount += await deleteStorageFolder(prefix);
+            }
+
+            for (const item of result.items) {
+                await item.delete();
+                deletedCount += 1;
+            }
+
+            return deletedCount;
+        }
+
+        async function deleteKnownStorage(log) {
+            if (!storage || typeof storage.ref !== 'function') {
+                appendLog(log, '⚠ Storage başlatılamadı, dosya temizliği atlandı.', 'warning');
+                return;
+            }
+
+            if (shouldSkipBrowserStorageCleanup()) {
+                appendLog(log, '⚠ Storage temizliği tarayıcıda yerel origin üzerinden CORS nedeniyle atlandı. Bu sayfayı Firebase Hosting domaininden açın veya Storage klasörlerini Firebase Console üzerinden temizleyin.', 'warning');
+                return;
+            }
+
+            for (const prefix of STORAGE_PREFIXES) {
+                try {
+                    const deletedCount = await deleteStorageFolder(storage.ref().child(prefix));
+                    appendLog(log, `✓ Storage klasörü temizlendi: ${prefix} (${deletedCount} dosya)`, 'success');
+                } catch (error) {
+                    appendLog(log, `⚠ Storage klasörü temizlenemedi: ${prefix} (${error.message || error.code})`, 'warning');
+                }
+            }
+        }
+
+        async function deleteKnownAuthAccounts(log) {
+            for (const account of KNOWN_TEST_ACCOUNTS) {
+                try {
+                    if (auth.currentUser) {
+                        await auth.signOut();
+                    }
+                    await auth.signInWithEmailAndPassword(account.email, account.password);
+                    if (auth.currentUser) {
+                        await auth.currentUser.delete();
+                        appendLog(log, `✓ Auth hesabı silindi: ${account.email}`, 'success');
+                    }
+                } catch (error) {
+                    const ignorable = ['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-login-credentials'];
+                    if (ignorable.includes(error.code)) {
+                        appendLog(log, `• Auth hesabı zaten yok veya şifresi farklı: ${account.email}`, 'warning');
+                    } else {
+                        appendLog(log, `⚠ Auth hesabı silinemedi: ${account.email} (${error.message || error.code})`, 'warning');
+                    }
+                }
+            }
+
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.warn('Reset sonrası çıkış yapılamadı:', error);
+            }
+        }
+
+        async function purgeUsersCollection(log) {
+            let deletedCount = await deleteCollectionRecursive(db.collection('users'));
+
+            for (const account of KNOWN_TEST_ACCOUNTS) {
+                try {
+                    const snapshot = await db.collection('users').where('email', '==', account.email).get();
+                    for (const doc of snapshot.docs) {
+                        await doc.ref.delete();
+                        deletedCount += 1;
+                    }
+                } catch (error) {
+                    appendLog(log, `⚠ ${account.email} için kullanıcı dokümanı temizlenemedi: ${error.message || error.code}`, 'warning');
+                }
+            }
+
+            const remainingUsers = await db.collection('users').limit(5).get();
+            if (!remainingUsers.empty) {
+                appendLog(log, `⚠ users koleksiyonunda hâlâ ${remainingUsers.size}+ kayıt görünüyor. İkinci temizlik geçişi uygulanıyor...`, 'warning');
+                deletedCount += await deleteCollectionRecursive(db.collection('users'));
+            }
+
+            const finalUsersCheck = await db.collection('users').limit(1).get();
+            if (finalUsersCheck.empty) {
+                appendLog(log, `✓ users koleksiyonu temizlendi (${deletedCount} kayıt)`, 'success');
+            } else {
+                appendLog(log, '✗ users koleksiyonu tamamen temizlenemedi. Firestore Rules veya oturum izinlerini kontrol edin.', 'error');
+            }
+        }
+
+        async function authUserExists(email) {
+            try {
+                const methods = await auth.fetchSignInMethodsForEmail(email);
+                return Array.isArray(methods) && methods.length > 0;
+            } catch (error) {
+                console.warn('Auth kullanıcı kontrolü başarısız:', email, error);
+                return false;
+            }
+        }
+
+        async function ensureDefaultUser({ email, password, successMessage, existsMessage, profileFactory, log, afterEnsure }) {
+            let user = null;
+            let created = false;
+
+            const existsInAuth = await authUserExists(email);
+
+            if (existsInAuth) {
+                appendLog(log, existsMessage, 'success');
+                try {
+                    const signedIn = await auth.signInWithEmailAndPassword(email, password);
+                    user = signedIn.user;
+                } catch (error) {
+                    appendLog(log, `⚠ ${email} hesabı Auth içinde var ancak varsayılan şifre ile giriş yapılamadı. Firestore kaydı eşitlenemeyebilir.`, 'warning');
+                }
+            } else {
+                const userCred = await auth.createUserWithEmailAndPassword(email, password);
+                user = userCred.user;
+                created = true;
+                appendLog(log, successMessage, 'success');
+            }
+
+            if (user && typeof profileFactory === 'function') {
+                await db.collection('users').doc(user.uid).set(profileFactory(user.uid), { merge: true });
+            }
+
+            if (typeof afterEnsure === 'function') {
+                await afterEnsure({ user, created, existsInAuth });
+            }
+
+            return { user, created, existsInAuth };
+        }
+
+        async function resetFirebaseData() {
+            const log = document.getElementById('resetLog');
+            log.innerHTML = '';
+
+            const confirmed = window.confirm('Bu işlem Firebase Firestore verilerini, bilinen storage dosyalarını ve varsayılan test hesaplarını silecek. Devam etmek istediğinize emin misiniz?');
+            if (!confirmed) {
+                appendLog(log, 'İşlem kullanıcı tarafından iptal edildi.', 'warning');
+                return;
+            }
+
+            appendLog(log, 'Temizlik başlatılıyor...', 'warning');
+
+            try {
+                await signInForReset(log);
+
+                for (const collectionName of RESET_COLLECTIONS) {
+                    const childCollections = COLLECTION_SUBCOLLECTIONS[collectionName] || [];
+                    const deletedCount = await deleteCollectionRecursive(db.collection(collectionName), childCollections);
+                    appendLog(log, `✓ Koleksiyon temizlendi: ${collectionName} (${deletedCount} kayıt)`, 'success');
+                }
+
+                await purgeUsersCollection(log);
+                await deleteKnownStorage(log);
+                await deleteKnownAuthAccounts(log);
+
+                try {
+                    await auth.signOut();
+                } catch (error) {
+                    console.warn('Final çıkış yapılamadı:', error);
+                }
+
+                appendLog(log, '✓ Firebase verileri temizlendi. Artık Setup ve Test Verisi adımlarını sıfırdan çalıştırabilirsiniz.', 'success');
+                appendLog(log, '⚠ Bilinmeyen ekstra Authentication kullanıcıları varsa browser tarafında silinemez; gerekirse Firebase Console → Authentication üzerinden ayrıca temizleyin.', 'warning');
+            } catch (error) {
+                appendLog(log, `✗ Temizlik hatası: ${error.message || error.code || 'Bilinmeyen hata'}`, 'error');
+                console.error('Reset error:', error);
+            }
+        }
+
+        async function setupFirebase() {
+            const log = document.getElementById('setupLog');
+            log.innerHTML = '<p>Setup başlatılıyor...</p>';
+
+            try {
+                const superAdminResult = await ensureDefaultUser({
+                    email: 'superadmin@yuzme.com',
+                    password: 'SuperAdmin123',
+                    successMessage: '✓ Super Admin kullanıcısı oluşturuldu (superadmin@yuzme.com / SuperAdmin123)',
+                    existsMessage: '✓ Super Admin hesabı zaten var, atlanıyor...',
+                    log,
+                    profileFactory: () => ({
+                        name: 'Super Admin',
+                        email: 'superadmin@yuzme.com',
+                        role: 'superadmin',
+                        frozen: false,
+                        createdAt: new Date().toISOString()
+                    })
+                });
+
+                const adminResult = await ensureDefaultUser({
+                    email: 'admin@yuzme.com',
+                    password: 'Admin123',
+                    successMessage: '✓ Admin kullanıcısı oluşturuldu (admin@yuzme.com / Admin123)',
+                    existsMessage: '✓ Admin hesabı zaten var, atlanıyor...',
+                    log,
+                    profileFactory: () => ({
+                        name: 'Yönetici',
+                        email: 'admin@yuzme.com',
+                        role: 'admin',
+                        frozen: false,
+                        membershipStart: new Date().toISOString().split('T')[0],
+                        membershipEnd: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+                        membershipPrice: 5000,
+                        membershipInstallments: 12,
+                        createdAt: new Date().toISOString()
+                    })
+                });
+
+                const adminUid = adminResult.user ? adminResult.user.uid : null;
+
+                await ensureDefaultUser({
+                    email: 'secretary@yuzme.com',
+                    password: 'Secretary123',
+                    successMessage: '✓ Sekreter kullanıcısı oluşturuldu (secretary@yuzme.com / Secretary123)',
+                    existsMessage: '✓ Sekreter hesabı zaten var, atlanıyor...',
+                    log,
+                    profileFactory: () => ({
+                        name: 'Sekreter',
+                        email: 'secretary@yuzme.com',
+                        role: 'secretary',
+                        adminId: adminUid,
+                        createdAt: new Date().toISOString()
+                    })
+                });
+
+                // Create branch
+                const branchRef = await db.collection('branches').add({
+                    name: 'Merkez Şubesi',
+                    address: 'İstanbul, Beşiktaş',
+                    phone: '0212 000 0000',
+                    adminId: adminUid,
+                    createdAt: new Date().toISOString()
+                });
+
+                log.innerHTML += '<p class="success">✓ Örnek şube oluşturuldu</p>';
+
+                // Create trainer
+                let trainerRef = null;
+                const trainerResult = await ensureDefaultUser({
+                    email: 'trainer@yuzme.com',
+                    password: 'Trainer123',
+                    successMessage: '✓ Antrenör kullanıcısı oluşturuldu (trainer@yuzme.com / Trainer123)',
+                    existsMessage: '✓ Antrenör hesabı zaten var, atlanıyor...',
+                    log,
+                    profileFactory: uid => ({
+                        name: 'Emre Hoca',
+                        email: 'trainer@yuzme.com',
+                        role: 'trainer',
+                        uid,
+                        adminId: adminUid,
+                        createdAt: new Date().toISOString()
+                    })
+                });
+
+                if (trainerResult.user) {
+                    const existingTrainer = await db.collection('trainers').where('email', '==', 'trainer@yuzme.com').limit(1).get();
+                    if (!existingTrainer.empty) {
+                        trainerRef = { id: existingTrainer.docs[0].id };
+                        await existingTrainer.docs[0].ref.set({
+                            name: 'Emre Hoca',
+                            email: 'trainer@yuzme.com',
+                            uid: trainerResult.user.uid,
+                            role: 'trainer',
+                            branches: [branchRef.id],
+                            adminId: adminUid,
+                            createdAt: existingTrainer.docs[0].data().createdAt || new Date().toISOString()
+                        }, { merge: true });
+                    } else {
+                        trainerRef = await db.collection('trainers').add({
+                            name: 'Emre Hoca',
+                            email: 'trainer@yuzme.com',
+                            uid: trainerResult.user.uid,
+                            role: 'trainer',
+                            branches: [branchRef.id],
+                            adminId: adminUid,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+
+                    await db.collection('users').doc(trainerResult.user.uid).set({
+                        name: 'Emre Hoca',
+                        email: 'trainer@yuzme.com',
+                        role: 'trainer',
+                        trainerDocId: trainerRef.id,
+                        adminId: adminUid,
+                        createdAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+
+                // Create schedule (only if trainer exists)
+                if (trainerRef) {
+                    const scheduleRef = await db.collection('schedules').add({
+                        branchId: branchRef.id,
+                        time: '10:00',
+                        trainerId: trainerRef.id,
+                        capacity: 15,
+                        adminId: adminUid,
+                        createdAt: new Date().toISOString()
+                    });
+
+                    log.innerHTML += '<p class="success">✓ Örnek ders saati oluşturuldu (10:00)</p>';
+
+                    // Create price
+                    await db.collection('prices').doc(`${branchRef.id}_10:00`).set({
+                        branchId: branchRef.id,
+                        scheduleId: scheduleRef.id,
+                        price: 3000,
+                        adminId: adminUid,
+                        updatedAt: new Date().toISOString()
+                    });
+
+                    log.innerHTML += '<p class="success">✓ Fiyatlandırma oluşturuldu (₺3000)</p>';
+                } else {
+                    log.innerHTML += '<p style="color: #f39c12;">⚠ Antrenör oluşturulamadığı için ders saati ve fiyatlandırma atlanıyor...</p>';
+                }
+
+                log.innerHTML += '<p style="color: #3498db; font-weight: bold; margin-top: 20px;">✓ Firebase Setup Tamamlandı!</p>';
+
+            } catch (error) {
+                if (error.code === 'auth/operation-not-allowed') {
+                    log.innerHTML += '<p class="error">✗ Email/Şifre oturum açma yöntemi Firebase Authentication içinde aktif değil. Firebase Console → Authentication → Sign-in method kısmından Email/Password sağlayıcısını açın.</p>';
+                    return;
+                }
+                log.innerHTML += `<p class="error">✗ Hata: ${error.message || error.code || 'Bilinmeyen hata'}</p>`;
+                console.error('Setup error:', error);
+            }
+        }
+
+        async function createTestData() {
+            const log = document.getElementById('testLog');
+            log.innerHTML = '<p>Test verisi ekleniyor...</p>';
+
+            try {
+                // Get existing branch and trainer
+                const branchSnap = await db.collection('branches').limit(1).get();
+                const scheduleSnap = await db.collection('schedules').limit(1).get();
+
+                if (branchSnap.empty || scheduleSnap.empty) {
+                    log.innerHTML += '<p class="error">✗ Önce Firebase Setup\'ı çalıştırınız!</p>';
+                    return;
+                }
+
+                const branchId = branchSnap.docs[0].id;
+                const scheduleId = scheduleSnap.docs[0].id;
+
+                const parentResult = await ensureDefaultUser({
+                    email: 'parent@yuzme.com',
+                    password: 'Parent123',
+                    successMessage: '✓ Test veli hesabı oluşturuldu (parent@yuzme.com / Parent123)',
+                    existsMessage: '✓ Veli hesabı zaten var, atlanıyor...',
+                    log,
+                    profileFactory: () => ({
+                        name: 'Fatma Kaya',
+                        email: 'parent@yuzme.com',
+                        role: 'parent',
+                        createdAt: new Date().toISOString()
+                    })
+                });
+
+                if (parentResult.user) {
+                    const existingStudent = await db.collection('students')
+                        .where('parentEmail', '==', 'parent@yuzme.com')
+                        .limit(1)
+                        .get();
+
+                    let studentRef = null;
+                    if (!existingStudent.empty) {
+                        studentRef = existingStudent.docs[0].ref;
+                        await studentRef.set({
+                            name: 'Ahmet',
+                            surname: 'Kaya',
+                            age: 12,
+                            phone: '5300000000',
+                            parentName: 'Fatma Kaya',
+                            parentEmail: 'parent@yuzme.com',
+                            parentPhone: '5300000001',
+                            address: 'İstanbul, Beşiktaş, Yıldız Mahallesi',
+                            branchId: branchId,
+                            scheduleId: scheduleId,
+                            monthlyPrice: 3000,
+                            installmentCount: 3,
+                            totalAmount: 9000,
+                            totalPaid: 3000,
+                            attendedClasses: 8,
+                            missedClasses: 2,
+                            parentUid: parentResult.user.uid,
+                            status: 'active',
+                            createdAt: existingStudent.docs[0].data().createdAt || new Date().toISOString()
+                        }, { merge: true });
+                        appendLog(log, '✓ Test öğrenci kaydı zaten var, bilgiler eşitlendi.', 'success');
+                    } else {
+                        studentRef = await db.collection('students').add({
+                            name: 'Ahmet',
+                            surname: 'Kaya',
+                            age: 12,
+                            phone: '5300000000',
+                            parentName: 'Fatma Kaya',
+                            parentEmail: 'parent@yuzme.com',
+                            parentPhone: '5300000001',
+                            address: 'İstanbul, Beşiktaş, Yıldız Mahallesi',
+                            branchId: branchId,
+                            scheduleId: scheduleId,
+                            monthlyPrice: 3000,
+                            installmentCount: 3,
+                            totalAmount: 9000,
+                            totalPaid: 3000,
+                            attendedClasses: 8,
+                            missedClasses: 2,
+                            parentUid: parentResult.user.uid,
+                            status: 'active',
+                            createdAt: new Date().toISOString()
+                        });
+                        appendLog(log, '✓ Test öğrenci oluşturuldu (parent@yuzme.com / Parent123)', 'success');
+                    }
+
+                    await db.collection('users').doc(parentResult.user.uid).set({
+                        name: 'Fatma Kaya',
+                        email: 'parent@yuzme.com',
+                        role: 'parent',
+                        studentId: studentRef.id,
+                        createdAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+
+                // Create test announcements
+                await db.collection('announcements').add({
+                    title: 'Sistem açılış duyurusu',
+                    content: 'Yüzme kurs yönetim sistemi başarıyla açılmıştır.',
+                    target: 'all',
+                    createdAt: new Date().toISOString()
+                });
+
+                log.innerHTML += '<p class="success">✓ Test duyurusu oluşturuldu</p>';
+
+                log.innerHTML += '<p style="color: #3498db; font-weight: bold; margin-top: 20px;">✓ Test Verisi Oluşturuldu!</p>';
+
+            } catch (error) {
+                if (error.code === 'auth/operation-not-allowed') {
+                    log.innerHTML += '<p class="error">✗ Email/Şifre oturum açma yöntemi Firebase Authentication içinde aktif değil.</p>';
+                    return;
+                }
+                log.innerHTML += `<p class="error">✗ Hata: ${error.message || error.code || 'Bilinmeyen hata'}</p>`;
+                console.error('Test data error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

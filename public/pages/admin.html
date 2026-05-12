@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönetici Paneli</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>🏊 YÖNETİCİ</h3>
+            <ul class="nav-menu">
+                <li><a class="nav-link active" data-page="dashboard">Dashboard</a></li>
+                <li><a class="nav-link" data-page="club" id="clubNavLink" style="display: none;">Kulüp Profili</a></li>
+                <li><a class="nav-link" data-page="secretaries">Sekreterler</a></li>
+                <li><a class="nav-link" data-page="branches">Şubeler</a></li>
+                <li><a class="nav-link" data-page="trainers">Antrenörler</a></li>
+                <li><a class="nav-link" data-page="schedules">Ders Saatleri</a></li>
+                <li><a class="nav-link" data-page="schedule_table">📋 Ders Saatleri Tablosu</a></li>
+                <li><a class="nav-link" data-page="prices">Fiyatlandırma</a></li>
+                <li><a class="nav-link" data-page="events">Etkinlikler</a></li>
+                <li><a class="nav-link" data-page="announcements">Duyurular</a></li>
+                <li><a class="nav-link" data-page="market">🛒 Market</a></li>
+                <li><a class="nav-link" data-page="standards">🎯 Barajlar</a></li>
+                <li><a class="nav-link" data-page="discounts">İndirim Kodları</a></li>
+                <li><a class="nav-link" data-page="finance">Gelir/Gider</a></li>
+                <li><a class="nav-link" data-page="chat">💬 Mesajlaşma</a></li>
+            </ul>
+            <button class="logout-btn" id="logoutBtn">Çıkış Yap</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="user-info">
+                    <span id="userName">Yönetici</span>
+                    <div class="user-avatar" id="userAvatar">Y</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Toplam Şube</h3>
+                        <div class="value" id="totalBranches">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Toplam Antrenör</h3>
+                        <div class="value" id="totalTrainers">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Toplam Öğrenci</h3>
+                        <div class="value" id="totalStudents">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Toplam Gelir (₺)</h3>
+                        <div class="value" id="totalIncome">0</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Son Kayıtlar</h2>
+                    <div id="recentActivities"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Ödeme Bildirimleri <span id="adminInstallmentAlertCount" style="font-size: 0.85em; color: #f39c12;">0</span></h2>
+                    <div id="adminInstallmentAlerts"></div>
+                </div>
+            </div>
+
+            <!-- Club Profile Page -->
+            <div id="club-page" class="page-content">
+                <div class="card">
+                    <h2>Kulüp Profili</h2>
+                    <form id="clubForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kulüp Adı:</label>
+                                <input type="text" id="clubName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Kulüp Logosu:</label>
+                                <input type="file" id="clubLogo" accept="image/*">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <img id="clubLogoPreview" src="" alt="Logo Önizlemesi" style="max-width: 200px; max-height: 200px; border-radius: 5px; display: none;">
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Kaydet</button>
+                        </div>
+                    </form>
+                    <div id="clubMessage" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+
+            <!-- Secretaries Page -->
+            <div id="secretaries-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Sekreterler</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openSecretaryModal()">+ Yeni Sekreter</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Adı Soyadı</th>
+                                    <th>Email</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secretariesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Branches Page -->
+            <div id="branches-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Şubeler</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openBranchModal()">+ Yeni Şube</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Şube Adı</th>
+                                    <th>Adres</th>
+                                    <th>Telefon</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="branchesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trainers Page -->
+            <div id="trainers-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Antrenörler</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openTrainerModal()">+ Yeni Antrenör</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Adı Soyadı</th>
+                                    <th>Email</th>
+                                    <th>Şubeler</th>
+                                    <th>Ortalama Puan</th>
+                                    <th>Değerlendirme</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedules Page -->
+            <div id="schedules-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Ders Saatleri</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openScheduleModal()">+ Yeni Saat</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Şube</th>
+                                    <th>Saat</th>
+                                    <th>Antrenör</th>
+                                    <th>Kapasite</th>
+                                    <th>Maaş</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedulesTable"></tbody>
+                        </table>
+                    </div>
+
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #e9ecef;">
+
+                    <h3 style="margin-bottom: 10px;">Antrenör Müsaitlik Programı</h3>
+                    <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Önce şube için saat havuzunu belirleyin. Antrenörler kendi panelinde bu saatlerden müsait olduklarını seçer.</p>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; align-items: start; margin-bottom: 12px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Şube</label>
+                            <select id="availabilityBranchSelect" onchange="loadAvailabilityTemplateForBranch()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">-- Şube Seçiniz --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Gün</label>
+                            <select id="availabilityDaySelect" onchange="loadAvailabilityTemplateForBranch()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="monday">Pazartesi</option>
+                                <option value="tuesday">Salı</option>
+                                <option value="wednesday">Çarşamba</option>
+                                <option value="thursday">Perşembe</option>
+                                <option value="friday">Cuma</option>
+                                <option value="saturday">Cumartesi</option>
+                                <option value="sunday">Pazar</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Açık Saatler</label>
+                            <div id="availabilitySlotPicker" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fbff;"></div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group" style="justify-content: flex-start; margin-bottom: 10px;">
+                        <button class="btn btn-success" onclick="saveAvailabilityTemplate()">Programı Kaydet</button>
+                    </div>
+
+                    <div id="availabilityStatus" style="margin-bottom: 14px; color: #7f8c8d;"></div>
+
+                    <div id="availabilitySummaryCards" style="display: grid; gap: 12px; margin-bottom: 14px;"></div>
+
+                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 720px;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
+                                    <th style="padding: 10px; text-align: left;">Antrenör</th>
+                                    <th style="padding: 10px; text-align: left;">Şube</th>
+                                    <th style="padding: 10px; text-align: left;">Müsait Olduğu Saatler</th>
+                                    <th style="padding: 10px; text-align: left;">Güncelleme</th>
+                                </tr>
+                            </thead>
+                            <tbody id="availabilitySummaryTable"></tbody>
+                        </table>
+                    </div>
+
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #e9ecef;">
+
+                    <h3 style="margin-bottom: 8px;">Ders Bitiş Takvimi</h3>
+                    <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Öğrenci başlangıç tarihine ve ders sayısına göre hangi öğrencinin ne zaman biteceğini, hangi saatin ne zaman boşalacağını gösterir.</p>
+
+                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
+                                    <th style="padding: 10px; text-align: left;">Öğrenci</th>
+                                    <th style="padding: 10px; text-align: left;">Şube</th>
+                                    <th style="padding: 10px; text-align: left;">Saat</th>
+                                    <th style="padding: 10px; text-align: left;">Başlangıç</th>
+                                    <th style="padding: 10px; text-align: left;">Planlanan Bitiş</th>
+                                    <th style="padding: 10px; text-align: left;">Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentCompletionCalendarTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Table Page -->
+            <div id="schedule_table-page" class="page-content">
+                <div class="card">
+                    <h2>Ders Saatleri Tablosu</h2>
+                    <p style="margin: 0 0 16px; color: #7f8c8d;">Tüm ders saatleri özet tabı. Ders adlarını tıklamak için kısa bir düzenleme yapmak zorunludur. Lütfen sağ taraftaki "Düzenle" butonlarını kullanınız.</p>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ders Adı</th>
+                                    <th>Şube</th>
+                                    <th>Saat</th>
+                                    <th>Günler</th>
+                                    <th>Antrenör</th>
+                                    <th>Kapasite</th>
+                                    <th>Ders Sayısı</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prices Page -->
+            <div id="prices-page" class="page-content">
+                <div class="card">
+                    <h2>Fiyatlandırma</h2>
+                    <div id="pricesContainer"></div>
+                </div>
+            </div>
+
+            <!-- Events Page -->
+            <div id="events-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Etkinlikler & Yarışmalar</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openEventModal()">+ Yeni Etkinlik</button>
+                    </div>
+                    <!-- Filters -->
+                    <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
+                        <label><strong>Filtre:</strong></label>
+                        <select id="eventBranchFilter" onchange="renderEventsList()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Tüm Şubeler</option>
+                        </select>
+                        <select id="eventTimeFilter" onchange="renderEventsList()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Tüm Saatler</option>
+                        </select>
+                    </div>
+                    <div id="eventsList"></div>
+                </div>
+            </div>
+
+            <!-- Announcements Page -->
+            <div id="announcements-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Duyurular</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openAnnouncementModal()">+ Yeni Duyuru</button>
+                    </div>
+                    <div id="announcementsList"></div>
+                </div>
+            </div>
+
+            <!-- Market Page -->
+            <div id="market-page" class="page-content">
+                <div class="card">
+                    <h2>🛒 Market</h2>
+                    <div id="adminMarketProducts" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="text-align: center; padding: 40px; color: #95a5a6; grid-column: 1/-1;">Ürünler yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standards Page -->
+            <div id="standards-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap;">
+                        <div>
+                            <h2>🎯 Barajlar</h2>
+                            <p style="margin: 6px 0 0; color: #7f8c8d; font-size: 0.95em;">Burada eklediğiniz barajlar sadece size bağlı antrenör ve öğrenciler için görünür. Süper admin barajları tüm sistemde görünmeye devam eder.</p>
+                        </div>
+                        <button class="btn btn-success" onclick="openAdminStandardModal()">+ Yeni Baraj Ekle</button>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Baraj Adı</label>
+                                <input type="text" id="adminStandardNameFilter" placeholder="Ara..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Cinsiyet</label>
+                                <select id="adminStandardGenderFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Erkek">Erkek</option>
+                                    <option value="Kız">Kız</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Stil</label>
+                                <select id="adminStandardStyleFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Serbest">Serbest</option>
+                                    <option value="Kurbağalama">Kurbağalama</option>
+                                    <option value="Sırtüstü">Sırtüstü</option>
+                                    <option value="Kelebekçe">Kelebekçe</option>
+                                    <option value="Karma">Karma</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Mesafe</label>
+                                <select id="adminStandardDistanceFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="50">50m</option>
+                                    <option value="100">100m</option>
+                                    <option value="200">200m</option>
+                                    <option value="400">400m</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Doğum Yılı</label>
+                                <input type="number" id="adminStandardBirthYearFilter" placeholder="Yıl" min="1990" max="2030" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                        </div>
+                        <button class="btn btn-info btn-sm" onclick="filterAdminStandards()" style="margin-top: 10px;">Filtrele</button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Baraj Adı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Doğum Yılı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Cinsiyet</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Stil</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Mesafe</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Baraj Zamanı</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminStandardsTableBody">
+                                <tr>
+                                    <td colspan="7" style="padding: 20px; text-align: center; color: #95a5a6;">Barajlar yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discounts Page -->
+            <div id="discounts-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>İndirim Kodları</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openDiscountModal()">+ Yeni İndirim Kodu</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Kod</th>
+                                    <th>İndirim Yüzdesi</th>
+                                    <th>Geçerlilik Tarihi</th>
+                                    <th>Kullanım Limiti</th>
+                                    <th>Kullanım Sayısı</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="discountsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finance Page -->
+            <div id="finance-page" class="page-content">
+                <div class="card">
+                    <h2>Gelir/Gider Yönetimi</h2>
+
+                    <!-- Summary Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <div class="stat-card" style="border-left-color: #8e44ad;">
+                            <h3>Ciro</h3>
+                            <div class="value" id="currentTurnover">₺0.00</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #27ae60;">
+                            <h3>Anlık Gelir</h3>
+                            <div class="value" id="currentIncome">₺0.00</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #e74c3c;">
+                            <h3>Anlık Gider</h3>
+                            <div class="value" id="currentExpense">₺0.00</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #3498db;">
+                            <h3>Kâr</h3>
+                            <div class="value" id="currentProfit">₺0.00</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button class="btn btn-success btn-sm" onclick="openExpenseModal()">+ Gider Ekle</button>
+                        <button class="btn btn-info btn-sm" onclick="openDetailsModalFromFilters()">Detay</button>
+                    </div>
+
+                    <!-- Branch/Schedule Filter -->
+                    <div style="margin-bottom: 20px;">
+                        <label><strong>Filtre:</strong></label>
+                        <select id="financeBranchFilter" onchange="loadFinance()" style="margin-left: 10px; padding: 5px;">
+                            <option value="">Tüm Şubeler</option>
+                        </select>
+                        <select id="financeScheduleFilter" onchange="loadFinance()" style="margin-left: 10px; padding: 5px;">
+                            <option value="">Tüm Saatler</option>
+                        </select>
+                        <select id="financeRangeFilter" onchange="loadFinance()" style="margin-left: 10px; padding: 5px;">
+                            <option value="week">Bu Hafta</option>
+                            <option value="twoWeeks">Son 2 Hafta</option>
+                            <option value="month">Son 1 Ay</option>
+                            <option value="twoMonths">Son 2 Ay</option>
+                            <option value="threeMonths">Son 3 Ay</option>
+                            <option value="year">Son 1 Yıl</option>
+                            <option value="all" selected>Tüm Zamanlar</option>
+                        </select>
+                    </div>
+
+                    <div id="financeRangeInfo" style="margin: -8px 0 16px; color: #6f8091; font-size: 0.92em;"></div>
+
+                    <div style="margin-top: 20px;">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                    <div id="financeTable" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+
+            <!-- Chat Page -->
+            <div id="chat-page" class="page-content">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2>💬 Mesajlaşma</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openNewGroupChatModal()">+ Grup Sohbeti</button>
+                            <button class="btn btn-info btn-sm" onclick="openNewChatEmailPage()">+ Kişisel Sohbet</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-split">
+                        <!-- Chat List -->
+                        <div class="panel-box">
+                            <h4 style="margin-bottom: 15px;">Sohbetlerim</h4>
+                            <div id="adminChatListContainer" class="panel-scroll">
+                                <p style="color: #95a5a6; text-align: center;">Sohbetler yükleniyor...</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat View -->
+                        <div class="panel-box">
+                            <div id="adminChatViewContainer">
+                                <div style="text-align: center; padding: 50px; color: #95a5a6;">
+                                    <h4>Sohbet Seçiniz</h4>
+                                    <p>Sol taraftan bir sohbet seçerek mesajlaşmaya başlayabilirsiniz.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat View Page (Hidden by default) -->
+            <div id="admin-chat-view-page" class="page-content" style="display: none;">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2 id="adminChatViewTitle">💬 Sohbet</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="closeAdminChatView()">← Geri Dön</button>
+                    </div>
+
+                    <div class="chat-shell">
+                        <div id="adminChatMessages" class="chat-messages">
+                            <p style="color: #95a5a6; text-align: center;">Mesajlar yükleniyor...</p>
+                        </div>
+
+                        <form id="adminChatForm" class="chat-form-inline">
+                            <input type="text" id="adminChatMessageInput" placeholder="Mesajınızı yazın..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+                            <button type="submit" class="btn btn-success">Gönder</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Chat Email Page -->
+            <div id="admin-new-chat-email-page" class="page-content" style="display: none;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>Yeni Kişisel Sohbet</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="closeAdminNewChatEmailPage()">← Geri Dön</button>
+                    </div>
+
+                    <form id="adminNewChatEmailForm">
+                        <div class="form-group">
+                            <label>Kullanıcı Email Adresi:</label>
+                            <input type="email" id="adminChatEmailInput" placeholder="kullanici@email.com" required>
+                            <div id="adminChatEmailUserInfo" style="margin-top: 5px; font-size: 0.9em;"></div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Sohbet Başlat</button>
+                            <button type="button" class="btn btn-primary" onclick="closeAdminNewChatEmailPage()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch Modal -->
+    <div id="branchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Şube Yönetimi</h2>
+                <button class="close-btn" onclick="closeBranchModal()">&times;</button>
+            </div>
+            <form id="branchForm">
+                <div class="form-group">
+                    <label>Şube Adı:</label>
+                    <input type="text" id="branchName" required>
+                </div>
+                <div class="form-group">
+                    <label>Adres:</label>
+                    <textarea id="branchAddress" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="tel" id="branchPhone" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeBranchModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Trainer Modal -->
+    <div id="trainerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Antrenör Yönetimi</h2>
+                <button class="close-btn" onclick="closeTrainerModal()">&times;</button>
+            </div>
+            <form id="trainerForm">
+                <div class="form-group">
+                    <label>Adı Soyadı:</label>
+                    <input type="text" id="trainerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="trainerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Şifre:</label>
+                    <input type="password" id="trainerPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Çalıştığı Şubeler (Çoklu seçim):</label>
+                    <select id="trainerBranches" multiple required>
+                        <option value="">-- Şube Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeTrainerModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div id="scheduleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ders Saati Yönetimi</h2>
+                <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
+            </div>
+            <form id="scheduleForm">
+                <div class="form-group">
+                    <label>Şube:</label>
+                    <select id="scheduleBranch" required>
+                        <option value="">-- Şube Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ders Adı (Opsiyonel):</label>
+                    <input type="text" id="scheduleCustomName" placeholder="Örn: Harika Dersi, Başlangıç Yüzüşü vb.">
+                </div>
+                <div class="form-group">
+                    <label>Saat:</label>
+                    <input type="time" id="scheduleTime" required>
+                </div>
+                <div class="form-group">
+                    <label>Ders Tipi:</label>
+                    <select id="scheduleLessonType" required>
+                        <option value="group">Grup Dersi</option>
+                        <option value="private">Özel Ders</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ders Başlangıç Tarihi:</label>
+                    <input type="date" id="scheduleStartDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Ders Günleri:</label>
+                    <div id="scheduleDaysPicker" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 10px; border: 1px solid #dbe4ef; border-radius: 8px; background: #f8fbff;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Antrenör Atamaları:</label>
+                    <div id="scheduleTrainerAssignments"></div>
+                    <button type="button" class="btn btn-info btn-sm" onclick="addScheduleTrainerAssignmentRow()" style="margin-top: 10px; width: auto;">+ Antrenör Ekle</button>
+                </div>
+                <div class="form-group">
+                    <label>Kapasite (Toplamda kaç öğrenci alabilir):</label>
+                    <input type="number" id="scheduleCapacity" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Ders Sayısı (Sezon boyunca toplamda kaç saat):</label>
+                    <input type="number" id="scheduleLessonsCount" min="1" value="1" required>
+                </div>
+                <div id="scheduleCalendarPreview" style="margin: 8px 0 12px; padding: 12px; border: 1px solid #dbe9f6; border-radius: 8px; background: #f8fbff; color: #2c3e50;">
+                    Takvim önizlemesi burada görünecek.
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeScheduleModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="scheduleCompensationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ders Maaşı Yönetimi</h2>
+                <button class="close-btn" onclick="closeScheduleCompensationModal()">&times;</button>
+            </div>
+            <form id="scheduleCompensationForm">
+                <div id="scheduleCompensationSummary" style="margin-bottom: 16px; padding: 14px; border-radius: 8px; background: #f8fbff; border: 1px solid #dbe9f6; color: #2c3e50;"></div>
+                <div id="scheduleCompensationAssignments"></div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeScheduleCompensationModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni Etkinlik</h2>
+                <button class="close-btn" onclick="closeEventModal()">&times;</button>
+            </div>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label><strong>Etkinlik Adı:</strong></label>
+                    <input type="text" id="eventName" required>
+                </div>
+                <div class="form-group">
+                    <label><strong>Etkinlik Tarihi:</strong></label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group">
+                    <label><strong>Şube:</strong></label>
+                    <select id="eventBranch" required>
+                        <option value="">Tüm Şubeler</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><strong>Saat:</strong></label>
+                    <select id="eventTime" required>
+                        <option value="">Tüm Saatler</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><strong>Etkinlik Türü:</strong></label>
+                    <select id="eventType" required>
+                        <option value="">Seçiniz...</option>
+                        <option value="Etkinlik">Etkinlik</option>
+                        <option value="Yarışma">Yarışma</option>
+                        <option value="Kamp">Kamp</option>
+                        <option value="Diğer">Diğer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><strong>Açıklama:</strong></label>
+                    <textarea id="eventDescription" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label><strong>Konum:</strong></label>
+                    <input type="text" id="eventLocation" placeholder="Opsiyonel">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-success" onclick="saveEvent()">Kaydet</button>
+                    <button type="button" class="btn btn-danger" onclick="closeEventModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Announcement Modal -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni Duyuru</h2>
+                <button class="close-btn" onclick="closeAnnouncementModal()">&times;</button>
+            </div>
+            <form id="announcementForm">
+                <div class="form-group">
+                    <label>Duyuru Başlığı:</label>
+                    <input type="text" id="announcementTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Duyuru İçeriği:</label>
+                    <textarea id="announcementContent" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Alıcıları Seçiniz:</label>
+                    <select id="announcementTarget" required>
+                        <option value="all">Herkese</option>
+                        <option value="trainers">Tüm Antrenörlere</option>
+                        <option value="schedule">Belirli Saat/Şubeye</option>
+                    </select>
+                </div>
+                <div id="scheduleSelectDiv" style="display: none;">
+                    <div class="form-group">
+                        <label>Şube Seçiniz:</label>
+                        <select id="announcementBranch">
+                            <option value="">-- Şube Seçiniz --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Saat Seçiniz:</label>
+                        <select id="announcementSchedule">
+                            <option value="">-- Saat Seçiniz --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Gönder</button>
+                    <button type="button" class="btn btn-primary" onclick="closeAnnouncementModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Income Modal -->
+    <div id="incomeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Gelir Ekle</h2>
+                <button class="close-btn" onclick="closeIncomeModal()">&times;</button>
+            </div>
+            <form id="incomeForm">
+                <div class="form-group">
+                    <label>Gelir Açıklaması:</label>
+                    <input type="text" id="incomeDescription" required>
+                </div>
+                <div class="form-group">
+                    <label>Tutar (₺):</label>
+                    <input type="number" id="incomeAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Şube:</label>
+                    <select id="incomeBranch" required>
+                        <option value="">-- Şube Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ders Saati:</label>
+                    <select id="incomeSchedule" required>
+                        <option value="">-- Saat Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tarih:</label>
+                    <input type="date" id="incomeDate" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeIncomeModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Gider Ekle</h2>
+                <button class="close-btn" onclick="closeExpenseModal()">&times;</button>
+            </div>
+            <form id="expenseForm">
+                <div class="form-group">
+                    <label>Gider Açıklaması:</label>
+                    <input type="text" id="expenseDescription" required>
+                </div>
+                <div class="form-group">
+                    <label>Tutar (₺):</label>
+                    <input type="number" id="expenseAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Tarih:</label>
+                    <input type="date" id="expenseDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Şube:</label>
+                    <select id="expenseBranch" onchange="updateExpenseScheduleOptions()">
+                        <option value="">-- Şube Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Saat:</label>
+                    <select id="expenseSchedule">
+                        <option value="">-- Saat Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeExpenseModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Secretary Modal -->
+    <div id="secretaryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Sekreter Yönetimi</h2>
+                <button class="close-btn" onclick="closeSecretaryModal()">&times;</button>
+            </div>
+            <form id="secretaryForm">
+                <div class="form-group">
+                    <label>Adı Soyadı:</label>
+                    <input type="text" id="secretaryName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="secretaryEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Şifre:</label>
+                    <input type="password" id="secretaryPassword" minlength="6" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeSecretaryModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Discount Modal -->
+    <div id="discountModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>İndirim Kodu Yönetimi</h2>
+                <button class="close-btn" onclick="closeDiscountModal()">&times;</button>
+            </div>
+            <form id="discountForm">
+                <div class="form-group">
+                    <label>İndirim Kodu:</label>
+                    <input type="text" id="discountCode" required placeholder="örn: YAZ30">
+                </div>
+                <div class="form-group">
+                    <label>İndirim Yüzdesi (%):</label>
+                    <input type="number" id="discountPercentage" min="1" max="100" required placeholder="örn: 30">
+                </div>
+                <div class="form-group">
+                    <label>Geçerlilik Tarihi:</label>
+                    <input type="date" id="discountExpiryDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Kullanım Limiti (İsteğe bağlı):</label>
+                    <input type="number" id="discountUsageLimit" min="1" placeholder="örn: 50 (sınırsız için boş bırakın)">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeDiscountModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Group Chat Modal -->
+    <div id="adminNewGroupChatModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni Grup Sohbeti</h2>
+                <button class="close-btn" onclick="closeAdminNewGroupChatModal()">&times;</button>
+            </div>
+            <form id="adminNewGroupChatForm">
+                <div class="form-group">
+                    <label>Grup Adı:</label>
+                    <input type="text" id="adminGroupChatName" placeholder="Grup adı giriniz" required>
+                </div>
+                <div class="form-group">
+                    <label>Grup Profil Fotoğrafı:</label>
+                    <input type="file" id="adminGroupChatPhoto" accept="image/*">
+                    <small style="color: #666;">İsteğe bağlı - yüklemeyi başarısız olursa varsayılan fotoğraf kullanılır</small>
+                </div>
+                <div class="form-group">
+                    <label>Katılımcı Email Adresleri (virgülle ayırın):</label>
+                    <textarea id="adminGroupChatUserEmails" placeholder="email1@example.com, email2@example.com" rows="4" required></textarea>
+                    <small style="color: #666;">Sistemde kayıtlı kullanıcıların email adreslerini giriniz.</small>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Grup Oluştur</button>
+                    <button type="button" class="btn btn-primary" onclick="closeAdminNewGroupChatModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Club Profile Edit Modal -->
+    <div id="clubProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Kulüp Profili Düzenle</h2>
+                <button class="close-btn" onclick="closeClubProfileModal()">&times;</button>
+            </div>
+            <form id="clubProfileForm">
+                <div class="form-group">
+                    <label>Kulüp Adı:</label>
+                    <input type="text" id="editClubName" required>
+                </div>
+                <div class="form-group">
+                    <label>Kulüp Logosu:</label>
+                    <input type="file" id="editClubLogo" accept="image/*">
+                    <small style="color: #666;">Değiştirmek istemiyorsanız boş bırakın</small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <img id="editClubLogoPreview" src="" alt="Logo Önizlemesi" style="max-width: 200px; max-height: 200px; border-radius: 5px; display: none;">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeClubProfileModal()">İptal</button>
+                </div>
+            </form>
+            <div id="clubProfileMessage" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div id="adminGroupManagementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Grup Ayarları</h2>
+                <button class="close-btn" onclick="closeAdminGroupManagementModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img id="adminGroupCurrentPhoto" src="" alt="Grup Fotoğrafı" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #ddd;">
+                </div>
+                <form id="adminGroupManagementForm">
+                    <div class="form-group">
+                        <label>Grup Adı:</label>
+                        <input type="text" id="adminGroupManageName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Profil Fotoğrafı:</label>
+                        <input type="file" id="adminGroupManagePhoto" accept="image/*">
+                        <small style="color: #666;">Değiştirmek istemiyorsanız boş bırakın</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Üye Ekle (Email):</label>
+                        <input type="email" id="adminGroupAddMemberEmail" placeholder="uye@email.com">
+                        <button type="button" class="btn btn-info btn-sm" onclick="addAdminGroupMember()" style="margin-top: 5px;">Üye Ekle</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Mevcut Üyeler:</label>
+                        <div id="adminGroupMembersList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                            <!-- Üyeler burada listelenecek -->
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteAdminGroup()">Grubu Sil</button>
+                        <button type="button" class="btn btn-primary" onclick="closeAdminGroupManagementModal()">İptal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminStandardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni Baraj Ekle</h2>
+                <button class="close-btn" onclick="closeAdminStandardModal()">&times;</button>
+            </div>
+            <form id="adminAddStandardForm">
+                <div class="form-group">
+                    <label>Baraj Adı:</label>
+                    <input type="text" id="adminStandardName" placeholder="ör: Bölge Şampiyonası" required>
+                </div>
+                <div class="form-group">
+                    <label>Doğum Yılı:</label>
+                    <input type="number" id="adminStandardBirthYear" min="1990" max="2030" placeholder="ör: 2013" required>
+                </div>
+                <div class="form-group">
+                    <label>Cinsiyet:</label>
+                    <select id="adminStandardGender" required>
+                        <option value="">Seçiniz</option>
+                        <option value="Erkek">Erkek</option>
+                        <option value="Kız">Kız</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Stil:</label>
+                    <select id="adminStandardStyle" required>
+                        <option value="">Seçiniz</option>
+                        <option value="Serbest">Serbest</option>
+                        <option value="Kurbağalama">Kurbağalama</option>
+                        <option value="Sırtüstü">Sırtüstü</option>
+                        <option value="Kelebekçe">Kelebekçe</option>
+                        <option value="Karma">Karma</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mesafe:</label>
+                    <select id="adminStandardDistance" required>
+                        <option value="">Seçiniz</option>
+                        <option value="50">50m</option>
+                        <option value="100">100m</option>
+                        <option value="200">200m</option>
+                        <option value="400">400m</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Baraj Zamanı (MM:SS.CC):</label>
+                    <input type="text" id="adminStandardTime" placeholder="ör: 00:31.45" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Barajı Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeAdminStandardModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="adminEditStandardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Barajı Düzenle</h2>
+                <button class="close-btn" onclick="closeAdminEditStandardModal()">&times;</button>
+            </div>
+            <form id="adminEditStandardForm">
+                <input type="hidden" id="adminEditStandardId">
+                <div class="form-group">
+                    <label>Baraj Adı:</label>
+                    <input type="text" id="adminEditStandardName" required>
+                </div>
+                <div class="form-group">
+                    <label>Doğum Yılı:</label>
+                    <input type="number" id="adminEditStandardBirthYear" min="1990" max="2030" required>
+                </div>
+                <div class="form-group">
+                    <label>Cinsiyet:</label>
+                    <select id="adminEditStandardGender" required>
+                        <option value="">Seçiniz</option>
+                        <option value="Erkek">Erkek</option>
+                        <option value="Kız">Kız</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Stil:</label>
+                    <select id="adminEditStandardStyle" required>
+                        <option value="">Seçiniz</option>
+                        <option value="Serbest">Serbest</option>
+                        <option value="Kurbağalama">Kurbağalama</option>
+                        <option value="Sırtüstü">Sırtüstü</option>
+                        <option value="Kelebekçe">Kelebekçe</option>
+                        <option value="Karma">Karma</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mesafe:</label>
+                    <select id="adminEditStandardDistance" required>
+                        <option value="">Seçiniz</option>
+                        <option value="50">50m</option>
+                        <option value="100">100m</option>
+                        <option value="200">200m</option>
+                        <option value="400">400m</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Baraj Zamanı (MM:SS.CC):</label>
+                    <input type="text" id="adminEditStandardTime" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                    <button type="button" class="btn btn-primary" onclick="closeAdminEditStandardModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <script defer src="../js/config.js"></script>
+    <script defer src="../js/mobile-responsive.js"></script>
+    <script defer src="../js/admin.js"></script>
+    <script defer src="../js/profile-common.js"></script>
+    <script defer src="../js/chat-common.js"></script>
+</body>
+</html>

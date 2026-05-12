@@ -1,0 +1,65 @@
+/* Parent Panel Specific Styles */
+
+.attendance-chart {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.installment-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.installment-card.paid {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.installment-card.pending {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+/* Event Calendar Responsive */
+@media (max-width: 768px) {
+    #eventCalendar {
+        font-size: 0.9em;
+    }
+    
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-card h3 {
+        font-size: 0.9em;
+    }
+    
+    .stat-card .value {
+        font-size: 1.5em;
+    }
+}
+
+@media (max-width: 480px) {
+    .installment-card {
+        padding: 15px;
+        margin-bottom: 12px;
+    }
+    
+    .attendance-chart {
+        padding: 15px;
+    }
+    
+    #eventCalendar {
+        font-size: 0.8em;
+        padding: 8px;
+    }
+    
+    .stat-card h3 {
+        font-size: 0.8em;
+    }
+    
+    .stat-card .value {
+        font-size: 1.2em;
+    }
+}

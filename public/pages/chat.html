@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sohbet</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/trainer.css">
+</head>
+<body>
+    <div class="chat-fullpage-container">
+        <div class="card" style="max-width:600px; margin:40px auto;">
+            <h2>Sohbetler</h2>
+            <div id="chatListContainer"></div>
+            <button class="btn btn-primary" onclick="openNewChatEmailPage()">Yeni Sohbet Başlat</button>
+            <button class="btn btn-info" style="margin-left:10px;" onclick="openNewGroupChatModal()">Grup Sohbeti Başlat</button>
+        </div>
+        <div id="new-chat-email-page" class="page-content" style="display:none;">
+            <div class="card" style="max-width:400px; margin:40px auto;">
+                <h2>Yeni Sohbet Başlat</h2>
+                <form id="newChatEmailForm" style="display:flex; flex-direction:column; gap:12px;">
+                    <input id="chatEmailInput" type="email" placeholder="E-posta adresi" required style="padding:8px; border-radius:5px; border:1px solid #ccc;" oninput="chatEmailLookupUser(event)">
+                    <div id="chatEmailUserInfo" style="font-size:1em; color:#2980b9; margin-bottom:8px;"></div>
+                    <button type="submit" class="btn btn-primary">Sohbet Başlat</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeNewChatEmailPage()">Geri</button>
+                </form>
+            </div>
+        </div>
+        <div id="chat-view-page" class="page-content" style="display:none;">
+            <div class="card" style="max-width:600px; margin:0 auto;">
+                <div class="page-toolbar" style="margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h2 id="chatViewTitle" style="margin:0;">Sohbet</h2>
+                        <button id="groupManageBtn" class="btn btn-info btn-sm" onclick="openGroupManagement()" style="display: none;">⚙️ Grup Ayarları</button>
+                    </div>
+                    <button class="btn btn-secondary" onclick="closeChatView()">Geri</button>
+                </div>
+                <div id="chatMessages" style="height:50vh; overflow-y:auto; background:#f4f8fb; border-radius:8px; padding:16px; margin-bottom:10px;"></div>
+                <form id="chatForm" class="chat-form-inline" style="border-top:1px solid #eee; padding-top:10px;">
+                    <input id="chatInput" type="text" placeholder="Mesaj yaz..." style="flex:1; padding:12px; border-radius:5px 0 0 5px; border:1px solid #ccc; border-right:none; outline:none;">
+                    <button type="submit" class="btn btn-primary" style="border-radius:0 5px 5px 0;">Gönder</button>
+                </form>
+            </div>
+        </div>
+        <div id="newGroupChatModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+            <div style="background:white; border-radius:10px; max-width:400px; width:100%; padding:0; box-shadow:0 2px 16px #aaa; display:flex; flex-direction:column;">
+                <div style="background:#2980b9; color:white; padding:16px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Grup Sohbeti Başlat</span>
+                    <button onclick="closeNewGroupChatModal()" style="background:none; border:none; color:white; font-size:1.2em; cursor:pointer;">&times;</button>
+                </div>
+                <form id="newGroupChatForm" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+                    <input id="groupChatName" type="text" placeholder="Grup Adı" required style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                    <div class="form-group">
+                        <label>Grup Profil Fotoğrafı:</label>
+                        <input type="file" id="groupChatPhoto" accept="image/*" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                        <small style="color: #666;">İsteğe bağlı - yüklemeyi başarısız olursa varsayılan fotoğraf kullanılır</small>
+                    </div>
+                    <textarea id="groupChatUserEmails" rows="2" placeholder="Kullanıcı e-posta adresleri (virgülle ayırın)" required style="padding:8px; border-radius:5px; border:1px solid #ccc;"></textarea>
+                    <button type="submit" class="btn btn-primary">Grup Oluştur</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Group Management Modal -->
+        <div id="groupManagementModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+            <div style="background:white; border-radius:10px; max-width:500px; width:100%; padding:0; box-shadow:0 2px 16px #aaa; display:flex; flex-direction:column;">
+                <div style="background:#2980b9; color:white; padding:16px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Grup Ayarları</span>
+                    <button onclick="closeGroupManagementModal()" style="background:none; border:none; color:white; font-size:1.2em; cursor:pointer;">&times;</button>
+                </div>
+                <div style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img id="groupCurrentPhoto" src="" alt="Grup Fotoğrafı" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #ddd;">
+                    </div>
+                    <form id="groupManagementForm" style="display:flex; flex-direction:column; gap:12px;">
+                        <input id="groupManageName" type="text" placeholder="Grup Adı" required style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                        <div class="form-group">
+                            <label>Yeni Profil Fotoğrafı:</label>
+                            <input type="file" id="groupManagePhoto" accept="image/*" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                            <small style="color: #666;">Değiştirmek istemiyorsanız boş bırakın</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Yeni Üye Ekle (Email):</label>
+                            <input type="email" id="groupAddMemberEmail" placeholder="uye@email.com" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                            <button type="button" class="btn btn-info btn-sm" onclick="addGroupMember()" style="margin-top: 5px;">Üye Ekle</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Mevcut Üyeler:</label>
+                            <div id="groupMembersList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                                <!-- Üyeler burada listelenecek -->
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; justify-content:flex-end;">
+                            <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                            <button type="button" class="btn btn-danger" onclick="deleteGroup()">Grubu Sil</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeGroupManagementModal()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="../js/config.js"></script>
+    <script defer src="../js/trainer.js"></script>
+    <script defer src="../js/profile-common.js"></script>
+    <script defer src="../js/chat-common.js"></script>
+    <script>
+        // Initialize chat page
+        window.addEventListener('load', async () => {
+            const userId = sessionStorage.getItem('user_id');
+            const role = sessionStorage.getItem('user_role');
+
+            if (!userId || role !== 'trainer') {
+                window.location.href = '../index.html';
+                return;
+            }
+
+            currentTrainer = {
+                id: userId,
+                name: sessionStorage.getItem('user_name'),
+                email: sessionStorage.getItem('user_email')
+            };
+
+            // Load chat list
+            loadChatList();
+        });
+    </script>
+</body>
+</html>

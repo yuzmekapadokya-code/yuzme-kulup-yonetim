@@ -1,0 +1,44 @@
+/* Admin Panel Specific Styles */
+
+.activity-item {
+    padding: 12px;
+    background: #f9f9f9;
+    border-left: 4px solid var(--primary);
+    margin-bottom: 10px;
+    border-radius: 3px;
+}
+
+.price-card input {
+    width: 150px;
+    padding: 8px;
+    border: 1px solid var(--light);
+    border-radius: 5px;
+}
+
+.price-card input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+/* Responsive Design */
+@media (max-width: 768px) {
+    .price-card input {
+        width: 120px;
+        font-size: 0.9em;
+    }
+    
+    .modal-content {
+        max-width: 95%;
+    }
+}
+
+@media (max-width: 480px) {
+    .price-card input {
+        width: 100%;
+        max-width: 150px;
+    }
+    
+    .activity-item {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+}

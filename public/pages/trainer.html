@@ -1,0 +1,1403 @@
+
+<!DOCTYPE html> 
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antrenör Paneli</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/trainer.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #95a5a6;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8em;
+        }
+        .postpone-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .postpone-choice-card {
+            border: 1px solid #dbe5f0;
+            border-radius: 10px;
+            padding: 14px;
+            background: #f8fbff;
+            cursor: pointer;
+            text-align: left;
+        }
+        .postpone-choice-card:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            background: #f3f5f7;
+        }
+        .postpone-choice-card strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #1f3c5a;
+        }
+        .postpone-calendar-shell {
+            border: 1px solid #dbe5f0;
+            border-radius: 10px;
+            padding: 14px;
+            background: #fff;
+        }
+        .postpone-calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .postpone-calendar-nav {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #d1d9e2;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .postpone-calendar-nav:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .postpone-calendar-weekdays,
+        .postpone-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .postpone-calendar-weekdays {
+            margin-bottom: 8px;
+            color: #6f8091;
+            font-size: 0.85em;
+            text-align: center;
+        }
+        .postpone-calendar-grid {
+            min-height: 240px;
+        }
+        .postpone-day-cell {
+            min-height: 52px;
+            border-radius: 10px;
+        }
+        .postpone-day-button {
+            width: 100%;
+            height: 100%;
+            min-height: 52px;
+            border: 1px solid #cfe0f3;
+            border-radius: 10px;
+            background: #eef6ff;
+            color: #1f3c5a;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .postpone-day-button small {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.74em;
+            color: #5f7286;
+            font-weight: 500;
+        }
+        .postpone-day-button.selected {
+            background: #f39c12;
+            border-color: #d68910;
+            color: #fff;
+        }
+        .postpone-day-button.selected small {
+            color: rgba(255, 255, 255, 0.88);
+        }
+        .postpone-selected-date {
+            margin: 12px 0 0;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>🏊 ANTRENÖR</h3>
+            <ul class="nav-menu trainer-nav-menu">
+                <li><a class="nav-link active" data-page="dashboard">Dashboard</a></li>
+                <li><a class="nav-link" data-page="classes">Dersler</a></li>
+                <li><a class="nav-link" data-page="attendance">Yoklama</a></li>
+                <li><a class="nav-link" data-page="students">Öğrenciler</a></li>
+                <li><a class="nav-link" data-page="performance">Derece Girişi</a></li>
+                <li><a class="nav-link" data-page="performance-report">📊 Performans Raporu</a></li>
+                <li><a class="nav-link" data-page="standards">🎯 Barajlar</a></li>
+                <li><a class="nav-link" data-page="sell-workouts">Antrenman Sat</a></li>
+                <li><a class="nav-link" data-page="buy-workouts">Antrenman Satın Al</a></li>
+                <li><a class="nav-link" data-page="market">🛒 Market (Kredi)</a></li>
+                <li><a class="nav-link" data-page="credit-request">Kredi Al</a></li>
+                <li><a class="nav-link" data-page="cash-withdrawal">💸 Kredileri Bozdur</a></li>
+                <li><a class="nav-link" data-page="ai-workout">Yapay Zeka Antrenman</a></li>
+                <li><a class="nav-link" data-page="chat">Sohbet</a></li>
+                <!-- Antrenman Ekranı - Kütüphane sekmesinden antrenman seçebilir -->
+                <li><button class="nav-link" id="screenBtn" onclick="window.open('ekran.html#library', '_blank')" style="background: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%); color: white; border-radius: 5px; margin-top: 10px; border: none; cursor: pointer; width: 100%; text-align: left; padding: 10px 15px;">
+                    <i class="fas fa-tv"></i> 🎬 Antrenman Ekranı
+                </button></li>
+            </ul>
+
+            <button class="logout-btn" id="logoutBtn">Çıkış Yap</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="user-info">
+                    <div class="credit-info">
+                        <span class="credit-label">Kredi Bakiyesi:</span>
+                        <span class="user-credits credit-balance">0</span>
+                        <i class="fas fa-coins credit-icon"></i>
+                    </div>
+                    <span id="userName">Antrenör</span>
+                    <div class="user-avatar" id="userAvatar">A</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Toplam Öğrenci</h3>
+                        <div class="value" id="totalStudents">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Bugünün Dersleri</h3>
+                        <div class="value" id="todayClasses">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Kaydedilen Antrenmanlar</h3>
+                        <div class="value" id="publishedWorkouts">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Ders Ücretleri</h3>
+                        <div class="value" id="trainerHourlyRate">Tanımsız</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tahmini Toplam Maaş</h3>
+                        <div class="value" id="trainerEstimatedSalary">₺0,00</div>
+                    </div>
+                </div>
+
+                <div class="card salary-tracker-card" style="margin-top: 20px;">
+                    <h3>Maaş Takibi</h3>
+                    <div id="salarySummaryContainer"></div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Son Antrenmanlar</h3>
+                    <div id="recentWorkouts"></div>
+                </div>
+            </div>
+
+            <!-- Classes Page -->
+            <div id="classes-page" class="page-content">
+                <div class="card">
+                    <h2>Dersler</h2>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Şube</th>
+                                    <th>Saat</th>
+                                    <th>Kapasite</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classesTable"></tbody>
+                        </table>
+                    </div>
+
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #e9ecef;">
+
+                    <h3 style="margin-bottom: 8px;">Müsaitlik Saatlerim</h3>
+                    <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Yöneticinizin açtığı şube saatlerinden müsait olduklarınızı seçin.</p>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; align-items: start; margin-bottom: 12px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Şube</label>
+                            <select id="trainerAvailabilityBranchSelect" onchange="loadTrainerAvailabilityForBranch()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">-- Şube Seçiniz --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Gün</label>
+                            <select id="trainerAvailabilityDaySelect" onchange="loadTrainerAvailabilityForBranch()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="monday">Pazartesi</option>
+                                <option value="tuesday">Salı</option>
+                                <option value="wednesday">Çarşamba</option>
+                                <option value="thursday">Perşembe</option>
+                                <option value="friday">Cuma</option>
+                                <option value="saturday">Cumartesi</option>
+                                <option value="sunday">Pazar</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Müsait Olduğun Saatler</label>
+                            <div id="trainerAvailabilitySlotPicker" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fbff;"></div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group" style="justify-content: flex-start; margin-bottom: 10px;">
+                        <button class="btn btn-success" onclick="saveTrainerAvailability()">Müsaitliği Kaydet</button>
+                    </div>
+
+                    <div id="trainerAvailabilityStatus" style="margin-bottom: 14px; color: #7f8c8d;"></div>
+                    <div id="trainerAvailabilitySummary" style="background: #f8fbff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; color: #2c3e50;"></div>
+
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #e9ecef;">
+
+                    <h3 style="margin-bottom: 8px;">Ders Bitiş Takvimi</h3>
+                    <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Öğrenci başlangıç tarihine göre dersin bitişini ve boşalabilecek saatleri gösterir.</p>
+                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
+                                    <th style="padding: 10px; text-align: left;">Öğrenci</th>
+                                    <th style="padding: 10px; text-align: left;">Şube</th>
+                                    <th style="padding: 10px; text-align: left;">Saat</th>
+                                    <th style="padding: 10px; text-align: left;">Başlangıç</th>
+                                    <th style="padding: 10px; text-align: left;">Planlanan Bitiş</th>
+                                    <th style="padding: 10px; text-align: left;">Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainerCompletionCalendarTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Page -->
+            <div id="attendance-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Yoklama Sistemi</h2>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label><strong>Ders Seçiniz:</strong></label>
+                        <select id="attendanceScheduleSelect" onchange="loadAttendanceForSchedule()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%; max-width: 400px;">
+                            <option value="">-- Ders Seçiniz --</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="postponeSelectedScheduleLesson()">Dersi Ertele</button>
+                        <div id="attendanceScheduleInfo" style="color:#6f8091; font-size:0.95em;"></div>
+                    </div>
+                    <div id="attendanceContainer"></div>
+                </div>
+            </div>
+
+            <!-- Students Page -->
+            <div id="students-page" class="page-content">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2>Öğrencilerim (Şube & Saat Bazlı)</h2>
+                        <input type="text" id="studentSearchInput" class="search-input-compact" placeholder="Ara..."
+                               style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px;">
+                    </div>
+                    <div id="studentsGroupContainer"></div>
+                </div>
+            </div>
+
+            <!-- Performance Page -->
+            <div id="performance-page" class="page-content">
+                <div class="card">
+                    <h2>Derece Girişi</h2>
+
+                    <!-- Branch / Schedule Filters + Student Selection -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Şube:</label>
+                            <select id="perfBranchFilter" onchange="updatePerfScheduleFilter()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Şubeler --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Saat:</label>
+                            <select id="perfScheduleFilter" onchange="loadPerformanceStudents()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Saatler --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Öğrenci Seçiniz:</label>
+                            <select id="performanceStudentSelect" onchange="loadStudentPerformances()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Öğrenci Seçiniz --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Performance Type Selection -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; gap: 20px;">
+                            <label>
+                                <input type="radio" name="performanceType" value="training" checked onchange="togglePerformanceType()">
+                                Antrenman Derecesi
+                            </label>
+                            <label>
+                                <input type="radio" name="performanceType" value="competition" onchange="togglePerformanceType()">
+                                Yarış Derecesi
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Performance Entry Form -->
+                    <div id="performanceEntryForm" style="display: none; background: #f9f9f9; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                        <h3 id="performanceFormTitle">Yeni Antrenman Derecesi</h3>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label>Stil:</label>
+                                <select id="performanceStyle" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                    <option value="">-- Stil Seçiniz --</option>
+                                    <option value="Serbest">Serbest</option>
+                                    <option value="Sırt">Sırt</option>
+                                    <option value="Kurbağa">Kurbağa</option>
+                                    <option value="Kelebek">Kelebek</option>
+                                    <option value="Karışık">Karışık</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Mesafe (metre):</label>
+                                <select id="performanceDistance" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                    <option value="">-- Mesafe Seçiniz --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label>Derece (dakika:saniye:salise):</label>
+                            <input type="text" id="performanceTime" placeholder="örn: 1:30:45" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label>Tarih:</label>
+                            <input type="date" id="performanceDate" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                        </div>
+
+                        <button onclick="savePerformance()" class="btn btn-success" style="width: 100%;">Dereceyi Kaydet</button>
+                    </div>
+
+                    <!-- Performance History -->
+                    <div id="performanceHistory" style="display: none;">
+                        <h3>Öğrencinin Dereceleri</h3>
+                        <div id="performanceList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Report Page -->
+            <div id="performance-report-page" class="page-content">
+                <div class="card">
+                    <h2>📊 Performans Raporu</h2>
+                    <p style="color: #7f8c8d; margin-bottom: 20px;">Öğrencilerin performans gelişimini görüntüleyin</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Şube:</label>
+                            <select id="reportBranchFilter" onchange="loadPerformanceReport()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Şubeler --</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Saat:</label>
+                            <select id="reportScheduleFilter" onchange="loadPerformanceReport()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Saatler --</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Stil:</label>
+                            <select id="reportStyleFilter" onchange="loadPerformanceReport()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Stiller --</option>
+                                <option value="Serbest">Serbest</option>
+                                <option value="Sırt">Sırt</option>
+                                <option value="Kurbağa">Kurbağa</option>
+                                <option value="Kelebek">Kelebek</option>
+                                <option value="Karışık">Karışık</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Sporcu:</label>
+                            <select id="reportStudentFilter" onchange="loadPerformanceReport()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                                <option value="">-- Tüm Sporcular --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="performanceReportContainer" style="display: grid; gap: 20px;">
+                        <p style="text-align: center; color: #95a5a6;">Rapor yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sell Workouts Page -->
+            <div id="sell-workouts-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Satıştaki Antrenmanlarım</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openSellWorkoutModal()">+ Antrenman Satışa Çıkar</button>
+                    </div>
+                    <div id="sellWorkoutsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Buy Workouts Page -->
+            <div id="buy-workouts-page" class="page-content">
+                <div class="card">
+                    <h2>Satıştaki Antrenmanlar</h2>
+                    <div id="buyWorkoutsListContainer"></div>
+                </div>
+            </div>
+
+            <!-- Market Page -->
+            <div id="market-page" class="page-content">
+                <div class="card">
+                    <h2>🛒 Market - Kredi ile Ürün Satın Al</h2>
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <p><strong>💡 Bilgi:</strong> Aşağıdaki ürünleri kredi bakiyenizle satın alabilirsiniz. Ürünü satın almak için gerekli kredi miktarı gösterilmektedir.</p>
+                    </div>
+                    <div id="buyWorkoutsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+                        <div style="text-align: center; padding: 40px; color: #95a5a6;">Ürünler yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Credit Buy Page -->
+            <div id="credit-request-page" class="page-content">
+                <div class="card">
+                    <h2>Kredi Al</h2>
+                    <!-- Current Credit Balance -->
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 30px; text-align: center;">
+                        <h3 style="margin: 0 0 10px 0; color: #2c3e50;">Mevcut Kredi Bakiyeniz</h3>
+                        <div style="font-size: 2.5em; font-weight: bold; color: #3498db;">
+                            <span class="user-credits">0</span> Kredi
+                        </div>
+                    </div>
+                    <div id="trainerCreditPurchaseInfo" style="background: #eef7ff; border: 1px solid #cfe2ff; border-radius: 12px; padding: 18px; margin-bottom: 24px; color: #2c3e50;">
+                        EFT bilgileri yükleniyor...
+                    </div>
+                    <!-- Credit Packages -->
+                    <div style="margin-bottom: 30px;">
+                        <h3>Kredi Paketleri</h3>
+                        <div id="creditPackagesContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kredileri Bozdurma Sayfası -->
+            <div id="cash-withdrawal-page" class="page-content">
+                <div class="card">
+                    <h2>💸 Kredileri Bozdur</h2>
+                    
+                    <!-- Bakiye ve Oran Bilgisi -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <div style="background: #ebf5fb; padding: 20px; border-radius: 10px; border-left: 4px solid #3498db;">
+                            <p style="margin: 0 0 10px 0; color: #666;">Mevcut Kredi Bakiyesi</p>
+                            <div style="font-size: 2em; font-weight: bold; color: #3498db;">
+                                <span id="withdrawalBalanceCredits">0</span> 💳
+                            </div>
+                        </div>
+                        <div style="background: #eafaf1; padding: 20px; border-radius: 10px; border-left: 4px solid #27ae60;">
+                            <p style="margin: 0 0 10px 0; color: #666;">Bozdurma Oranı</p>
+                            <div style="font-size: 1.3em; font-weight: 600; color: #27ae60;">
+                                <span id="withdrawalExchangeRate">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bozdurma Formu -->
+                    <form id="withdrawalRequestForm" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label style="font-weight: 600;">Bozdurulacak Kredi Miktarı</label>
+                            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                <input type="number" id="withdrawalAmount" placeholder="ör: 200" min="1" required 
+                                       style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                <span style="color: #666; font-weight: 500;">Kredi</span>
+                            </div>
+                        </div>
+
+                        <div style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 2px solid #ecf0f1;">
+                            <p style="margin: 0 0 10px 0; color: #666;">Alacağınız Tutar:</p>
+                            <div style="font-size: 1.8em; font-weight: bold; color: #27ae60;">
+                                ₺<span id="withdrawalTLAmount">0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="font-weight: 600;">Ödeme Yöntemi</label>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                <label style="padding: 12px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                    <input type="radio" name="paymentMethod" value="eft" checked onchange="showPaymentDetails()"> 🏦 EFT
+                                </label>
+                                <label style="padding: 12px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                    <input type="radio" name="paymentMethod" value="crypto" onchange="showPaymentDetails()"> 🔐 Kripto
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- EFT Ödeme Detayları -->
+                        <div id="eftPaymentDetails" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label>IBAN</label>
+                                <input type="text" id="ibanInput" placeholder="TR..." required style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Ad Soyad</label>
+                                <input type="text" id="accountNameInput" placeholder="Adınız Soyadınız" required style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+                            </div>
+                        </div>
+
+                        <!-- Kripto Ödeme Detayları -->
+                        <div id="cryptoPaymentDetails" style="display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Cüzdan Adresi</label>
+                                <input type="text" id="walletAddressInput" placeholder="0x..." style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Ağ (Network)</label>
+                                <select id="networkInput" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+                                    <option value="">Seçiniz</option>
+                                    <option value="ethereum">Ethereum (ETH)</option>
+                                    <option value="binance">Binance Smart Chain (BSC)</option>
+                                    <option value="polygon">Polygon (MATIC)</option>
+                                    <option value="tron">Tron (TRX)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Coin Türü (Token)</label>
+                                <input type="text" id="coinTypeInput" placeholder="ör: USDT, USDC, BTC..." style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="btn btn-success" style="flex: 1; padding: 12px; font-size: 1.1em;">💸 Kredileri Bozdur</button>
+                            <button type="reset" class="btn btn-secondary" style="flex: 1; padding: 12px;">Temizle</button>
+                        </div>
+                    </form>
+
+                    <!-- İnfo Kutusu -->
+                    <div style="background: #fef5e7; padding: 15px; border-radius: 5px; border-left: 4px solid #f39c12;">
+                        <p style="margin: 0; color: #7d6608; font-size: 0.95em;">
+                            ℹ️ <strong>Bilgi:</strong> Bozdurma talebiniz Süper Admin tarafından onaylandığında, ödeme 40 dakika içinde yapılacaktır. 
+                            Kredileriniz talep yapıldığında geçici olarak bloke edilir.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Workout Page -->
+            <div id="ai-workout-page" class="page-content trainer-ai-page">
+                <div class="card trainer-ai-hero-card">
+                    <div class="trainer-ai-hero-inner">
+                        <div class="trainer-ai-hero-copy">
+                            <div class="trainer-ai-kicker">AI destekli workout uretimi</div>
+                            <h2>Yapay Zeka Workout Asistani</h2>
+                            <p>
+                                Bu ekran Super Admin tarafindan yuklenen ortak bilgi bankasi ile platform genelindeki workout ve satis orneklerinden beslenir.
+                                Eksik bilgi varsa chat icinde senden tamamlamani ister, yeterli veri gelince detayli workoutu cikarir.
+                            </p>
+                        </div>
+                        <div class="trainer-ai-hero-side">
+                            <div id="trainerAiKnowledgeBadge" class="trainer-ai-badge">Bilgi bankasi hazirlaniyor</div>
+                            <div class="trainer-ai-info-card">
+                                <strong>En hizli sonuc icin sunlari yaz</strong>
+                                <ul class="trainer-ai-guidance-list">
+                                    <li>yas grubu</li>
+                                    <li>seviye</li>
+                                    <li>hedef</li>
+                                    <li>sure</li>
+                                    <li>varsa stil veya teknik odak</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card trainer-ai-summary-card">
+                    <div id="trainerAiKnowledgeSummary"></div>
+                </div>
+
+                <div class="card trainer-ai-workspace-card">
+                    <div class="trainer-ai-workspace-header">
+                        <div>
+                            <h3>Chat ile Workout Uret</h3>
+                            <p>Tek cumle de yazabilirsin, asagidaki taslaktan giderek daha net de anlatabilirsin.</p>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="trainerAiResetBtn">Yeni Sohbet</button>
+                    </div>
+
+                    <div class="trainer-ai-layout">
+                        <section class="trainer-ai-chat-panel">
+                            <div class="trainer-ai-panel-block">
+                                <div class="trainer-ai-section-label">Mesaj yardimcisi</div>
+                                <div id="trainerAiPromptChecklist" class="trainer-ai-prompt-checklist"></div>
+                                <div id="trainerAiDetectedSummary" class="trainer-ai-detected-summary">Henüz mesaj yazmadınız.</div>
+                            </div>
+
+                            <div id="trainerAiChatMessages" class="trainer-ai-chat-messages"></div>
+
+                            <div class="trainer-ai-panel-block">
+                                <div class="trainer-ai-quick-header">
+                                    <div class="trainer-ai-section-label">Hizli baslangic</div>
+                                    <button type="button" class="btn btn-info btn-sm" id="trainerAiTemplateBtn">Taslak Ekle</button>
+                                </div>
+                                <div id="trainerAiQuickPrompts" class="trainer-ai-quick-prompts"></div>
+                            </div>
+
+                            <form id="trainerAiChatForm" class="trainer-ai-form">
+                                <div class="form-group" style="margin-bottom:10px;">
+                                    <label>Koctan mesaj</label>
+                                    <textarea id="trainerAiChatInput" rows="5" placeholder="Orn: 9-10 yas sporcularim var, orta seviye serbest teknik ve nefes ritmi icin 60 dakikalik workout istiyorum"></textarea>
+                                </div>
+                                <div class="trainer-ai-status-row">
+                                    <div id="trainerAiChatStatus" class="trainer-ai-chat-status">Mesajini gonder, eksik alan varsa burada isteyecegim.</div>
+                                    <button type="submit" class="btn btn-primary">Mesaji Gonder</button>
+                                </div>
+                            </form>
+                        </section>
+
+                        <aside class="trainer-ai-result-panel">
+                            <div class="trainer-ai-panel-block trainer-ai-result-block">
+                                <div class="trainer-ai-section-label">Olusan plan</div>
+                                <div id="trainerAiResult"></div>
+                            </div>
+                            <div id="trainerAiSavePanel" class="trainer-ai-panel-block trainer-ai-save-panel" style="display:none;">
+                                <h4>Workoutu Sisteme Kaydet</h4>
+                                <p>
+                                    Kaydedildiginde bu plan, sen manuel yazmis gibi workout listene eklenir ve secilen ders grubundaki ogrencilere dagitilir.
+                                </p>
+                                <div class="form-group">
+                                    <label>Ders grubu</label>
+                                    <select id="trainerAiSchedule">
+                                        <option value="">-- Ders grubu seciniz --</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-success" id="trainerAiSaveBtn">Workoutu Kaydet</button>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Standards (Barajlar) Page -->
+            <div id="standards-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>🎯 Barajlar (Hedef Zamanlar)</h2>
+                        <div id="addStandardBtnContainer" style="display: none;">
+                            <button class="btn btn-success" onclick="openAddStandardModal()">+ Yeni Baraj Ekle</button>
+                        </div>
+                    </div>
+                    <!-- Filtre Bölümü -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Baraj Adı:</label>
+                                <input type="text" id="standardNameFilter" placeholder="Ara..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Cinsiyet:</label>
+                                <select id="standardGenderFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Erkek">Erkek</option>
+                                    <option value="Kız">Kız</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Stil:</label>
+                                <select id="standardStyleFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="Serbest">Serbest</option>
+                                    <option value="Kurbağalama">Kurbağalama</option>
+                                    <option value="Sırtüstü">Sırtüstü</option>
+                                    <option value="Kelebekçe">Kelebekçe</option>
+                                    <option value="Karma">Karma</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Mesafe:</label>
+                                <select id="standardDistanceFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="">Tümü</option>
+                                    <option value="50">50m</option>
+                                    <option value="100">100m</option>
+                                    <option value="200">200m</option>
+                                    <option value="400">400m</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; margin-bottom: 5px; display: block;">Doğum Yılı:</label>
+                                <input type="number" id="standardBirthYearFilter" placeholder="Yıl (ör: 2010)" min="1990" max="2030" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+                        </div>
+                        <button class="btn btn-info btn-sm" onclick="filterStandards()" style="margin-top: 10px;">Filtrele</button>
+                    </div>
+
+                    <!-- Barajlar Tablosu -->
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Baraj Adı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Doğum Yılı</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Cinsiyet</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Stil</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Mesafe</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Baraj Zamanı</th>
+                                </tr>
+                            </thead>
+                            <tbody id="standardsTableBody">
+                                <tr>
+                                    <td colspan="6" style="padding: 20px; text-align: center; color: #95a5a6;">Barajlar yükleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Page -->
+            <div id="chat-page" class="page-content">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <h2>💬 Mesajlaşma</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openNewGroupChatModal()">+ Grup Sohbeti</button>
+                            <button class="btn btn-info btn-sm" onclick="openNewChatEmailPage()">+ Kişisel Sohbet</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-split">
+                        <!-- Chat List -->
+                        <div class="panel-box">
+                            <h4 style="margin-bottom: 15px;">Sohbetlerim</h4>
+                            <div id="chatListContainer" class="panel-scroll">
+                                <p style="color: #95a5a6; text-align: center;">Sohbetler yükleniyor...</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat View -->
+                        <div class="panel-box">
+                            <div id="chatViewContainer">
+                                <div style="text-align: center; padding: 50px; color: #95a5a6;">
+                                    <h4>Sohbet Seçiniz</h4>
+                                    <p>Sol taraftan bir sohbet seçerek mesajlaşmaya başlayabilirsiniz.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat View Page (Hidden by default) -->
+            <div id="chat-view-page" class="page-content">
+                <div class="card">
+                    <div class="page-toolbar">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <h2 id="chatViewTitle">💬 Sohbet</h2>
+                            <button id="groupManageBtn" class="btn btn-info btn-sm" onclick="openGroupManagement()" style="display: none;">⚙️ Grup Ayarları</button>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="closeChatView()">← Geri Dön</button>
+                    </div>
+
+                    <div class="chat-shell">
+                        <div id="chatMessages" class="chat-messages">
+                            <p style="color: #95a5a6; text-align: center;">Mesajlar yükleniyor...</p>
+                        </div>
+
+                        <form id="chatForm" class="chat-form-inline">
+                            <input type="text" id="chatInput" placeholder="Mesajınızı yazın..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" required>
+                            <button type="submit" class="btn btn-success">Gönder</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Chat Email Page -->
+            <div id="new-chat-email-page" class="page-content" style="display: none;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>Yeni Kişisel Sohbet</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="closeNewChatEmailPage()">← Geri Dön</button>
+                    </div>
+
+                    <form id="newChatEmailForm">
+                        <div class="form-group">
+                            <label>Kullanıcı Email Adresi:</label>
+                            <input type="email" id="chatEmailInput" placeholder="kullanici@email.com" required>
+                            <div id="chatEmailUserInfo" style="margin-top: 5px; font-size: 0.9em;"></div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">Sohbet Başlat</button>
+                            <button type="button" class="btn btn-primary" onclick="closeNewChatEmailPage()">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Sell Workout Modal -->
+    <div id="sellWorkoutModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>Antrenman Satışa Çıkar</h2>
+                <button class="close-btn" onclick="closeSellWorkoutModal()">&times;</button>
+            </div>
+            <form id="sellWorkoutForm" onsubmit="sellWorkout(event)">
+                <div class="form-group">
+                    <label>Antrenman Seç:</label>
+                    <select id="sellWorkoutSelect" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <option value="">-- Antrenman Seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Antrenman Adı:</label>
+                    <input type="text" id="sellWorkoutName" placeholder="ör: Yaz Kampı Başlangıç" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="sellWorkoutDescription" rows="2" placeholder="Antrenmanın genel bilgilerini yazınız..." required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Yaş Grubu:</label>
+                        <select id="sellWorkoutAgeGroup" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="">Seçiniz</option>
+                            <option value="6-8">6-8 Yaş</option>
+                            <option value="9-11">9-11 Yaş</option>
+                            <option value="12-14">12-14 Yaş</option>
+                            <option value="15-17">15-17 Yaş</option>
+                            <option value="18+">18+ Yaş</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Hedef Kitle:</label>
+                        <select id="sellWorkoutTarget" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="">Seçiniz</option>
+                            <option value="Başlangıç">Başlangıç</option>
+                            <option value="Orta">Orta</option>
+                            <option value="İleri">İleri</option>
+                            <option value="Profesyonel">Profesyonel</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Stil:</label>
+                        <select id="sellWorkoutStyle" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="">Karma</option>
+                            <option value="Serbest">Serbest</option>
+                            <option value="Kurbağalama">Kurbağalama</option>
+                            <option value="Sırtüstü">Sırtüstü</option>
+                            <option value="Kelebekçe">Kelebekçe</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesafe:</label>
+                        <select id="sellWorkoutDistance" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                            <option value="">Karma</option>
+                            <option value="50m">50m</option>
+                            <option value="100m">100m</option>
+                            <option value="200m">200m</option>
+                            <option value="400m">400m</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tür:</label>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="sellWorkoutType" value="sprint" checked> 🏃 Sprint
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="sellWorkoutType" value="uzman"> 🎯 Uzman
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="sellWorkoutType" value="teknik"> 🔧 Teknik
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>💳 Kredi Fiyatı (Kesin Fiyat):</label>
+                    <input type="number" id="sellWorkoutCredit" step="1" min="1" placeholder="ör: 100" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-weight: 600; font-size: 1.1em;">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Satışa Çıkar</button>
+                    <button type="button" class="btn btn-primary" onclick="closeSellWorkoutModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Buy Workout Modal -->
+    <div id="buyWorkoutModal" class="modal">
+        <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>📚 Antrenman Detayı</h2>
+                <button class="close-btn" onclick="closeBuyWorkoutModal()">&times;</button>
+            </div>
+            <div id="buyWorkoutDetails">
+                <!-- Dinamik içerik yüklenir -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Pazarlık Modal -->
+    <div id="negotiationModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>💰 Pazarlık Yap</h2>
+                <button class="close-btn" onclick="closeNegotiationModal()">&times;</button>
+            </div>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666;">Satıcının Teklifı:</p>
+                <p style="margin: 0; font-size: 1.3em; font-weight: 600; color: #27ae60;" id="sellerOriginalOffer">0 Kredi</p>
+            </div>
+            <form id="negotiationForm" onsubmit="submitNegotiationOffer(event)">
+                <div class="form-group">
+                    <label>Senin Teklifin (Kredi):</label>
+                    <input type="number" id="buyerOffer" min="1" placeholder="ör: 80" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1.1em; font-weight: 600;">
+                </div>
+                <div class="form-group">
+                    <label>Mesajın (İsteğe Bağlı):</label>
+                    <textarea id="negotiationMessage" rows="2" placeholder="Teklif mesajınız..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Teklif Gönder</button>
+                    <button type="button" class="btn btn-primary" onclick="closeNegotiationModal()">İptal</button>
+                </div>
+            </form>
+            <div id="negotiationHistory" style="margin-top: 20px; border-top: 2px solid #ecf0f1; padding-top: 15px;">
+                <p style="font-weight: 600; margin-bottom: 10px;">Teklifler Geçmişi:</p>
+                <div id="negotiationList" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Detail Modal -->
+    <div id="addStandardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni Baraj Ekle</h2>
+                <button class="close-btn" onclick="closeAddStandardModal()">&times;</button>
+            </div>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Bilgi:</strong> Bu alan yalnızca Süper Admin tarafından kullanılabilir.
+            </div>
+            <form id="addStandardForm">
+                <div class="form-group">
+                    <label>Barajın Adı (ör: Milli Takım, Türkiye Şampiyonası):</label>
+                    <input type="text" id="standardName" placeholder="Baraj adını giriniz" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Doğum Yılı:</label>
+                        <input type="number" id="standardBirthYear" min="1990" max="2030" placeholder="Doğum yılı (ör: 2010)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cinsiyet:</label>
+                        <select id="standardGender" required>
+                            <option value="">Seçiniz</option>
+                            <option value="Erkek">Erkek</option>
+                            <option value="Kız">Kız</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Stil:</label>
+                        <select id="standardStyle" required>
+                            <option value="">Seçiniz</option>
+                            <option value="Serbest">Serbest</option>
+                            <option value="Kurbağalama">Kurbağalama</option>
+                            <option value="Sırtüstü">Sırtüstü</option>
+                            <option value="Kelebekçe">Kelebekçe</option>
+                            <option value="Karma">Karma</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mesafe (m):</label>
+                        <select id="standardDistance" required>
+                            <option value="">Seçiniz</option>
+                            <option value="50">50m</option>
+                            <option value="100">100m</option>
+                            <option value="200">200m</option>
+                            <option value="400">400m</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Baraj Zamanı (MM:SS.CC):</label>
+                        <input type="text" id="standardTime" placeholder="1:30.25" pattern="^\d{1,2}:\d{2}\.\d{2}$" required>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Barajı Kaydet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeAddStandardModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Performance Detail Modal -->
+    <div id="performanceDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="detailModalTitle">Derece Detayları</h2>
+                <button class="close-btn" onclick="closePerformanceDetailModal()">&times;</button>
+            </div>
+            <div id="detailModalContent" style="max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Purchase Requests Modal -->
+    <div id="purchaseRequestsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Satın Alma Talepleri</h2>
+                <button class="close-btn" onclick="closePurchaseRequestsModal()">&times;</button>
+            </div>
+            <div id="purchaseRequestsList"></div>
+        </div>
+    </div>
+
+    <!-- New Group Chat Modal -->
+    <div id="newGroupChatModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:10px; max-width:400px; width:100%; padding:0; box-shadow:0 2px 16px #aaa; display:flex; flex-direction:column;">
+            <div style="background:#2980b9; color:white; padding:16px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <span>Grup Sohbeti Başlat</span>
+                <button onclick="closeNewGroupChatModal()" style="background:none; border:none; color:white; font-size:1.2em; cursor:pointer;">&times;</button>
+            </div>
+            <form id="newGroupChatForm" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+                <input id="groupChatName" type="text" placeholder="Grup Adı" required style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                <div class="form-group">
+                    <label>Grup Profil Fotoğrafı:</label>
+                    <input type="file" id="groupChatPhoto" accept="image/*" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                    <small style="color: #666;">İsteğe bağlı - yüklemeyi başarısız olursa varsayılan fotoğraf kullanılır</small>
+                </div>
+                <textarea id="groupChatUserEmails" rows="2" placeholder="Kullanıcı e-posta adresleri (virgülle ayırın)" required style="padding:8px; border-radius:5px; border:1px solid #ccc;"></textarea>
+                <button type="submit" class="btn btn-primary">Grup Oluştur</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div id="groupManagementModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:10px; max-width:500px; width:100%; padding:0; box-shadow:0 2px 16px #aaa; display:flex; flex-direction:column;">
+            <div style="background:#2980b9; color:white; padding:16px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <span>Grup Ayarları</span>
+                <button onclick="closeGroupManagementModal()" style="background:none; border:none; color:white; font-size:1.2em; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img id="groupCurrentPhoto" src="" alt="Grup Fotoğrafı" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #ddd;">
+                </div>
+                <form id="groupManagementForm" style="display:flex; flex-direction:column; gap:12px;">
+                    <input id="groupManageName" type="text" placeholder="Grup Adı" required style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                    <div class="form-group">
+                        <label>Yeni Profil Fotoğrafı:</label>
+                        <input type="file" id="groupManagePhoto" accept="image/*" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                        <small style="color: #666;">Değiştirmek istemiyorsanız boş bırakın</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Üye Ekle (Email):</label>
+                        <input type="email" id="groupAddMemberEmail" placeholder="uye@email.com" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                        <button type="button" class="btn btn-info btn-sm" onclick="addGroupMember()" style="margin-top: 5px;">Üye Ekle</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Mevcut Üyeler:</label>
+                        <div id="groupMembersList" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                            <!-- Üyeler burada listelenecek -->
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <button type="submit" class="btn btn-success">Değişiklikleri Kaydet</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteGroup()">Grubu Sil</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeGroupManagementModal()">İptal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kredi Paketi Seçim Modal -->
+    <div id="creditPackageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Kredi Paketi Satın Al</h2>
+                <button class="close-btn" onclick="closeCreditPackageModal()">&times;</button>
+            </div>
+            <div style="padding: 20px; text-align: center;">
+                <div style="margin-bottom: 30px;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #3498db; margin-bottom: 10px;">
+                        <span id="modalPackageCredit">0</span> Kredi
+                    </div>
+                    <div style="font-size: 1.3em; color: #16a085; margin-bottom: 20px;">
+                        <span id="modalPackagePrice">0</span> TL
+                    </div>
+                </div>
+                
+                <div style="border-top: 2px solid #eee; padding-top: 20px;">
+                    <p style="margin-bottom: 20px; color: #2c3e50; font-size: 1em;">Bu kredi paketini nasıl satın almak istiyorsunuz?</p>
+                    <div class="btn-group" style="justify-content: center; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-success" onclick="showAutoBuyMessage()" style="width: 100%; padding: 12px;">💳 Otomatik Satın Al</button>
+                        <button class="btn btn-warning" onclick="openManualCreditPurchaseModal()" style="width: 100%; padding: 12px;">🏦 EFT / Havale ile Dekont Yükle</button>
+                        <button class="btn btn-primary" onclick="startCreditPurchaseChatFromModal()" style="width: 100%; padding: 12px;">💬 İletişime Geçerek Satın Al</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Otomatik Satın Al Bilgi Modal -->
+    <div id="autoBuyInfoModal" class="modal">
+        <div class="modal-content">
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">⚙️</div>
+                <h2 style="margin-bottom: 20px; color: #2c3e50;">Bu özellik şu an geliştirme aşamasındadır</h2>
+                <p style="color: #95a5a6; margin-bottom: 30px; font-size: 1.1em;">Otomatik satın alma özelligi yakında aktif hale getirilecektir.</p>
+                <button class="btn btn-primary" onclick="closeAutoBuyInfoModal()" style="padding: 10px 30px;">Tamam</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manualCreditPurchaseModal" class="modal">
+        <div class="modal-content" style="max-width: 760px;">
+            <div class="modal-header">
+                <h2>🏦 EFT ile Kredi Paketi Satın Al</h2>
+                <button class="close-btn" onclick="closeManualCreditPurchaseModal()">&times;</button>
+            </div>
+            <form id="manualCreditPurchaseForm">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 18px;">
+                    <div style="background: #f8fbff; border: 1px solid #dce8f5; border-radius: 10px; padding: 16px;">
+                        <div style="font-size: 0.9em; color: #6b7b8b; margin-bottom: 8px;">Seçilen Paket</div>
+                        <div style="font-size: 1.8em; font-weight: 700; color: #2980b9;"><span id="manualCreditPackageAmount">0</span> Kredi</div>
+                        <div style="font-size: 1.1em; color: #16a085; margin-top: 6px;">₺<span id="manualCreditPackagePrice">0.00</span></div>
+                    </div>
+                    <div id="manualCreditBankInfo" style="background: #fffdf4; border: 1px solid #f4d47a; border-radius: 10px; padding: 16px; color: #5f4b00;">
+                        Güncel EFT bilgileri yükleniyor...
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Dekont / Makbuz Yükle</label>
+                    <input type="file" id="manualCreditReceipt" accept="image/*,.pdf" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea id="manualCreditNote" rows="4" placeholder="Gönderim saati, referans numarası veya ek notunuz..." required></textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Talebi Gönder</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeManualCreditPurchaseModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="postponeLessonModal" class="modal">
+        <div class="modal-content" style="max-width: 760px;">
+            <div class="modal-header">
+                <h2>📅 Ders Ertele</h2>
+                <button class="close-btn" onclick="closePostponeLessonModal()">&times;</button>
+            </div>
+            <div id="postponeLessonSummary" style="margin-bottom: 16px; padding: 12px; border-radius: 8px; background: #f8f9fa; color: #2c3e50;"></div>
+            <div class="form-group">
+                <label>Erteleme Notu</label>
+                <textarea id="postponeLessonReason" rows="3" placeholder="İsteğe bağlı not"></textarea>
+            </div>
+            <div class="postpone-choice-grid">
+                <button type="button" id="postponeTodayButton" class="postpone-choice-card" onclick="submitTodayPostponement()">
+                    <strong>Bugünkü Dersi Ertele</strong>
+                    <span id="postponeTodayButtonText">Bugünün planlı dersi ertelensin.</span>
+                </button>
+                <button type="button" class="postpone-choice-card" onclick="showSpecificPostponeDatePicker()">
+                    <strong>Şu Tarihteki Dersi Ertele</strong>
+                    <span>Sadece bu dersin yapıldığı günler takvimde gösterilir.</span>
+                </button>
+            </div>
+            <div id="postponeSpecificDatePanel" style="display: none;">
+                <div class="postpone-calendar-shell">
+                    <div class="postpone-calendar-header">
+                        <button type="button" id="postponePrevMonthButton" class="postpone-calendar-nav" onclick="changePostponeCalendarMonth(-1)">‹</button>
+                        <strong id="postponeCalendarMonthLabel">-</strong>
+                        <button type="button" id="postponeNextMonthButton" class="postpone-calendar-nav" onclick="changePostponeCalendarMonth(1)">›</button>
+                    </div>
+                    <div class="postpone-calendar-weekdays">
+                        <span>Pzt</span>
+                        <span>Sal</span>
+                        <span>Çar</span>
+                        <span>Per</span>
+                        <span>Cum</span>
+                        <span>Cmt</span>
+                        <span>Paz</span>
+                    </div>
+                    <div id="postponeCalendarGrid" class="postpone-calendar-grid"></div>
+                    <div id="postponeCalendarEmpty" style="display: none; padding: 18px 0; text-align: center; color: #6f8091;">Bu ay için seçilebilir ders günü yok.</div>
+                    <div id="postponeSelectedDateInfo" class="postpone-selected-date">Tarih seçilmedi.</div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+                    <button type="button" class="btn btn-success" onclick="submitSelectedPostponementDate()">Seçili Tarihi Ertele</button>
+                </div>
+                <div style="margin-top: 10px; color: #6f8091; font-size: 0.9em;">Takvimde sadece bu dersin planlandığı ve henüz ertelenmemiş günler gösterilir.</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="trainerCommentModal" class="modal">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2>📝 Öğrenciye Ders Yorumu</h2>
+                <button class="close-btn" onclick="closeTrainerCommentModal()">&times;</button>
+            </div>
+            <form id="trainerCommentForm">
+                <div class="form-group">
+                    <label>Öğrenci</label>
+                    <div id="trainerCommentStudentName" style="padding: 12px; background: #f8f9fa; border-radius: 6px; font-weight: 600; color: #2c3e50;">-</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label>Ders Tarihi</label>
+                        <input type="date" id="trainerCommentDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ders Başlığı</label>
+                        <input type="text" id="trainerCommentTopic" placeholder="Örn: Ayak vuruşu tekniği" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Veliye Görünecek Yorum</label>
+                    <textarea id="trainerCommentText" rows="5" placeholder="Öğrencinin o ders özelindeki gelişimi, eksiği ve öneriniz..." required></textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">Yorumu Kaydet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTrainerCommentModal()">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
+    <script defer src="../js/config.js"></script>
+    <script defer src="../js/mobile-responsive.js"></script>
+    <script defer src="../js/trainer.js"></script>
+    <script defer src="../js/global-ai.js"></script>
+    <script defer src="../js/profile-common.js"></script>
+    <script defer src="../js/chat-common.js"></script>
+</body>
+</html>

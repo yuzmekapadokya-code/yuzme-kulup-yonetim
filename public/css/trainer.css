@@ -1,0 +1,651 @@
+/* Trainer Panel Specific Styles */
+
+.exercise-input {
+    position: relative;
+}
+
+.salary-tracker-card {
+    overflow: hidden;
+}
+
+.salary-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.salary-summary-item {
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f3f9ff 0%, #e8f4ff 100%);
+    border: 1px solid #d8e9fb;
+}
+
+.salary-summary-item strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #33516f;
+    font-size: 0.95em;
+}
+
+.salary-summary-item span {
+    display: block;
+    color: #123b63;
+    font-size: 1.25em;
+    font-weight: 700;
+}
+
+.salary-breakdown-list {
+    display: grid;
+    gap: 12px;
+}
+
+.salary-breakdown-item {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(110px, 1fr));
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid #e1ebf4;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.salary-breakdown-meta strong,
+.salary-breakdown-item span {
+    color: #29445d;
+}
+
+.salary-breakdown-meta small {
+    display: block;
+    margin-top: 4px;
+    color: #71859b;
+}
+
+.trainer-nav-menu .nav-link,
+.trainer-nav-menu #screenBtn {
+    white-space: normal;
+}
+
+.trainer-ai-page {
+    display: grid;
+    gap: 20px;
+}
+
+.trainer-ai-hero-card {
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top right, rgba(0, 191, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, #f7fbff 0%, #eef6ff 55%, #f5f9fc 100%);
+    border: 1px solid #d7e8f8;
+}
+
+.trainer-ai-hero-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.trainer-ai-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #e8f5ff;
+    color: #1d5f95;
+    font-size: 0.85em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.trainer-ai-hero-copy h2 {
+    margin: 14px 0 10px;
+}
+
+.trainer-ai-hero-copy p,
+.trainer-ai-workspace-header p,
+.trainer-ai-save-panel p {
+    margin: 0;
+    color: #607080;
+    line-height: 1.7;
+}
+
+.trainer-ai-hero-side {
+    display: grid;
+    gap: 14px;
+}
+
+.trainer-ai-badge {
+    justify-self: start;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #eef6ff;
+    color: #2c5d8a;
+    font-weight: 700;
+}
+
+.trainer-ai-info-card,
+.trainer-ai-panel-block {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid #dbe7f3;
+    background: #ffffff;
+}
+
+.trainer-ai-info-card strong,
+.trainer-ai-section-label {
+    display: block;
+    margin-bottom: 10px;
+    color: #244a73;
+    font-weight: 700;
+}
+
+.trainer-ai-guidance-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #5f6c7b;
+    line-height: 1.7;
+}
+
+.trainer-ai-summary-card {
+    border: 1px solid #dce9f4;
+}
+
+.trainer-ai-workspace-card {
+    border: 1px solid #dce9f4;
+}
+
+.trainer-ai-workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.trainer-ai-workspace-header h3,
+.trainer-ai-save-panel h4 {
+    margin: 0 0 8px;
+}
+
+.trainer-ai-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.trainer-ai-chat-panel,
+.trainer-ai-result-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.trainer-ai-chat-panel {
+    min-width: 0;
+}
+
+.trainer-ai-prompt-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.trainer-ai-check-item {
+    padding: 12px;
+    border-radius: 12px;
+    background: #f7fbff;
+    border: 1px solid #dbe7f3;
+    color: #6b7b8b;
+    min-width: 0;
+}
+
+.trainer-ai-check-item strong {
+    display: block;
+    font-size: 0.92em;
+    color: #38536d;
+}
+
+.trainer-ai-check-mark {
+    display: inline-flex;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: #6f8091;
+    font-size: 0.76em;
+    font-weight: 700;
+}
+
+.trainer-ai-check-item.is-done {
+    background: #edf9f3;
+    border-color: #c8ead4;
+}
+
+.trainer-ai-check-item.is-done .trainer-ai-check-mark {
+    background: #dbf5e4;
+    color: #1d6c37;
+}
+
+.trainer-ai-detected-summary {
+    margin-top: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #f8fbff;
+    border: 1px solid #dbe7f3;
+    color: #5f6c7b;
+    line-height: 1.7;
+}
+
+.trainer-ai-summary-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.trainer-ai-summary-row + .trainer-ai-summary-row {
+    margin-top: 10px;
+}
+
+.trainer-ai-ready-chip,
+.trainer-ai-missing-chip,
+.trainer-ai-detected-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.82em;
+    font-weight: 700;
+}
+
+.trainer-ai-detected-chip {
+    background: #eef7ff;
+    color: #245683;
+}
+
+.trainer-ai-missing-chip {
+    background: #fff4e8;
+    color: #9a5c00;
+}
+
+.trainer-ai-ready-chip {
+    background: #edf9f0;
+    color: #1d6c37;
+}
+
+.trainer-ai-chat-messages {
+    min-height: 360px;
+    max-height: 520px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.trainer-ai-message-row {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.trainer-ai-message-row.is-user {
+    justify-content: flex-end;
+}
+
+.trainer-ai-message-row.is-assistant {
+    justify-content: flex-start;
+}
+
+.trainer-ai-message-bubble {
+    max-width: min(720px, 100%);
+    padding: 14px 16px;
+    border-radius: 16px;
+    line-height: 1.6;
+}
+
+.trainer-ai-message-bubble.is-user {
+    background: linear-gradient(135deg, #1685e8 0%, #0d6fd4 100%);
+    color: #ffffff;
+    border-bottom-right-radius: 6px;
+}
+
+.trainer-ai-message-bubble.is-assistant {
+    background: #f8fbff;
+    color: #2c3e50;
+    border: 1px solid #dbe7f3;
+    border-bottom-left-radius: 6px;
+}
+
+.trainer-ai-quick-header,
+.trainer-ai-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.trainer-ai-quick-prompts {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.trainer-ai-form textarea {
+    min-height: 136px;
+    resize: vertical;
+}
+
+.trainer-ai-chat-status {
+    color: #5f6c7b;
+}
+
+.trainer-ai-result-block {
+    min-height: 240px;
+}
+
+.trainer-ai-empty-result {
+    padding: 18px;
+    border: 1px dashed #dbe7f3;
+    border-radius: 12px;
+    color: #7b8a9b;
+    background: #fbfdff;
+}
+
+.trainer-ai-plan-shell {
+    overflow: hidden;
+}
+
+.chronometer-container {
+    padding: 30px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    min-height: 600px;
+}
+
+.workout-info {
+    margin-bottom: 20px;
+}
+
+.workout-info h2 {
+    color: white;
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+.chronometer {
+    margin: 40px 0;
+}
+
+.time-display {
+    font-size: 5em;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 40px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    letter-spacing: 5px;
+}
+
+.exercise-info {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.exercise-info h3 {
+    color: #fff;
+    font-size: 1.8em;
+    margin-bottom: 15px;
+}
+
+.exercise-details {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    font-size: 1.1em;
+}
+
+.exercise-details span {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+
+.countdown-section {
+    margin: 30px 0;
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.countdown-display {
+    font-size: 4em;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 30px;
+    border-radius: 10px;
+    color: #f39c12;
+    margin-bottom: 20px;
+    letter-spacing: 5px;
+}
+
+.next-exercise {
+    background: rgba(52, 152, 219, 0.3);
+    padding: 15px;
+    border-radius: 5px;
+    margin: 20px 0;
+    border: 2px solid rgba(52, 152, 219, 0.6);
+}
+
+.next-exercise p {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.next-exercise h4 {
+    margin: 0;
+    font-size: 1.3em;
+    color: #fff;
+}
+
+.chronometer-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 30px 0;
+}
+
+.chronometer-controls .btn {
+    padding: 15px 30px;
+    font-size: 1em;
+    font-weight: bold;
+    min-width: 120px;
+}
+
+.exercise-list {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.exercise-list h4 {
+    color: white;
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+/* Modal overlay */
+#chronometerModal {
+    background: rgba(0, 0, 0, 0.9) !important;
+}
+
+#chronometerModal .modal-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    max-width: 95%;
+    width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .trainer-nav-menu {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        overflow: visible;
+    }
+
+    .trainer-nav-menu li {
+        margin: 0;
+    }
+
+    .trainer-nav-menu .nav-link,
+    .trainer-nav-menu #screenBtn {
+        width: 100%;
+        min-height: 100%;
+        padding: 10px 12px;
+        text-align: center !important;
+    }
+
+    .trainer-nav-menu [data-page="market"],
+    .trainer-nav-menu #screenBtn {
+        grid-column: 1 / -1;
+    }
+
+    .salary-breakdown-item {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .salary-breakdown-meta {
+        grid-column: 1 / -1;
+    }
+
+    .trainer-ai-hero-inner,
+    .trainer-ai-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .trainer-ai-chat-messages {
+        min-height: 260px;
+        max-height: 380px;
+    }
+
+    .trainer-ai-status-row .btn,
+    .trainer-ai-quick-header .btn {
+        width: 100%;
+    }
+
+    .trainer-ai-workspace-header .btn {
+        width: 100%;
+    }
+
+    .time-display {
+        font-size: 3em;
+        padding: 30px 20px;
+    }
+    
+    .countdown-display {
+        font-size: 2.5em;
+        padding: 20px;
+    }
+    
+    .exercise-details {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .chronometer-controls .btn {
+        padding: 12px 15px;
+        min-width: auto;
+    }
+    
+    .time-display {
+        font-size: 2.5em;
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .exercise-info {
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .exercise-info h3 {
+        font-size: 1.3em;
+    }
+}
+
+/* Tablet responsiveness */
+@media (max-width: 1024px) {
+    .chronometer-container {
+        padding: 20px;
+        min-height: 400px;
+    }
+    
+    .time-display {
+        font-size: 3.5em;
+        padding: 30px;
+        letter-spacing: 3px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    .trainer-nav-menu {
+        grid-template-columns: 1fr;
+    }
+
+    .trainer-ai-prompt-checklist {
+        grid-template-columns: 1fr;
+    }
+
+    .trainer-ai-panel-block,
+    .trainer-ai-info-card {
+        padding: 14px;
+    }
+
+    .trainer-ai-message-bubble {
+        max-width: 100%;
+    }
+
+    .salary-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .salary-breakdown-item {
+        grid-template-columns: 1fr;
+    }
+
+    .chronometer-container {
+        padding: 15px;
+    }
+    
+    .time-display {
+        font-size: 2em;
+        padding: 15px;
+        letter-spacing: 2px;
+    }
+    
+    .exercise-info h3 {
+        font-size: 1.1em;
+    }
+    
+    .chronometer-controls .btn {
+        padding: 10px 12px;
+        font-size: 0.9em;
+    }
