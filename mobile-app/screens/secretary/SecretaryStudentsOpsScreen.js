@@ -11,12 +11,15 @@ import ScreenLayout from '../../components/ScreenLayout';
 import SectionHeader from '../../components/SectionHeader';
 import { theme } from '../../config/theme';
 import {
+  buildSecretaryStudentPdfBody,
   deleteSecretaryStudent,
   getSecretaryStudentOpsData,
+  getSecretaryStudentPdfData,
   processSecretaryPayment,
 } from '../../services/secretaryService';
 import { useAuthStore } from '../../store/authStore';
 import { formatDate, formatDateTime } from '../../utils/date';
+import { generateAndSharePdf } from '../../utils/pdfExport';
 
 function buildPaymentStatus(student) {
   if (student.remainingBalance <= 0.009) {
@@ -115,6 +118,48 @@ export default function SecretaryStudentsOpsScreen({ navigation, route }) {
     onError: (error) => Alert.alert('Silme', error.message || 'Ogrenci silinemedi.'),
   });
 
+  const pdfAllMutation = useMutation({
+    mutationFn: async () => {
+      const pdfData = await getSecretaryStudentPdfData(profile);
+      const body = buildSecretaryStudentPdfBody(pdfData);
+      const suffix = new Date().toISOString().slice(0, 10);
+      await generateAndSharePdf({
+        html: body,
+        orientation: 'portrait',
+        fileName: `ogrenci-listesi-${suffix}.pdf`,
+      });
+    },
+    onError: (error) => Alert.alert('PDF', error.message || 'PDF olusturulamadi.'),
+  });
+
+  const pdfStudentMutation = useMutation({
+    mutationFn: async (studentId) => {
+      const pdfData = await getSecretaryStudentPdfData(profile, { studentIds: [studentId] });
+      const body = buildSecretaryStudentPdfBody(pdfData);
+      const safeName = (pdfData.groups?.[0]?.students?.[0]?._fullName || 'ogrenci').replace(/[^\w\-]+/g, '_');
+      await generateAndSharePdf({
+        html: body,
+        orientation: 'portrait',
+        fileName: `${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`,
+      });
+    },
+    onError: (error) => Alert.alert('PDF', error.message || 'PDF olusturulamadi.'),
+  });
+
+  const pdfScheduleMutation = useMutation({
+    mutationFn: async (scheduleId) => {
+      const pdfData = await getSecretaryStudentPdfData(profile, { scheduleId });
+      const body = buildSecretaryStudentPdfBody(pdfData);
+      const safe = (pdfData.subtitle || 'ders').replace(/[^\w\-]+/g, '_').slice(0, 60);
+      await generateAndSharePdf({
+        html: body,
+        orientation: 'portrait',
+        fileName: `${safe}_${new Date().toISOString().slice(0, 10)}.pdf`,
+      });
+    },
+    onError: (error) => Alert.alert('PDF', error.message || 'PDF olusturulamadi.'),
+  });
+
   const paymentMutation = useMutation({
     mutationFn: async () => {
       if (!paymentStudent) throw new Error('Odeme icin ogrenci secilmedi.');
@@ -155,6 +200,12 @@ export default function SecretaryStudentsOpsScreen({ navigation, route }) {
     <ScreenLayout title="Ogrenci ve Odeme" subtitle="Gruplanmis ogrencileri incele, detay ac, taksit tahsil et veya kaydi temizle.">
       <View style={styles.card}>
         <TextInput style={styles.input} placeholder="Ogrenci, veli veya telefon ara" value={search} onChangeText={setSearch} />
+        <ActionButton
+          label={pdfAllMutation.isPending ? 'PDF olusturuluyor...' : 'Tum ogrencileri PDF olarak indir'}
+          onPress={() => pdfAllMutation.mutate()}
+          disabled={pdfAllMutation.isPending}
+          fullWidth
+        />
       </View>
 
       <SectionHeader title="Gruplu ogrenci listesi" caption="Sube ve ders saati bazli operasyon gorunumu" />
@@ -166,6 +217,14 @@ export default function SecretaryStudentsOpsScreen({ navigation, route }) {
             <View key={group.key} style={styles.card}>
               <Text style={styles.groupTitle}>{group.label}</Text>
               <Text style={styles.groupMeta}>{group.details}</Text>
+              {group.scheduleId ? (
+                <ActionButton
+                  label={pdfScheduleMutation.isPending ? 'PDF...' : 'Bu dersi PDF indir'}
+                  variant="secondary"
+                  onPress={() => pdfScheduleMutation.mutate(group.scheduleId)}
+                  disabled={pdfScheduleMutation.isPending}
+                />
+              ) : null}
               {group.students.map((student) => {
                 const paymentStatus = buildPaymentStatus(student);
                 return (
@@ -188,6 +247,12 @@ export default function SecretaryStudentsOpsScreen({ navigation, route }) {
                         }}
                       />
                       <ActionButton label="Duzenle" variant="secondary" onPress={() => navigation.navigate('SECRegistrationOps', { studentId: student.id })} />
+                      <ActionButton
+                        label={pdfStudentMutation.isPending && pdfStudentMutation.variables === student.id ? 'PDF...' : 'PDF'}
+                        variant="secondary"
+                        onPress={() => pdfStudentMutation.mutate(student.id)}
+                        disabled={pdfStudentMutation.isPending}
+                      />
                       <ActionButton
                         label="Sil"
                         variant="secondary"

@@ -15,7 +15,9 @@ import {
 import { createManagedAuthUser } from '../api/authApi';
 import { createOrReuseDirectChat } from '../api/chatApi';
 import { db } from '../config/firebase';
+import { getScheduleDisplayLabel } from '../utils/scheduleDisplay';
 import { nowIso, sortByDateDesc, todayIsoDate } from '../utils/date';
+import { getClubDisplayName } from '../utils/clubProfileHelpers';
 import { getAdminScope } from './roleService';
 
 const cleanupCollections = [
@@ -224,7 +226,7 @@ function getInstallmentAlerts(students, support) {
             studentId: student.id,
             studentName: `${student.name || ''} ${student.surname || ''}`.trim() || 'Ogrenci',
             branchName: branch?.name || 'Bilinmiyor',
-            scheduleName: schedule?.time || 'Program yok',
+            scheduleName: getScheduleDisplayLabel(schedule, branch),
             installmentNumber: installment.installmentNumber,
             dueDate: installment.dueDate,
             lessonLabel: installment.lessonLabel || '',
@@ -253,7 +255,7 @@ function mapStudent(student, support, payments = []) {
     ...student,
     fullName: `${student.name || ''} ${student.surname || ''}`.trim() || 'Ogrenci',
     branchName: branch?.name || 'Bilinmiyor',
-    scheduleName: schedule?.time || 'Program yok',
+    scheduleName: getScheduleDisplayLabel(schedule, branch),
     scheduleDaysLabel: describeScheduleDays(schedule),
     trainerName: trainer?.name || 'Atanmadi',
     installments,
@@ -404,7 +406,7 @@ async function ensureLessonGroupChat({ profile, support, studentId, studentData,
       scheduleId: schedule.id,
       trainerId: trainerUserId,
       studentIds: Array.from(new Set((existingData.studentIds || []).concat(studentId).filter(Boolean))),
-      groupName: `${branch.name || 'Sube'} - ${schedule.time || 'Saat'}`,
+      groupName: getScheduleDisplayLabel(schedule, branch),
       userIds: Array.from(new Set((existingData.userIds || []).concat(participantIds))),
       userEmails: Array.from(
         new Set((existingData.userEmails || []).concat(participantIds.map((userId) => participantMap[userId]?.email).filter(Boolean)))
@@ -491,7 +493,30 @@ function validateInstallments(installments) {
   });
 }
 
-function buildStudentPayload({ values, existingStudent, adminId }) {
+function resolveHeadTrainerMeta(schedule, trainerId, trainers = []) {
+  const assignments = getScheduleAssignments(schedule);
+  const trainer = trainers.find((item) => item.uid === trainerId || item.id === trainerId);
+  const assignment = assignments.find((item) => item.trainerId === trainerId || item.trainerDocId === trainer?.id);
+
+  if (assignment?.role === 'assistant') {
+    const headTrainer = trainers.find(
+      (item) => item.uid === assignment.headTrainerId || item.id === assignment.headTrainerDocId
+    );
+    return {
+      headTrainerId: assignment.headTrainerId || headTrainer?.uid || '',
+      headTrainerDocId: assignment.headTrainerDocId || headTrainer?.id || '',
+      headTrainerName: assignment.headTrainerName || headTrainer?.name || '',
+    };
+  }
+
+  return {
+    headTrainerId: trainer?.uid || trainerId || '',
+    headTrainerDocId: trainer?.id || '',
+    headTrainerName: trainer?.name || assignment?.trainerName || '',
+  };
+}
+
+function buildStudentPayload({ values, existingStudent, adminId, headTrainerMeta = {} }) {
   const payload = {
     name: normalizeText(values.name),
     surname: normalizeText(values.surname),
@@ -505,6 +530,9 @@ function buildStudentPayload({ values, existingStudent, adminId }) {
     branchId: values.branchId,
     scheduleId: values.scheduleId,
     trainerId: values.trainerId,
+    headTrainerId: headTrainerMeta.headTrainerId || values.headTrainerId || '',
+    headTrainerDocId: headTrainerMeta.headTrainerDocId || values.headTrainerDocId || '',
+    headTrainerName: headTrainerMeta.headTrainerName || values.headTrainerName || '',
     startDate: values.startDate || todayIsoDate(),
     monthlyPrice: roundCurrency(values.monthlyPrice),
     installmentCount: Math.max(1, toNumber(values.installmentCount, 1)),
@@ -638,10 +666,17 @@ export async function getSecretaryRegistrationData(profile) {
   const adminId = getAdminScope(profile);
   const support = await getSecretarySupport(adminId, profile.uid);
   const mappedStudents = support.students.map((student) => mapStudent(student, support, support.payments));
+  const schedules = support.schedules.map((schedule) => {
+    const branch = support.branches.find((item) => item.id === schedule.branchId);
+    return {
+      ...schedule,
+      displayLabel: getScheduleDisplayLabel(schedule, branch),
+    };
+  });
 
   return {
     branches: support.branches,
-    schedules: support.schedules,
+    schedules,
     trainers: support.trainers,
     prices: support.prices,
     discounts: support.discounts,
@@ -661,6 +696,7 @@ export async function saveSecretaryStudent({ profile, studentId = '', values }) 
   if (!schedule) {
     throw new Error('Gecerli bir ders saati secilmedi.');
   }
+  const headTrainerMeta = resolveHeadTrainerMeta(schedule, values.trainerId, support.trainers);
 
   const birthYear = toNumber(values.birthYear, 0);
   if (!birthYear || birthYear < 1990 || birthYear > 2035) {
@@ -704,7 +740,7 @@ export async function saveSecretaryStudent({ profile, studentId = '', values }) 
   }));
   validateInstallments(finalInstallments);
 
-  const payload = buildStudentPayload({ values, existingStudent, adminId });
+  const payload = buildStudentPayload({ values, existingStudent, adminId, headTrainerMeta });
   payload.installments = finalInstallments;
 
   if (studentId) {
@@ -832,6 +868,8 @@ export async function getSecretaryStudentOpsData(profile) {
     if (!result[key]) {
       result[key] = {
         key,
+        branchId: student.branchId || '',
+        scheduleId: student.scheduleId || '',
         label: `${student.branchName} - ${student.scheduleName}`,
         details: `${student.scheduleDaysLabel} | ${student.installmentCount || 1} taksit`,
         students: [],
@@ -1050,4 +1088,152 @@ export async function createSecretaryGroupChat({ profile, groupName, emails }) {
 export function resolveSecretarySchedulePrice({ prices, schedules, branchId, scheduleId }) {
   const schedule = schedules.find((item) => item.id === scheduleId);
   return getSchedulePrice(prices, schedule, branchId);
+}
+
+function escapeSecretaryPdf(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getStudentFullName(student) {
+  return `${student?.name || ''} ${student?.surname || ''}`.trim() || '-';
+}
+
+function getStudentAgeLabel(student) {
+  const currentYear = new Date().getFullYear();
+  if (student?.birthYear) {
+    const age = currentYear - Number(student.birthYear);
+    return Number.isFinite(age) ? String(age) : '-';
+  }
+  if (student?.age) return String(student.age);
+  return '-';
+}
+
+function getStudentPhoneLabel(student) {
+  return student?.phone || student?.parentPhone || '-';
+}
+
+function getStudentTrainerLabel(student, trainers, schedules) {
+  if (student?.trainerName) return student.trainerName;
+  const trainer = trainers.find((item) =>
+    item.id === student?.trainerId
+    || item.uid === student?.trainerId
+    || (student?.trainerDocId && item.id === student.trainerDocId)
+  );
+  if (trainer?.name) return `${trainer.name || ''} ${trainer.surname || ''}`.trim();
+  const schedule = schedules.find((item) => item.id === student?.scheduleId);
+  if (student?.headTrainerName) return student.headTrainerName;
+  if (schedule) {
+    const head = trainers.find((item) =>
+      item.id === schedule.headTrainerId
+      || item.uid === schedule.headTrainerId
+      || item.id === schedule.headTrainerDocId
+    );
+    if (head?.name) return `${head.name || ''} ${head.surname || ''}`.trim();
+  }
+  return 'Bilinmiyor';
+}
+
+function groupStudentsForPdf(students, schedules, branches, trainers) {
+  const groups = {};
+  students.forEach((student) => {
+    const schedule = schedules.find((item) => item.id === student.scheduleId);
+    const branch = branches.find((item) => item.id === student.branchId);
+    const key = student.scheduleId || `branch_${student.branchId || 'unknown'}`;
+    const scheduleLabel = schedule ? getScheduleDisplayLabel(schedule, branch) : 'Grup Tanimsiz';
+    const branchLabel = branch?.name || 'Sube';
+    const label = schedule ? `${branchLabel} - ${scheduleLabel}` : branchLabel;
+    if (!groups[key]) {
+      groups[key] = { label, students: [] };
+    }
+    groups[key].students.push(student);
+  });
+  return Object.values(groups).sort((left, right) => left.label.localeCompare(right.label, 'tr'));
+}
+
+export async function getSecretaryStudentPdfData(profile, { studentIds = null, scheduleId = '' } = {}) {
+  const adminId = getAdminScope(profile);
+  const support = await getSecretarySupport(adminId, profile.uid);
+  const clubProfileSnap = await getDoc(doc(db, 'clubProfiles', adminId)).catch(() => null);
+  const clubData = clubProfileSnap?.exists?.() ? clubProfileSnap.data() : {};
+  const clubName = getClubDisplayName(clubData) || 'Yuzme Kulubu';
+
+  const mappedStudents = support.students.map((student) => {
+    const mapped = mapStudent(student, support, support.payments);
+    return { ...student, ...mapped };
+  });
+  let filteredStudents = mappedStudents.slice();
+  if (Array.isArray(studentIds) && studentIds.length) {
+    const set = new Set(studentIds);
+    filteredStudents = filteredStudents.filter((student) => set.has(student.id));
+  } else if (scheduleId) {
+    filteredStudents = filteredStudents.filter((student) => student.scheduleId === scheduleId);
+  }
+
+  const selectedSchedule = scheduleId ? support.schedules.find((item) => item.id === scheduleId) : null;
+  const selectedBranch = selectedSchedule ? support.branches.find((item) => item.id === selectedSchedule.branchId) : null;
+  const subtitle = selectedSchedule
+    ? `${selectedBranch?.name || 'Sube'} - Ogrenci Listesi`
+    : 'Ogrenci Listesi & Takip Tablosu';
+
+  return {
+    clubName,
+    subtitle,
+    groups: groupStudentsForPdf(filteredStudents, support.schedules, support.branches, support.trainers).map((group) => ({
+      ...group,
+      students: group.students.map((student) => ({
+        ...student,
+        _trainerLabel: getStudentTrainerLabel(student, support.trainers, support.schedules),
+        _ageLabel: getStudentAgeLabel(student),
+        _phoneLabel: getStudentPhoneLabel(student),
+        _fullName: getStudentFullName(student),
+      })),
+    })),
+    studentCount: filteredStudents.length,
+  };
+}
+
+export function buildSecretaryStudentPdfBody(pdfData) {
+  const groupsHtml = (pdfData.groups || []).map((group) => {
+    const sortedStudents = group.students.slice().sort((left, right) => {
+      const trainerCompare = (left._trainerLabel || '').localeCompare(right._trainerLabel || '', 'tr');
+      if (trainerCompare !== 0) return trainerCompare;
+      return (left._fullName || '').localeCompare(right._fullName || '', 'tr');
+    });
+    const rowsHtml = sortedStudents.map((student, index) => `
+      <tr class="${index % 2 === 0 ? 'row-even' : ''}">
+        <td>${escapeSecretaryPdf(student._trainerLabel)}</td>
+        <td>${escapeSecretaryPdf(student._fullName)}</td>
+        <td style="text-align:center;">${escapeSecretaryPdf(student._ageLabel)}</td>
+        <td>${escapeSecretaryPdf(student._phoneLabel)}</td>
+      </tr>`).join('');
+    return `
+      <section class="group-block">
+        <div class="group-title">${escapeSecretaryPdf(group.label)}</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:24%;">Antrenor</th>
+              <th style="width:38%;">Ogrenci Adi Soyadi</th>
+              <th style="width:8%; text-align:center;">Yas</th>
+              <th style="width:30%;">Telefon</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </section>`;
+  }).join('');
+
+  return `
+    <div class="header">
+      <h1>${escapeSecretaryPdf(pdfData.clubName || 'Yuzme Kulubu')}</h1>
+      <p>${escapeSecretaryPdf(pdfData.subtitle || 'Ogrenci Listesi')}</p>
+    </div>
+    ${groupsHtml || '<p style="text-align:center; color:#7f8c8d;">Listelenecek ogrenci bulunamadi.</p>'}
+    <p class="footer-note">Rapor Tarihi: ${escapeSecretaryPdf(new Date().toLocaleString('tr-TR'))}</p>
+  `;
 }

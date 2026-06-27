@@ -335,7 +335,7 @@ export default function SecretaryRegistrationOpsScreen({ navigation, route }) {
                 onPress={() => handleScheduleSelect(schedule.id)}
                 style={({ pressed }) => [styles.selectCard, form.scheduleId === schedule.id && styles.selectCardActive, pressed && styles.pressed]}
               >
-                <Text style={[styles.selectTitle, form.scheduleId === schedule.id && styles.selectTitleActive]}>{schedule.time}</Text>
+                <Text style={[styles.selectTitle, form.scheduleId === schedule.id && styles.selectTitleActive]}>{schedule.displayLabel || schedule.time}</Text>
                 <Text style={styles.selectCaption}>{Array.isArray(schedule.days) && schedule.days.length ? schedule.days.join(', ') : 'Gun tanimi yok'}</Text>
                 <Text style={styles.selectCaption}>Kapasite: {schedule.capacity || '-'}</Text>
               </Pressable>

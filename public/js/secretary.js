@@ -142,6 +142,86 @@ function getScheduleDisplayLabel(schedule) {
     return parts.join(' - ');
 }
 
+function normalizeScheduleTrainerAssignments(schedule) {
+    if (Array.isArray(schedule?.trainerAssignments) && schedule.trainerAssignments.length) {
+        return schedule.trainerAssignments.filter(Boolean);
+    }
+    if (!schedule?.trainerId) return [];
+    return [{
+        trainerId: schedule.trainerId,
+        trainerDocId: schedule.trainerDocId || '',
+        trainerName: schedule.trainerName || '',
+        role: 'head',
+        headTrainerId: schedule.trainerId,
+        headTrainerDocId: schedule.trainerDocId || ''
+    }];
+}
+
+function resolveTrainerRecord(trainerId) {
+    if (!trainerId) return null;
+    return allTrainers.find(item =>
+        item.id === trainerId || item.uid === trainerId
+    ) || null;
+}
+
+function resolveHeadTrainerMeta(trainerDocId, schedule) {
+    const trainer = resolveTrainerRecord(trainerDocId);
+    const trainerAuthId = trainer?.uid || trainer?.id || trainerDocId;
+    const assignments = normalizeScheduleTrainerAssignments(schedule);
+    const assignment = assignments.find(item =>
+        item.trainerId === trainerAuthId
+        || item.trainerDocId === trainerDocId
+        || item.trainerId === trainerDocId
+    );
+
+    if (!assignment) {
+        return {
+            headTrainerId: trainerAuthId,
+            headTrainerDocId: trainer?.id || trainerDocId,
+            headTrainerName: trainer?.name || '',
+            trainerName: trainer?.name || ''
+        };
+    }
+
+    if (assignment.role === 'head') {
+        return {
+            headTrainerId: assignment.trainerId || trainerAuthId,
+            headTrainerDocId: assignment.trainerDocId || trainer?.id || trainerDocId,
+            headTrainerName: assignment.trainerName || trainer?.name || '',
+            trainerName: assignment.trainerName || trainer?.name || ''
+        };
+    }
+
+    const headTrainer = resolveTrainerRecord(assignment.headTrainerId || assignment.headTrainerDocId);
+    return {
+        headTrainerId: assignment.headTrainerId || headTrainer?.uid || headTrainer?.id || '',
+        headTrainerDocId: assignment.headTrainerDocId || headTrainer?.id || '',
+        headTrainerName: assignment.headTrainerName || headTrainer?.name || '',
+        trainerName: assignment.trainerName || trainer?.name || ''
+    };
+}
+
+function getStudentHeadTrainerAuthId(student, schedule) {
+    if (student?.headTrainerId) return student.headTrainerId;
+    return resolveHeadTrainerMeta(student?.trainerId, schedule).headTrainerId;
+}
+
+function getRemainingLessonsForStudent(student, schedule) {
+    const totalLessons = Math.max(1, Number(schedule?.lessonsCount) || 1);
+    const attendedLessons = Number(student?.attendedClasses) || 0;
+    const missedLessons = Number(student?.missedClasses) || 0;
+    return Math.max(0, totalLessons - attendedLessons - missedLessons);
+}
+
+function getStudentTrainerLabel(student) {
+    const trainer = resolveTrainerRecord(student?.trainerId);
+    if (trainer?.name) return trainer.name;
+    if (student?.trainerName) return student.trainerName;
+    const schedule = allSchedules.find(item => item.id === student?.scheduleId);
+    const headMeta = resolveHeadTrainerMeta(student?.trainerId, schedule);
+    return headMeta.trainerName || headMeta.headTrainerName || 'Bilinmiyor';
+}
+
 function getActiveLeadApplication() {
     const applicationId = getLeadApplicationId();
     return allClubApplications.find(item => item.id === applicationId) || null;
@@ -206,12 +286,15 @@ async function ensurePreRegistrationLink(forceRotate = false) {
     }
 
     currentPreRegistrationToken = token;
-    currentPreRegistrationClubName = String(profileData.name || 'Kulup').trim();
+    const helpers = window.ClubProfileHelpers;
+    currentPreRegistrationClubName = helpers?.getClubDisplayName
+        ? helpers.getClubDisplayName(profileData)
+        : String(profileData.clubName || profileData.name || 'Kulup').trim();
     currentPreRegistrationLink = buildPreRegistrationLink(token);
     currentPreRegistrationShareText = buildPreRegistrationShareText();
     renderPreRegistrationAccessPanel(forceRotate
-        ? 'Yeni gizli link üretildi. Eski link artik kullanilmaz.'
-        : 'Gizli on kayit linki hazir. Hazir mesaj metnini dogrudan veliye gonderebilirsiniz.');
+        ? 'Link yenilendi.'
+        : 'Kulubunuz icin tek kalici on kayit linki hazir. Bu linki velilerle paylasabilirsiniz.');
     return currentPreRegistrationLink;
 }
 
@@ -251,24 +334,171 @@ async function openPreRegistrationLink() {
     }
 }
 
-async function rotatePreRegistrationLink() {
-    if (!confirm('Yeni bir gizli link üretilirse eski link çalışmaz. Devam edilsin mi?')) {
+function setPreRegistrationCustomizeStatus(message, tone = 'info') {
+    const status = document.getElementById('preRegistrationCustomizeStatus');
+    if (!status) {
+        return;
+    }
+    status.textContent = message || '';
+    status.style.color = tone === 'error' ? '#c0392b' : (tone === 'success' ? '#1f7a3e' : '#5f6c7b');
+}
+
+async function loadPreRegistrationCustomizeForm() {
+    if (!currentAdminId) {
+        setPreRegistrationCustomizeStatus('Özelleştirme için yönetici bilgisi bulunamadı.', 'error');
         return;
     }
 
     try {
-        await ensurePreRegistrationLink(true);
+        const profileDoc = await db.collection(CLUB_PROFILES_COLLECTION).doc(currentAdminId).get();
+        const profileData = profileDoc.exists ? profileDoc.data() || {} : {};
+        const helpers = window.ClubProfileHelpers;
+        const settings = helpers?.getLeadFormSettings
+            ? helpers.getLeadFormSettings(profileData)
+            : (profileData.leadFormSettings || {});
+
+        const eyebrowEl = document.getElementById('leadFormEyebrow');
+        const titleEl = document.getElementById('leadFormTitle');
+        const descriptionEl = document.getElementById('leadFormDescription');
+        const accentEl = document.getElementById('leadFormAccentColor');
+        const videoEl = document.getElementById('leadFormVideoUrl');
+        const preview = document.getElementById('leadFormLogoPreview');
+
+        if (eyebrowEl) eyebrowEl.value = settings.eyebrowText || 'Ön kayıt formu';
+        if (titleEl) titleEl.value = settings.title || '';
+        if (descriptionEl) {
+            descriptionEl.value = settings.description || 'Bilgilerinizi gönderin. Kulüp ekibi başvurunuzu inceleyip sizinle iletişime geçecektir.';
+        }
+        if (accentEl) accentEl.value = settings.accentColor || '#0b7ea8';
+        if (videoEl) videoEl.value = settings.videoUrl || '';
+
+        const logoUrl = settings.logoUrl || (helpers?.getClubLogoUrl ? helpers.getClubLogoUrl(profileData) : profileData.logoUrl || '');
+        if (preview) {
+            if (logoUrl) {
+                preview.src = logoUrl;
+                preview.style.display = 'block';
+            } else {
+                preview.removeAttribute('src');
+                preview.style.display = 'none';
+            }
+        }
+
+        setPreRegistrationCustomizeStatus('Ön kayıt sayfası ayarları yüklendi.', 'success');
     } catch (error) {
-        alert('Yeni link üretilemedi: ' + error.message);
+        console.error('Ön kayıt özelleştirme yüklenemedi:', error);
+        setPreRegistrationCustomizeStatus('Ayarlar yüklenemedi: ' + error.message, 'error');
     }
 }
 
-function populateLeadSchedulePicker(selectedScheduleId = '') {
+async function savePreRegistrationCustomizeForm(event) {
+    event.preventDefault();
+
+    if (!currentAdminId) {
+        alert('Kayıt için yönetici bilgisi bulunamadı.');
+        return;
+    }
+
+    try {
+        const helpers = window.ClubProfileHelpers;
+        const profileRef = db.collection(CLUB_PROFILES_COLLECTION).doc(currentAdminId);
+        const profileDoc = await profileRef.get();
+        const profileData = profileDoc.exists ? profileDoc.data() || {} : {};
+        const existingSettings = helpers?.getLeadFormSettings
+            ? helpers.getLeadFormSettings(profileData)
+            : (profileData.leadFormSettings || {});
+
+        const logoFile = document.getElementById('leadFormLogoFile')?.files?.[0] || null;
+        let logoUrl = existingSettings.logoUrl || '';
+        if (logoFile) {
+            logoUrl = helpers?.readImageFileAsDataUrl
+                ? await helpers.readImageFileAsDataUrl(logoFile, 2 * 1024 * 1024)
+                : await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(logoFile);
+                });
+        }
+
+        const rawVideoUrl = document.getElementById('leadFormVideoUrl')?.value.trim() || '';
+        const videoEmbedUrl = helpers?.parseVideoEmbedUrl
+            ? helpers.parseVideoEmbedUrl(rawVideoUrl)
+            : '';
+
+        if (rawVideoUrl && !videoEmbedUrl) {
+            throw new Error('Video linki desteklenmiyor. YouTube veya Vimeo linki girin.');
+        }
+
+        const leadFormSettings = {
+            eyebrowText: document.getElementById('leadFormEyebrow')?.value.trim() || 'Ön kayıt formu',
+            title: document.getElementById('leadFormTitle')?.value.trim() || '',
+            description: document.getElementById('leadFormDescription')?.value.trim() || '',
+            accentColor: document.getElementById('leadFormAccentColor')?.value || '#0b7ea8',
+            logoUrl,
+            videoUrl: rawVideoUrl,
+            videoEmbedUrl
+        };
+
+        await profileRef.set({
+            leadFormSettings,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        document.getElementById('leadFormLogoFile').value = '';
+        await loadPreRegistrationCustomizeForm();
+        setPreRegistrationCustomizeStatus('Ön kayıt sayfası görünümü kaydedildi.', 'success');
+    } catch (error) {
+        console.error('Ön kayıt özelleştirme kaydedilemedi:', error);
+        setPreRegistrationCustomizeStatus(error.message, 'error');
+    }
+}
+
+function bindPreRegistrationCustomizeForm() {
+    const form = document.getElementById('preRegistrationCustomizeForm');
+    const logoInput = document.getElementById('leadFormLogoFile');
+    const preview = document.getElementById('leadFormLogoPreview');
+
+    if (form && form.dataset.bound !== '1') {
+        form.dataset.bound = '1';
+        form.addEventListener('submit', savePreRegistrationCustomizeForm);
+    }
+
+    if (logoInput && preview && logoInput.dataset.bound !== '1') {
+        logoInput.dataset.bound = '1';
+        logoInput.addEventListener('change', () => {
+            const file = logoInput.files?.[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+function populateLeadSchedulePicker(selectedScheduleId = '', filterBranchId = '') {
     const picker = document.getElementById('leadSchedulePicker');
     if (!picker) return;
 
-    const schedules = [...allSchedules].sort((left, right) => getScheduleDisplayLabel(left).localeCompare(getScheduleDisplayLabel(right), 'tr'));
-    picker.innerHTML = '<option value="">-- Ders Saati Seçiniz --</option>';
+    const filterId = String(filterBranchId || picker.dataset.branchFilter || '').trim();
+    if (filterId) {
+        picker.dataset.branchFilter = filterId;
+    } else if (filterBranchId === '') {
+        delete picker.dataset.branchFilter;
+    }
+
+    const sourceSchedules = filterId
+        ? allSchedules.filter(item => String(item.branchId || '') === filterId)
+        : allSchedules;
+
+    const schedules = [...sourceSchedules].sort((left, right) => getScheduleDisplayLabel(left).localeCompare(getScheduleDisplayLabel(right), 'tr'));
+    const branchInfo = filterId ? allBranches.find(item => item.id === filterId) : null;
+    const branchName = branchInfo?.name ? ` (${branchInfo.name})` : '';
+    picker.innerHTML = `<option value="">-- Ders Saati Seçiniz${branchName} --</option>`;
 
     schedules.forEach(schedule => {
         const option = document.createElement('option');
@@ -276,6 +506,14 @@ function populateLeadSchedulePicker(selectedScheduleId = '') {
         option.textContent = getScheduleDisplayLabel(schedule);
         picker.appendChild(option);
     });
+
+    if (filterId && schedules.length === 0) {
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.disabled = true;
+        emptyOption.textContent = 'Bu şube için ders saati tanımlı değil';
+        picker.appendChild(emptyOption);
+    }
 
     picker.value = selectedScheduleId || '';
 }
@@ -401,6 +639,7 @@ function clearLeadRegistrationContext() {
     const leadSchedulePicker = document.getElementById('leadSchedulePicker');
     if (leadSchedulePicker) {
         leadSchedulePicker.value = '';
+        delete leadSchedulePicker.dataset.branchFilter;
     }
 
     const passwordInput = document.getElementById('parentPassword');
@@ -450,16 +689,72 @@ async function handleLeadScheduleSelection() {
     refreshRegistrationFlowUi();
 }
 
+function populateClubApplicationFilters() {
+    const branchSelect = document.getElementById('clubApplicationBranchFilter');
+    if (!branchSelect) return;
+
+    const previousValue = branchSelect.value;
+    const requestedBranchIds = new Set(
+        allClubApplications
+            .filter(item => String(item.status || 'pending') === 'pending')
+            .map(item => String(item.requestedBranchId || '').trim())
+            .filter(Boolean)
+    );
+
+    const branchesForFilter = allBranches
+        .filter(branch => requestedBranchIds.has(branch.id))
+        .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'tr'));
+
+    branchSelect.innerHTML = '<option value="">Tüm Şubeler</option>';
+    branchesForFilter.forEach(branch => {
+        const option = document.createElement('option');
+        option.value = branch.id;
+        option.textContent = branch.name || 'Şube';
+        branchSelect.appendChild(option);
+    });
+
+    if (previousValue && branchesForFilter.some(branch => branch.id === previousValue)) {
+        branchSelect.value = previousValue;
+    } else {
+        branchSelect.value = '';
+    }
+}
+
+function handleClubApplicationFilterChange() {
+    renderClubApplications();
+}
+
 function renderClubApplications() {
     const container = document.getElementById('clubApplicationsContainer');
     if (!container) return;
 
+    populateClubApplicationFilters();
+
+    const lessonTypeFilter = String(document.getElementById('clubApplicationLessonTypeFilter')?.value || '').toLowerCase();
+    const branchFilter = String(document.getElementById('clubApplicationBranchFilter')?.value || '').trim();
+    const branchFilterGroup = document.getElementById('clubApplicationBranchFilterGroup');
+    if (branchFilterGroup) {
+        branchFilterGroup.style.display = (lessonTypeFilter === 'private') ? 'none' : '';
+    }
+
     const pendingApplications = [...allClubApplications]
         .filter(item => String(item.status || 'pending') === 'pending')
+        .filter(item => {
+            if (!lessonTypeFilter) return true;
+            return String(item.lessonType || '').toLowerCase() === lessonTypeFilter;
+        })
+        .filter(item => {
+            if (!branchFilter) return true;
+            if (String(item.lessonType || '').toLowerCase() === 'private') return false;
+            return String(item.requestedBranchId || '') === branchFilter;
+        })
         .sort((left, right) => new Date(right.createdAt || 0) - new Date(left.createdAt || 0));
 
     if (!pendingApplications.length) {
-        container.innerHTML = '<div class="secretary-empty-state">Bekleyen ön kayıt bulunmuyor. Paylaşılan gizli linkten gelen başvurular burada görünecek.</div>';
+        const message = (lessonTypeFilter || branchFilter)
+            ? 'Seçili filtreye uyan ön kayıt bulunmuyor.'
+            : 'Bekleyen ön kayıt bulunmuyor. Paylaşılan gizli linkten gelen başvurular burada görünecek.';
+        container.innerHTML = `<div class="secretary-empty-state">${escapeHtml(message)}</div>`;
         return;
     }
 
@@ -474,6 +769,20 @@ function renderClubApplications() {
                     : '';
                 const paymentPlanHtml = (application.installmentPreference || application.installmentCount)
                     ? `<div class="secretary-application-field"><strong>Odeme dusuncesi</strong>${escapeHtml(getInstallmentPreferenceLabel(application.installmentPreference || application.installmentCount))}</div>`
+                    : '';
+                const lessonTypeRaw = String(application.lessonType || '').toLowerCase();
+                const lessonTypeLabel = lessonTypeRaw === 'private'
+                    ? 'Özel Ders'
+                    : (lessonTypeRaw === 'group' ? 'Grup Dersi' : (application.lessonTypeLabel || ''));
+                const lessonTypeHtml = lessonTypeLabel
+                    ? `<div class="secretary-application-field"><strong>Ders türü</strong>${escapeHtml(lessonTypeLabel)}</div>`
+                    : '';
+                const requestedBranchName = String(application.requestedBranchName || '').trim()
+                    || (application.requestedBranchId
+                        ? (allBranches.find(b => b.id === application.requestedBranchId)?.name || '')
+                        : '');
+                const requestedBranchHtml = (lessonTypeRaw === 'group' && requestedBranchName)
+                    ? `<div class="secretary-application-field"><strong>Tercih edilen şube</strong>${escapeHtml(requestedBranchName)}</div>`
                     : '';
 
                 return `
@@ -496,6 +805,8 @@ function renderClubApplications() {
                             <div class="secretary-application-field"><strong>Veli e-mail</strong>${escapeHtml(application.parentEmail)}</div>
                             <div class="secretary-application-field"><strong>Veli telefonu</strong>${escapeHtml(application.parentPhone)}</div>
                             <div class="secretary-application-field"><strong>Adres</strong>${escapeHtml(application.address)}</div>
+                            ${lessonTypeHtml}
+                            ${requestedBranchHtml}
                             ${paymentMethodHtml}
                             ${paymentPlanHtml}
                             ${noteHtml}
@@ -567,7 +878,15 @@ async function transferClubApplicationToForm(applicationId) {
     document.getElementById('parentPassword').value = generatedPassword;
     document.getElementById('parentPasswordConfirm').value = generatedPassword;
 
-    document.getElementById('studentBranch').value = '';
+    const lessonTypeRaw = String(application.lessonType || '').toLowerCase();
+    const requestedBranchId = lessonTypeRaw === 'group'
+        ? String(application.requestedBranchId || '').trim()
+        : '';
+    const branchExists = requestedBranchId && allBranches.some(item => item.id === requestedBranchId);
+    const branchSelect = document.getElementById('studentBranch');
+    if (branchSelect) {
+        branchSelect.value = branchExists ? requestedBranchId : '';
+    }
     await updateSchedules();
     document.getElementById('studentSchedule').value = '';
     document.getElementById('studentTrainer').innerHTML = '<option value="">-- Antrenör Seçiniz --</option>';
@@ -575,6 +894,7 @@ async function transferClubApplicationToForm(applicationId) {
     document.getElementById('totalAmount').value = '';
     document.getElementById('installmentAmount').value = '';
     renderInstallmentPlanInputs();
+    populateLeadSchedulePicker('', branchExists ? requestedBranchId : '');
     refreshRegistrationFlowUi(application);
     switchPage('registration');
     scrollMainContentToTop(document.getElementById('registrationForm'));
@@ -735,6 +1055,8 @@ window.addEventListener('load', async () => {
         
         await loadAllData();
         await ensurePreRegistrationLink();
+        bindPreRegistrationCustomizeForm();
+        await loadPreRegistrationCustomizeForm();
         startClubApplicationsListener();
     } catch (error) {
         console.error('Sekreter paneli baslatilamadi:', error);
@@ -802,6 +1124,15 @@ function setupEventListeners() {
     const leadSchedulePicker = document.getElementById('leadSchedulePicker');
     if (leadSchedulePicker) {
         leadSchedulePicker.addEventListener('change', handleLeadScheduleSelection);
+    }
+
+    const clubAppLessonTypeFilter = document.getElementById('clubApplicationLessonTypeFilter');
+    if (clubAppLessonTypeFilter) {
+        clubAppLessonTypeFilter.addEventListener('change', handleClubApplicationFilterChange);
+    }
+    const clubAppBranchFilter = document.getElementById('clubApplicationBranchFilter');
+    if (clubAppBranchFilter) {
+        clubAppBranchFilter.addEventListener('change', handleClubApplicationFilterChange);
     }
 
     const startDateInput = document.getElementById('studentStartDate');
@@ -1241,17 +1572,7 @@ async function updateSchedules() {
     branchSchedules.forEach(schedule => {
         const option = document.createElement('option');
         option.value = schedule.id;
-        const days = Array.isArray(schedule.days) && schedule.days.length ? schedule.days : [];
-        const dayLabels = days.map(day => ({
-            monday: 'Pzt',
-            tuesday: 'Sal',
-            wednesday: 'Çar',
-            thursday: 'Per',
-            friday: 'Cum',
-            saturday: 'Cmt',
-            sunday: 'Paz'
-        }[day] || day));
-        option.textContent = dayLabels.length ? `${schedule.time} (${dayLabels.join(', ')})` : schedule.time;
+        option.textContent = getScheduleDisplayLabel(schedule);
         scheduleSelect.appendChild(option);
     });
     
@@ -1284,7 +1605,12 @@ function updateTrainers() {
         if (!trainer) return;
         const option = document.createElement('option');
         option.value = trainer.id;
-        option.textContent = `${trainer.name}${assignment.role === 'assistant' ? ' (Yardımcı)' : ' (Baş)'}`;
+        const headSuffix = assignment.role === 'assistant' && assignment.headTrainerName
+            ? ` (Yardımcı • ${assignment.headTrainerName})`
+            : assignment.role === 'assistant'
+                ? ' (Yardımcı)'
+                : ' (Baş Antrenör)';
+        option.textContent = `${trainer.name}${headSuffix}`;
         trainerSelect.appendChild(option);
     });
 }
@@ -1560,6 +1886,15 @@ async function saveStudent(e) {
         studentData.requestedInstallmentCount = Math.max(1, Number(activeLeadApplication.installmentCount) || 1);
         studentData.requestedInstallmentPreference = activeLeadApplication.installmentPreference || '';
         studentData.preRegistrationNote = activeLeadApplication.note || '';
+        const leadLessonType = String(activeLeadApplication.lessonType || '').toLowerCase();
+        if (leadLessonType === 'group' || leadLessonType === 'private') {
+            studentData.lessonType = leadLessonType;
+            studentData.lessonTypeLabel = leadLessonType === 'private' ? 'Özel Ders' : 'Grup Dersi';
+        }
+        if (activeLeadApplication.requestedBranchId) {
+            studentData.requestedBranchId = activeLeadApplication.requestedBranchId;
+            studentData.requestedBranchName = activeLeadApplication.requestedBranchName || '';
+        }
     }
 
     const selectedSchedule = allSchedules.find(schedule => schedule.id === studentData.scheduleId);
@@ -1567,6 +1902,12 @@ async function saveStudent(e) {
         alert('Lütfen geçerli bir ders saati seçiniz!');
         return;
     }
+
+    const trainerMeta = resolveHeadTrainerMeta(studentData.trainerId, selectedSchedule);
+    studentData.headTrainerId = trainerMeta.headTrainerId;
+    studentData.headTrainerDocId = trainerMeta.headTrainerDocId;
+    studentData.headTrainerName = trainerMeta.headTrainerName;
+    studentData.trainerName = trainerMeta.trainerName;
 
     const scheduleCapacity = Math.max(0, parseInt(selectedSchedule.capacity, 10) || 0);
     if (scheduleCapacity > 0) {
@@ -1695,7 +2036,9 @@ async function loadStudents() {
         const branch = allBranches.find(b => b.id === student.branchId);
         
         const key = `${student.branchId}_${student.scheduleId}`;
-        const label = `${branch ? branch.name : 'Bilinmiyor'} - ${schedule ? schedule.time : 'Bilinmiyor'} (${schedule?.lessonsCount || 1} Ders)`;
+        const label = schedule
+            ? `${getScheduleDisplayLabel(schedule)} (${schedule.lessonsCount || 1} ders)`
+            : `${branch ? branch.name : 'Bilinmiyor'} - Bilinmiyor`;
         
         if (!groups[key]) {
             groups[key] = {
@@ -1784,6 +2127,7 @@ async function loadStudents() {
                     <button class="btn btn-success btn-sm" onclick="openPaymentModal('${student.id}')" style="margin-right: 5px;">Taksit</button>
                     <button class="btn btn-info btn-sm" onclick="editStudent('${student.id}')" style="margin-right: 5px;">Düzenle</button>
                     <button class="btn btn-info btn-sm" onclick="viewStudent('${student.id}')" style="margin-right: 5px;">Görüntüle</button>
+                    <button class="btn btn-warning btn-sm" onclick="exportStudentPdf('${student.id}')" style="margin-right: 5px;">PDF</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteStudent('${student.id}')">Sil</button>
                 </td>
             `;
@@ -1860,26 +2204,22 @@ async function exportStudentsBySchedule() {
             return;
         }
         
-        // CSV başlıkları
-        const headers = ['Adı', 'Soyadı', 'Telefon', 'Ders Saati', 'Kalan Ders'];
+        const headers = ['Adı', 'Soyadı', 'Telefon', 'Ders Saati', 'Şube', 'Antrenör', 'Kalan Ders'];
         const rows = [];
-        
-        // Her öğrenci için satır oluştur
+
         filteredStudents.forEach(student => {
             const schedule = allSchedules.find(s => s.id === student.scheduleId);
+            const branch = allBranches.find(item => item.id === student.branchId);
             const scheduleLabel = schedule ? getScheduleDisplayLabel(schedule) : 'Bilinmiyor';
-            
-            // Kalan ders sayısını hesapla
-            const totalLessons = schedule?.lessonsCount || 1;
-            const attendedLessons = student.attendedClasses || 0;
-            const missedLessons = student.missedClasses || 0;
-            const remainingLessons = Math.max(0, totalLessons - attendedLessons - missedLessons);
-            
+            const remainingLessons = getRemainingLessonsForStudent(student, schedule);
+
             rows.push([
                 student.name || '',
                 student.surname || '',
-                student.parentPhone || '',
+                student.phone || student.parentPhone || '',
                 scheduleLabel,
+                branch?.name || '',
+                getStudentTrainerLabel(student),
                 remainingLessons
             ]);
         });
@@ -1911,6 +2251,338 @@ async function exportStudentsBySchedule() {
     } catch (error) {
         console.error('Öğrenci export hatası:', error);
         alert('Öğrenci indirme başarısız: ' + error.message);
+    }
+}
+
+function escapeHtmlForPdf(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function formatReportDateTR(date = new Date()) {
+    return date.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+}
+
+function getStudentFullName(student) {
+    return `${student?.name || ''} ${student?.surname || ''}`.trim() || '-';
+}
+
+function getStudentAgeLabel(student) {
+    const currentYear = new Date().getFullYear();
+    if (student?.birthYear) {
+        const age = currentYear - Number(student.birthYear);
+        return Number.isFinite(age) ? String(age) : '-';
+    }
+    if (student?.age) {
+        return String(student.age);
+    }
+    return '-';
+}
+
+function getStudentPhoneLabel(student) {
+    return student?.phone || student?.parentPhone || '-';
+}
+
+async function resolveClubPdfHeaderMeta() {
+    let clubName = currentPreRegistrationClubName || 'Yüzme Kulübü';
+
+    if (currentAdminId && window.db) {
+        try {
+            const profileDoc = await db.collection(CLUB_PROFILES_COLLECTION).doc(currentAdminId).get();
+            if (profileDoc.exists) {
+                const profileData = profileDoc.data() || {};
+                clubName = profileData.name || profileData.clubName || clubName;
+            }
+        } catch (error) {
+            console.warn('Kulüp profili PDF için alınamadı:', error);
+        }
+    }
+
+    return { clubName };
+}
+
+function groupStudentsForPdf(students) {
+    const groups = {};
+
+    students.forEach(student => {
+        const schedule = allSchedules.find(item => item.id === student.scheduleId);
+        const branch = allBranches.find(item => item.id === student.branchId);
+        const key = student.scheduleId || `branch_${student.branchId || 'unknown'}`;
+        const scheduleLabel = schedule ? getScheduleDisplayLabel(schedule) : 'Grup Tanımsız';
+        const branchLabel = branch?.name || 'Şube';
+        const label = schedule
+            ? `${branchLabel} - ${scheduleLabel}`
+            : branchLabel;
+
+        if (!groups[key]) {
+            groups[key] = { label, students: [] };
+        }
+        groups[key].students.push(student);
+    });
+
+    return Object.values(groups).sort((left, right) => left.label.localeCompare(right.label, 'tr'));
+}
+
+function buildStudentListPdfHtml(students, options = {}) {
+    const groups = groupStudentsForPdf(students);
+    const clubName = options.clubName || 'Yüzme Kulübü';
+    const subtitle = options.subtitle || 'Öğrenci Listesi';
+
+    const groupsHtml = groups.map(group => {
+        const sortedStudents = group.students.slice().sort((left, right) => {
+            const trainerCompare = getStudentTrainerLabel(left).localeCompare(getStudentTrainerLabel(right), 'tr');
+            if (trainerCompare !== 0) {
+                return trainerCompare;
+            }
+            return getStudentFullName(left).localeCompare(getStudentFullName(right), 'tr');
+        });
+
+        const rowsHtml = sortedStudents.map((student, index) => `
+            <tr class="${index % 2 === 0 ? 'pdf-row-even' : 'pdf-row-odd'}">
+                <td>${escapeHtmlForPdf(getStudentTrainerLabel(student))}</td>
+                <td>${escapeHtmlForPdf(getStudentFullName(student))}</td>
+                <td class="pdf-col-age">${escapeHtmlForPdf(getStudentAgeLabel(student))}</td>
+                <td>${escapeHtmlForPdf(getStudentPhoneLabel(student))}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <section class="pdf-group-block">
+                <div class="pdf-group-title">${escapeHtmlForPdf(group.label)}</div>
+                <table class="pdf-student-table">
+                    <thead>
+                        <tr>
+                            <th>Antrenör</th>
+                            <th>Öğrenci Adı Soyadı</th>
+                            <th>Yaş</th>
+                            <th>Telefon</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </section>
+        `;
+    }).join('');
+
+    return `
+        <style>
+            .secretary-pdf-root {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #2c3e50;
+                background: #ffffff;
+                width: 794px;
+                padding: 28px 32px 36px;
+                box-sizing: border-box;
+            }
+            .pdf-main-title {
+                margin: 0;
+                text-align: center;
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: 0.2px;
+            }
+            .pdf-main-subtitle {
+                margin: 8px 0 24px;
+                text-align: center;
+                font-size: 13px;
+                color: #5d6d7e;
+            }
+            .pdf-group-block {
+                margin-bottom: 20px;
+                page-break-inside: avoid;
+            }
+            .pdf-group-title {
+                background: #ecf0f1;
+                border: 1px solid #bdc3c7;
+                border-bottom: none;
+                padding: 9px 12px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            .pdf-student-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                font-size: 10.5px;
+            }
+            .pdf-student-table thead th {
+                background: #2c3e50;
+                color: #ffffff;
+                padding: 9px 8px;
+                text-align: left;
+                font-weight: 700;
+                border: 1px solid #2c3e50;
+            }
+            .pdf-student-table tbody td {
+                border: 1px solid #dcdde1;
+                padding: 8px;
+                vertical-align: top;
+                word-wrap: break-word;
+            }
+            .pdf-student-table tbody tr.pdf-row-even td {
+                background: #f8f9fa;
+            }
+            .pdf-student-table tbody tr.pdf-row-odd td {
+                background: #ffffff;
+            }
+            .pdf-student-table th:nth-child(1),
+            .pdf-student-table td:nth-child(1) { width: 24%; }
+            .pdf-student-table th:nth-child(2),
+            .pdf-student-table td:nth-child(2) { width: 38%; }
+            .pdf-student-table th:nth-child(3),
+            .pdf-student-table td:nth-child(3) { width: 8%; }
+            .pdf-student-table th:nth-child(4),
+            .pdf-student-table td:nth-child(4) { width: 30%; }
+            .pdf-col-age { text-align: center; }
+            .pdf-footer-note {
+                margin-top: 18px;
+                font-size: 10px;
+                color: #7f8c8d;
+            }
+        </style>
+        <div class="secretary-pdf-root">
+            <h1 class="pdf-main-title">${escapeHtmlForPdf(clubName)}</h1>
+            <p class="pdf-main-subtitle">${escapeHtmlForPdf(subtitle)}</p>
+            ${groupsHtml}
+            <p class="pdf-footer-note">Rapor Tarihi: ${escapeHtmlForPdf(formatReportDateTR())}</p>
+        </div>
+    `;
+}
+
+async function downloadStudentListPdf(students, options = {}, filename = 'ogrenci-listesi.pdf') {
+    if (typeof window.html2pdf !== 'function') {
+        throw new Error('PDF kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyin.');
+    }
+
+    const meta = await resolveClubPdfHeaderMeta();
+    const html = buildStudentListPdfHtml(students, {
+        ...options,
+        clubName: meta.clubName
+    });
+
+    const host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    // html2canvas, "left:-10000px" gibi viewport disindaki konteynerleri bazi
+    // kombinasyonlarda (body overflow-x:hidden / panel-enhanced stilleriyle)
+    // bos olarak yakalayabiliyor. Bunun yerine ekranda gorunur konuma alip
+    // opacity:0 + pointer-events:none ile gozden gizliyoruz. Boylece layout
+    // gercek pikseller uzerinden hesaplanir ve PDF dolu uretilir.
+    host.style.cssText = [
+        'position: fixed',
+        'top: 0',
+        'left: 0',
+        'width: 794px',
+        'max-width: 794px',
+        'background: #ffffff',
+        'opacity: 0',
+        'pointer-events: none',
+        'z-index: -1',
+        'overflow: visible'
+    ].join('; ') + ';';
+    host.innerHTML = html;
+    document.body.appendChild(host);
+
+    const root = host.querySelector('.secretary-pdf-root');
+    if (!root) {
+        document.body.removeChild(host);
+        throw new Error('PDF içeriği oluşturulamadı.');
+    }
+
+    try {
+        await window.html2pdf()
+            .set({
+                margin: [10, 8, 12, 8],
+                filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    width: 794,
+                    windowWidth: 794,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                },
+                pagebreak: { mode: ['css', 'legacy'] }
+            })
+            .from(root)
+            .save();
+    } finally {
+        document.body.removeChild(host);
+    }
+}
+
+async function exportStudentPdf(studentId) {
+    try {
+        const student = allStudents.find(item => item.id === studentId);
+        if (!student) {
+            alert('Öğrenci bulunamadı.');
+            return;
+        }
+
+        const schedule = allSchedules.find(item => item.id === student.scheduleId);
+        const branch = allBranches.find(item => item.id === student.branchId);
+        const subtitle = schedule
+            ? `${branch?.name || 'Şube'} - Öğrenci Listesi`
+            : 'Öğrenci Listesi';
+        const safeName = getStudentFullName(student).replace(/[^\w\-]+/g, '_');
+        await downloadStudentListPdf([student], { subtitle }, `${safeName}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+        console.error('PDF oluşturma hatası:', error);
+        alert('PDF oluşturulamadı: ' + error.message);
+    }
+}
+
+async function exportStudentPDFs() {
+    try {
+        const scheduleFilter = document.getElementById('studentExportScheduleFilter');
+        const selectedScheduleId = scheduleFilter?.value || '';
+        let filteredStudents = [...allStudents];
+
+        if (selectedScheduleId) {
+            filteredStudents = filteredStudents.filter(student => student.scheduleId === selectedScheduleId);
+        }
+
+        if (!filteredStudents.length) {
+            alert('PDF oluşturulacak öğrenci bulunamadı.');
+            return;
+        }
+
+        const selectedSchedule = selectedScheduleId
+            ? allSchedules.find(item => item.id === selectedScheduleId)
+            : null;
+        const selectedBranch = selectedSchedule
+            ? allBranches.find(item => item.id === selectedSchedule.branchId)
+            : null;
+        const subtitle = selectedSchedule
+            ? `${selectedBranch?.name || 'Şube'} - Öğrenci Listesi`
+            : 'Öğrenci Listesi & Takip Tablosu';
+        const suffix = selectedScheduleId ? 'secili-saat' : 'tum-ogrenciler';
+
+        await downloadStudentListPdf(
+            filteredStudents,
+            { subtitle },
+            `ogrenci-listesi-${suffix}_${new Date().toISOString().split('T')[0]}.pdf`
+        );
+    } catch (error) {
+        console.error('Toplu PDF hatası:', error);
+        alert('PDF oluşturulamadı: ' + error.message);
     }
 }
 
@@ -2701,7 +3373,6 @@ window.addEventListener('beforeunload', () => {
 window.copyPreRegistrationLink = copyPreRegistrationLink;
 window.copyPreRegistrationShareMessage = copyPreRegistrationShareMessage;
 window.openPreRegistrationLink = openPreRegistrationLink;
-window.rotatePreRegistrationLink = rotatePreRegistrationLink;
 window.transferClubApplicationToForm = transferClubApplicationToForm;
 window.rejectClubApplication = rejectClubApplication;
 window.loadChatList = loadChatList;

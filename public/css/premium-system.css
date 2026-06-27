@@ -1,0 +1,516 @@
+/* Premium system layer — tüm paneller */
+
+:root {
+    --premium-primary: #0b7ea8;
+    --premium-primary-dark: #085a78;
+    --premium-primary-light: #e8f6fc;
+    --premium-accent: #14b8a6;
+    --premium-bg: #f0f4f8;
+    --premium-surface: #ffffff;
+    --premium-text: #1e293b;
+    --premium-text-muted: #64748b;
+    --premium-border: #e2e8f0;
+    --premium-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+    --premium-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --premium-radius: 14px;
+    --premium-radius-sm: 10px;
+    --premium-touch: 44px;
+    --premium-bottom-nav-h: 64px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    --primary: var(--premium-primary);
+    --secondary: var(--premium-primary-dark);
+    --dark: var(--premium-text);
+    --light: #f1f5f9;
+    --gray: var(--premium-text-muted);
+}
+
+/* Panel gövdesi — login sayfaları hariç */
+body:not(.login-page) {
+    background: var(--premium-bg) !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    min-height: 100dvh;
+    padding-top: var(--safe-top);
+    color: var(--premium-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+body.panel-enhanced .dashboard {
+    min-height: calc(100dvh - var(--safe-top));
+}
+
+body.panel-enhanced .sidebar {
+    background: linear-gradient(180deg, #0f2942 0%, #163a5c 100%) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    padding-top: calc(12px + var(--safe-top));
+    padding-bottom: calc(12px + var(--safe-bottom));
+}
+
+body.panel-enhanced .sidebar h3 {
+    border-bottom-color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 0.04em;
+}
+
+body.panel-enhanced .nav-menu a {
+    border-radius: var(--premium-radius-sm);
+    min-height: var(--premium-touch);
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    font-size: 0.92rem;
+}
+
+body.panel-enhanced .nav-menu a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    padding-left: 14px;
+}
+
+body.panel-enhanced .nav-menu a.active {
+    background: linear-gradient(90deg, var(--premium-primary), var(--premium-accent)) !important;
+    box-shadow: 0 4px 12px rgba(11, 126, 168, 0.35);
+}
+
+body.panel-enhanced .main-content {
+    background: transparent;
+    padding: 20px 24px;
+    padding-bottom: calc(24px + var(--safe-bottom));
+}
+
+/* Header sayfa scroll'unda hep en ustte kalir (sticky). */
+body.panel-enhanced .header {
+    background: var(--premium-surface);
+    border-radius: var(--premium-radius);
+    box-shadow: var(--premium-shadow);
+    border: 1px solid var(--premium-border);
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    backdrop-filter: saturate(180%) blur(8px);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+}
+
+body.panel-enhanced .header h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--premium-text);
+}
+
+body.panel-enhanced .user-avatar {
+    background: linear-gradient(135deg, var(--premium-primary), var(--premium-accent));
+    width: 42px;
+    height: 42px;
+    font-size: 1rem;
+}
+
+body.panel-enhanced .card {
+    background: var(--premium-surface);
+    border-radius: var(--premium-radius);
+    box-shadow: var(--premium-shadow-sm);
+    border: 1px solid var(--premium-border);
+    padding: 22px;
+}
+
+body.panel-enhanced .card h2 {
+    border-bottom: 2px solid var(--premium-primary-light);
+    color: var(--premium-text);
+    font-size: 1.25rem;
+    padding-bottom: 12px;
+}
+
+body.panel-enhanced .stat-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid var(--premium-border);
+    border-radius: var(--premium-radius);
+    box-shadow: var(--premium-shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+body.panel-enhanced .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--premium-shadow);
+}
+
+body.panel-enhanced .stat-card .value {
+    color: var(--premium-primary);
+}
+
+body.panel-enhanced .btn {
+    width: auto;
+    min-height: var(--premium-touch);
+    padding: 10px 18px;
+    border-radius: var(--premium-radius-sm);
+    font-weight: 600;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+body.panel-enhanced .btn:active {
+    transform: scale(0.98);
+}
+
+body.panel-enhanced .btn-primary,
+body.panel-enhanced .btn-success {
+    background: linear-gradient(135deg, var(--premium-primary), #0d9488);
+    border: none;
+}
+
+body.panel-enhanced .btn-info {
+    background: var(--premium-primary);
+}
+
+body.panel-enhanced .form-group input,
+body.panel-enhanced .form-group select,
+body.panel-enhanced .form-group textarea {
+    min-height: var(--premium-touch);
+    border: 1px solid var(--premium-border);
+    border-radius: var(--premium-radius-sm);
+    font-size: 16px;
+    padding: 10px 14px;
+}
+
+body.panel-enhanced .form-group input:focus,
+body.panel-enhanced .form-group select:focus,
+body.panel-enhanced .form-group textarea:focus {
+    border-color: var(--premium-primary);
+    box-shadow: 0 0 0 3px rgba(11, 126, 168, 0.15);
+    outline: none;
+}
+
+body.panel-enhanced table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+body.panel-enhanced table thead th {
+    background: var(--premium-primary-light);
+    color: var(--premium-primary-dark);
+    font-weight: 700;
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 2px solid var(--premium-border);
+}
+
+body.panel-enhanced table tbody td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--premium-border);
+    vertical-align: middle;
+}
+
+body.panel-enhanced table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+body.panel-enhanced .table-responsive {
+    border-radius: var(--premium-radius-sm);
+    border: 1px solid var(--premium-border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Form yardım metni */
+.form-hint {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: var(--premium-radius-sm);
+    background: var(--premium-primary-light);
+    border: 1px solid var(--premium-border);
+    color: var(--premium-text);
+    font-size: 0.88rem;
+    line-height: 1.55;
+}
+
+.form-hint strong {
+    color: var(--premium-primary-dark);
+    font-weight: 600;
+}
+
+.form-hint strong + strong {
+    display: block;
+    margin-top: 8px;
+}
+
+.schedule-trainer-assignment-headers {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) 150px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 0 12px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--premium-text-muted);
+}
+
+.schedule-trainer-assignment-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) 150px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 12px;
+    border-radius: var(--premium-radius-sm);
+    background: var(--premium-primary-light);
+    border: 1px solid var(--premium-border);
+}
+
+@media (max-width: 640px) {
+    .schedule-trainer-assignment-headers {
+        display: none;
+    }
+
+    .schedule-trainer-assignment-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Yükleme göstergesi */
+.premium-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--premium-text-muted);
+    gap: 12px;
+}
+
+.premium-loading::before {
+    content: '';
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--premium-border);
+    border-top-color: var(--premium-primary);
+    border-radius: 50%;
+    animation: premium-spin 0.7s linear infinite;
+}
+
+@keyframes premium-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Mobil kart görünümü (tablo yerine) */
+.mobile-data-cards {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mobile-data-card {
+    background: var(--premium-surface);
+    border: 1px solid var(--premium-border);
+    border-radius: var(--premium-radius-sm);
+    padding: 14px;
+    box-shadow: var(--premium-shadow-sm);
+}
+
+.mobile-data-card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: var(--premium-text);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--premium-border);
+}
+
+.mobile-data-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 0.9rem;
+}
+
+.mobile-data-card-row span:first-child {
+    color: var(--premium-text-muted);
+    flex-shrink: 0;
+}
+
+.mobile-data-card-row span:last-child {
+    text-align: right;
+    font-weight: 600;
+}
+
+.mobile-data-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--premium-border);
+}
+
+.mobile-data-card-actions .btn {
+    flex: 1 1 auto;
+    min-width: calc(50% - 4px);
+    font-size: 0.85rem;
+    padding: 8px 10px;
+    min-height: 40px;
+}
+
+/* Alt mobil menü */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--premium-border);
+    padding: 6px 8px calc(6px + var(--safe-bottom));
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-bottom-nav-inner {
+    display: grid;
+    grid-template-columns: repeat(var(--mobile-nav-cols, 5), minmax(0, 1fr));
+    gap: 4px;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.mobile-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    border: none;
+    background: transparent;
+    color: var(--premium-text-muted);
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    min-height: 52px;
+    font-family: inherit;
+}
+
+.mobile-bottom-nav-item .nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.mobile-bottom-nav-item.active {
+    color: var(--premium-primary);
+    background: var(--premium-primary-light);
+}
+
+.sidebar-toggle {
+    min-width: var(--premium-touch);
+    min-height: var(--premium-touch);
+    border-radius: var(--premium-radius-sm);
+    border: 1px solid var(--premium-border);
+    background: var(--premium-surface);
+    font-size: 1.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Performans / rapor kartları */
+body.panel-enhanced #performanceList > div,
+body.panel-enhanced #performanceReportContainer > div {
+    border-radius: var(--premium-radius-sm) !important;
+    border: 1px solid var(--premium-border) !important;
+    box-shadow: var(--premium-shadow-sm) !important;
+}
+
+/* ——— Mobil ——— */
+@media (max-width: 768px) {
+    body.panel-enhanced .main-content {
+        padding: 12px 14px;
+        padding-bottom: calc(var(--premium-bottom-nav-h) + var(--safe-bottom) + 16px);
+    }
+
+    body.panel-enhanced .sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(88vw, 300px) !important;
+        max-height: none !important;
+        height: 100dvh !important;
+        z-index: 1100;
+        transform: translateX(0);
+        transition: transform 0.25s ease;
+    }
+
+    body.panel-enhanced .sidebar.mobile-hidden {
+        transform: translateX(-105%);
+    }
+
+    body.panel-enhanced .nav-menu {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        overflow-y: auto;
+        max-height: calc(100dvh - 140px);
+        padding-bottom: 20px;
+    }
+
+    body.panel-enhanced .nav-menu li {
+        margin-right: 0;
+        margin-bottom: 4px;
+        width: 100%;
+    }
+
+    .mobile-bottom-nav {
+        display: block;
+    }
+
+    body.panel-enhanced .page-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.panel-enhanced .page-toolbar-actions {
+        width: 100%;
+    }
+
+    body.panel-enhanced .page-toolbar-actions .btn,
+    body.panel-enhanced .page-toolbar-actions select,
+    body.panel-enhanced .page-toolbar-actions input {
+        width: 100%;
+    }
+
+    /* Tabloları kartlara çevir */
+    body.panel-enhanced .table-responsive.use-mobile-cards table {
+        display: none;
+    }
+
+    body.panel-enhanced .table-responsive.use-mobile-cards .mobile-data-cards {
+        display: flex;
+    }
+
+    body.panel-enhanced .header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    body.panel-enhanced .header h1 {
+        font-size: 1.1rem;
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 390px) {
+    body.panel-enhanced .card {
+        padding: 14px;
+    }
+
+    .mobile-bottom-nav-item {
+        font-size: 0.6rem;
+    }
+
+    .mobile-bottom-nav-item .nav-icon {
+        font-size: 1.1rem;
+    }
+}

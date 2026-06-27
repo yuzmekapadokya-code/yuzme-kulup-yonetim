@@ -2,19 +2,21 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Yönetici Paneli</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/premium-system.css">
+    <link rel="stylesheet" href="../css/mobile-compact.css">
     <link rel="stylesheet" href="../css/admin.css">
 </head>
-<body>
+<body data-panel-role="admin">
     <div class="dashboard">
         <!-- Sidebar -->
         <div class="sidebar">
             <h3>🏊 YÖNETİCİ</h3>
             <ul class="nav-menu">
                 <li><a class="nav-link active" data-page="dashboard">Dashboard</a></li>
-                <li><a class="nav-link" data-page="club" id="clubNavLink" style="display: none;">Kulüp Profili</a></li>
+                <li><a class="nav-link" data-page="club" id="clubNavLink">Kulüp Profili</a></li>
                 <li><a class="nav-link" data-page="secretaries">Sekreterler</a></li>
                 <li><a class="nav-link" data-page="branches">Şubeler</a></li>
                 <li><a class="nav-link" data-page="trainers">Antrenörler</a></li>
@@ -235,8 +237,8 @@
 
                     <div id="availabilitySummaryCards" style="display: grid; gap: 12px; margin-bottom: 14px;"></div>
 
-                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
-                        <table style="width: 100%; border-collapse: collapse; min-width: 720px;">
+                    <div class="table-responsive" style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
                                     <th style="padding: 10px; text-align: left;">Antrenör</th>
@@ -254,8 +256,8 @@
                     <h3 style="margin-bottom: 8px;">Ders Bitiş Takvimi</h3>
                     <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Öğrenci başlangıç tarihine ve ders sayısına göre hangi öğrencinin ne zaman biteceğini, hangi saatin ne zaman boşalacağını gösterir.</p>
 
-                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
-                        <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
+                    <div class="table-responsive" style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
                                     <th style="padding: 10px; text-align: left;">Öğrenci</th>
@@ -276,7 +278,8 @@
             <div id="schedule_table-page" class="page-content">
                 <div class="card">
                     <h2>Ders Saatleri Tablosu</h2>
-                    <p style="margin: 0 0 16px; color: #7f8c8d;">Tüm ders saatleri özet tabı. Ders adlarını tıklamak için kısa bir düzenleme yapmak zorunludur. Lütfen sağ taraftaki "Düzenle" butonlarını kullanınız.</p>
+                    <p style="margin: 0 0 16px; color: #7f8c8d;">Tüm ders saatlerinin özet görünümü. Ders adı, şube, saat ve günler birlikte listelenir.</p>
+                    <div id="scheduleTimeGridSummary" style="margin-bottom: 18px;"></div>
                     <div class="table-responsive">
                         <table>
                             <thead>
@@ -476,9 +479,10 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                         <button class="btn btn-success btn-sm" onclick="openExpenseModal()">+ Gider Ekle</button>
                         <button class="btn btn-info btn-sm" onclick="openDetailsModalFromFilters()">Detay</button>
+                        <button class="btn btn-primary btn-sm" onclick="exportFinancePdf()">📄 Gelir/Gider PDF</button>
                     </div>
 
                     <!-- Branch/Schedule Filter -->
@@ -689,6 +693,17 @@
                 </div>
                 <div class="form-group">
                     <label>Antrenör Atamaları:</label>
+                    <div class="form-hint schedule-trainer-help" role="note">
+                        <strong>Baş antrenör:</strong> Dersin yetkili antrenörüdür; yoklama ve performans kayıtları bu kişinin öğrenci listesine göre filtrelenir.
+                        <strong>Yardımcı antrenör:</strong> Derste görevli ek antrenördür; kayıt için mutlaka bağlı olduğu <em>baş antrenörü</em> seçin.
+                        Aynı derste birden fazla baş antrenör tanımlanabilir; yardımcılar yalnızca seçtikleri baş antrenörün öğrencilerini görür.
+                    </div>
+                    <div class="schedule-trainer-assignment-headers" aria-hidden="true">
+                        <span>Antrenör</span>
+                        <span>Rol</span>
+                        <span>Baş antrenör</span>
+                        <span></span>
+                    </div>
                     <div id="scheduleTrainerAssignments"></div>
                     <button type="button" class="btn btn-info btn-sm" onclick="addScheduleTrainerAssignmentRow()" style="margin-top: 10px; width: auto;">+ Antrenör Ekle</button>
                 </div>
@@ -877,8 +892,14 @@
             </div>
             <form id="expenseForm">
                 <div class="form-group">
-                    <label>Gider Açıklaması:</label>
-                    <input type="text" id="expenseDescription" required>
+                    <label>Gider Türü:</label>
+                    <select id="expenseCategory" required onchange="toggleExpenseOtherNote()">
+                        <option value="">-- Gider türü seçiniz --</option>
+                    </select>
+                </div>
+                <div class="form-group" id="expenseOtherNoteGroup" style="display: none;">
+                    <label>Diğer — kısa açıklama:</label>
+                    <input type="text" id="expenseOtherNote" maxlength="120" placeholder="Örn: Danışmanlık ücreti">
                 </div>
                 <div class="form-group">
                     <label>Tutar (₺):</label>
@@ -1187,8 +1208,11 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
+    <script defer src="../js/club-profile-helpers.js"></script>
     <script defer src="../js/config.js"></script>
+    <script defer src="../js/panel-enhancements.js"></script>
     <script defer src="../js/mobile-responsive.js"></script>
     <script defer src="../js/admin.js"></script>
     <script defer src="../js/profile-common.js"></script>

@@ -1298,6 +1298,10 @@ canvas {
         touch-action: pan-x pan-y;
     }
 
+    body.panel-enhanced .table-responsive.use-mobile-cards table {
+        min-width: 0 !important;
+    }
+
     table {
         min-width: 640px;
     }
@@ -1392,14 +1396,16 @@ canvas {
         left: 10px;
     }
 
-    .btn,
-    .btn-sm {
+    body.panel-enhanced .page-toolbar-actions .btn,
+    body.panel-enhanced .page-toolbar-actions .btn-sm,
+    body.panel-enhanced .btn-group .btn {
         width: 100%;
+        flex-basis: 100%;
     }
 
-    .page-toolbar-actions .btn,
-    .btn-group .btn {
-        flex-basis: 100%;
+    body:not(.panel-enhanced) .btn,
+    body:not(.panel-enhanced) .btn-sm {
+        width: 100%;
     }
 
     .login-container {
@@ -1412,6 +1418,10 @@ canvas {
 
     .login-box h1 {
         font-size: 2em;
+    }
+
+    body.panel-enhanced .table-responsive.use-mobile-cards table {
+        min-width: 0 !important;
     }
 
     table {

@@ -4,6 +4,7 @@ let currentTrainer = null;
 let allSchedules = [];
 let allBranches = [];
 let allStudents = [];
+let allTrainers = [];
 let allWorkouts = [];
 let currentUserCredits = 0;
 let currentCreditPurchaseSettings = null;
@@ -151,6 +152,70 @@ function getCurrentTrainerAssignment(schedule) {
 
 function scheduleBelongsToCurrentTrainer(schedule) {
     return Boolean(getCurrentTrainerAssignment(schedule));
+}
+
+function resolveTrainerRecordById(trainerId) {
+    if (!trainerId || !Array.isArray(allTrainers)) return null;
+    return allTrainers.find(item => item.id === trainerId || item.uid === trainerId) || null;
+}
+
+function getCurrentScopeHeadTrainerAuthId(schedule) {
+    const assignment = getCurrentTrainerAssignment(schedule);
+    if (!assignment) return currentTrainer?.id || '';
+    if (assignment.role === 'head') {
+        return assignment.trainerId || currentTrainer.id;
+    }
+    return assignment.headTrainerId || assignment.headTrainerDocId || '';
+}
+
+function trainerIdsMatch(leftId, rightId) {
+    if (!leftId || !rightId) return false;
+    if (leftId === rightId) return true;
+    const leftTrainer = resolveTrainerRecordById(leftId);
+    const rightTrainer = resolveTrainerRecordById(rightId);
+    const leftValues = new Set([leftId, leftTrainer?.id, leftTrainer?.uid].filter(Boolean));
+    return [rightId, rightTrainer?.id, rightTrainer?.uid].some(value => leftValues.has(value));
+}
+
+function resolveStudentHeadTrainerAuthId(student, schedule) {
+    if (student?.headTrainerId) {
+        return student.headTrainerId;
+    }
+
+    const assignments = normalizeScheduleTrainerAssignments(schedule);
+    const studentTrainerId = student?.trainerId;
+    const assignment = assignments.find(item =>
+        trainerIdsMatch(item.trainerId, studentTrainerId)
+        || trainerIdsMatch(item.trainerDocId, studentTrainerId)
+    );
+
+    if (!assignment) {
+        return studentTrainerId || '';
+    }
+
+    if (assignment.role === 'head') {
+        return assignment.trainerId || studentTrainerId || '';
+    }
+
+    return assignment.headTrainerId || assignment.headTrainerDocId || studentTrainerId || '';
+}
+
+function studentBelongsToCurrentTrainerScope(student, schedule) {
+    if (!schedule || !scheduleBelongsToCurrentTrainer(schedule)) {
+        return false;
+    }
+
+    const studentHeadId = resolveStudentHeadTrainerAuthId(student, schedule);
+    const scopeHeadId = getCurrentScopeHeadTrainerAuthId(schedule);
+    return trainerIdsMatch(studentHeadId, scopeHeadId);
+}
+
+function getTrainerScheduleDisplayLabel(schedule) {
+    if (!schedule) return 'Ders saati';
+    const branch = allBranches.find(item => item.id === schedule.branchId);
+    const days = formatTrainerScheduleDays(schedule);
+    const name = schedule.customName || branch?.name || 'Sube';
+    return days ? `${name} - ${schedule.time || '-'} (${days})` : `${name} - ${schedule.time || '-'}`;
 }
 
 function getNormalizedScheduleDays(schedule) {
@@ -336,6 +401,9 @@ let superAdminChatUnsub = null;
 
 // Notification variables
 let notificationUnsub = null;
+const PERFORMANCE_HISTORY_LIMIT = 30;
+let performanceReportDebounceTimer = null;
+let activeNotificationChatUnsubs = [];
 
 // Notification functions
 function showNotification(message, title = 'Yeni Mesaj') {
@@ -355,14 +423,28 @@ async function requestNotificationPermission() {
     return false;
 }
 
+function clearNotificationListeners() {
+    activeNotificationChatUnsubs.forEach(unsub => {
+        try {
+            unsub();
+        } catch (error) {
+            console.warn('Bildirim dinleyicisi kapatılamadı:', error);
+        }
+    });
+    activeNotificationChatUnsubs = [];
+}
+
 function setupNotificationListeners(chatDocs) {
-    chatDocs.forEach(doc => {
+    clearNotificationListeners();
+
+    const limitedDocs = chatDocs.slice(0, 25);
+    limitedDocs.forEach(doc => {
         const chatId = doc.id;
         const chat = doc.data();
 
-        // Listen for new messages in this chat
-        db.collection('chats').doc(chatId).collection('messages')
+        const unsub = db.collection('chats').doc(chatId).collection('messages')
             .where('senderId', '!=', currentTrainer.id)
+            .limit(1)
             .onSnapshot((snapshot) => {
                 const newMessages = snapshot.docChanges().filter(change =>
                     change.type === 'added' && change.doc.data().senderId !== currentTrainer.id
@@ -399,7 +481,47 @@ function setupNotificationListeners(chatDocs) {
                     }
                 }
             });
+
+        activeNotificationChatUnsubs.push(unsub);
     });
+}
+
+async function fetchTrainerStudents(adminId, scheduleIds) {
+    const uniqueIds = [...new Set((scheduleIds || []).filter(Boolean))];
+    if (!uniqueIds.length) {
+        return [];
+    }
+
+    const studentMap = new Map();
+    for (let index = 0; index < uniqueIds.length; index += 10) {
+        const chunk = uniqueIds.slice(index, index + 10);
+        const snapshot = await db.collection('students')
+            .where('adminId', '==', adminId)
+            .where('scheduleId', 'in', chunk)
+            .get();
+
+        snapshot.docs.forEach(doc => {
+            studentMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+    }
+
+    return Array.from(studentMap.values());
+}
+
+async function reloadTrainerWorkouts() {
+    if (!currentTrainer?.id) {
+        return;
+    }
+
+    let workoutsQuery = db.collection('workouts').where('trainerId', '==', currentTrainer.id);
+    if (currentTrainer.adminId) {
+        workoutsQuery = workoutsQuery.where('adminId', '==', currentTrainer.adminId);
+    }
+
+    const workoutsSnap = await workoutsQuery.get();
+    allWorkouts = workoutsSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 // Check authentication
@@ -540,6 +662,8 @@ function getStudentAge(student) {
     return new Date().getFullYear() - birthYear;
 }
 
+window.getStudentAge = getStudentAge;
+
 function normalizePerformanceStyleToStandard(style) {
     const map = {
         'Serbest': 'Serbest',
@@ -676,12 +800,12 @@ async function loadAllData() {
         let workoutsQuery = db.collection('workouts').where('trainerId', '==', currentTrainer.id);
         if (adminId) workoutsQuery = workoutsQuery.where('adminId', '==', adminId);
 
-        const [schedulesSnap, branchesSnap, studentsSnap, workoutsSnap] = await Promise.all([
+        const [schedulesSnap, branchesSnap, trainersSnap, workoutsSnap] = await Promise.all([
             db.collection('schedules')
                 .where('adminId', '==', adminId)
                 .get(),
             db.collection('branches').where('adminId', '==', adminId).get(),
-            db.collection('students').where('adminId', '==', adminId).get(),
+            db.collection('trainers').where('adminId', '==', adminId).get(),
             workoutsQuery.get(),
             loadClubProfile(),
             loadCreditBalance(),
@@ -697,10 +821,8 @@ async function loadAllData() {
 
         allSchedules = schedules;
         allBranches = branchesSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-        allStudents = studentsSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })).filter(student => allSchedules.some(schedule => schedule.id === student.scheduleId));
+        allTrainers = trainersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        allStudents = await fetchTrainerStudents(adminId, allSchedules.map(schedule => schedule.id));
 
         allWorkouts = workoutsSnap.docs.map(doc => ({id: doc.id, ...doc.data()}))
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -763,7 +885,6 @@ function switchPage(pageName) {
         loadPerformanceStudents();
     } else if (pageName === 'performance-report') {
         initializePerformanceReportDropdowns();
-        loadPerformanceReport();
     } else if (pageName === 'standards') {
         loadStandards();
     } else if (pageName === 'sell-workouts') {
@@ -859,6 +980,12 @@ function switchPage(pageName) {
 
     window.loadChatList = loadChatList;
     }
+
+    setTimeout(() => {
+        if (typeof window.refreshMobileLayout === 'function') {
+            window.refreshMobileLayout();
+        }
+    }, 300);
 }
 
 // ======================== DASHBOARD ========================
@@ -1062,7 +1189,7 @@ async function saveWorkout(e) {
             shareToStudents: true
         });
 
-        await loadAllData();
+        await reloadTrainerWorkouts();
         closeWorkoutModal();
         loadWorkouts();
         alert('Antrenman başarıyla kaydedildi ve öğrencilere gönderildi!');
@@ -1113,7 +1240,7 @@ async function publishWorkout(workoutId, publish) {
         await db.collection('workouts').doc(workoutId).update({
             published: publish
         });
-        await loadAllData();
+        await reloadTrainerWorkouts();
         loadWorkouts();
         alert(publish ? 'Antrenman yayınlandı!' : 'Antrenman yayından kaldırıldı!');
     } catch (error) {
@@ -1138,7 +1265,7 @@ async function deleteWorkout(workoutId) {
             db.collection('active_workouts').doc(workoutId).delete().catch(() => null)
         ]);
 
-        await loadAllData();
+        await reloadTrainerWorkouts();
         loadWorkouts();
         alert('Antrenman ve ilişkili Firestore kayıtları silindi!');
     } catch (error) {
@@ -1775,7 +1902,7 @@ async function loadTrainerCompletionCalendar() {
         .filter(student => String(student.status || 'active') === 'active')
         .map(student => {
             const schedule = allSchedules.find(item => item.id === student.scheduleId);
-            if (!schedule || !scheduleBelongsToCurrentTrainer(schedule)) return null;
+            if (!schedule || !studentBelongsToCurrentTrainerScope(student, schedule)) return null;
             const branch = allBranches.find(item => item.id === student.branchId);
             const lessonsCount = getScheduleLessonCount(schedule);
             const postponementCount = getSchedulePostponementCount(schedule);
@@ -1886,13 +2013,12 @@ async function loadStudents() {
         const schedule = allSchedules.find(s => s.id === student.scheduleId);
         const branch = allBranches.find(b => b.id === student.branchId);
         
-        // Eğer bu antrenörün saati değilse, gösterme
-        if (!schedule || !scheduleBelongsToCurrentTrainer(schedule)) {
+        if (!schedule || !studentBelongsToCurrentTrainerScope(student, schedule)) {
             return;
         }
-        
+
         const key = `${student.branchId}_${student.scheduleId}`;
-        const label = `${branch ? branch.name : 'Bilinmiyor'} - ${schedule ? schedule.time : 'Bilinmiyor'}`;
+        const label = getTrainerScheduleDisplayLabel(schedule);
         
         if (!groups[key]) {
             groups[key] = {
@@ -2330,14 +2456,15 @@ function closeChronometer() {
 async function loadAttendanceSchedules() {
     const select = document.getElementById('attendanceScheduleSelect');
     select.innerHTML = '<option value="">Seçiniz...</option>';
-    
-    allSchedules.forEach(schedule => {
-        const branch = allBranches.find(b => b.id === schedule.branchId);
-        const option = document.createElement('option');
-        option.value = schedule.id;
-        option.textContent = `${branch ? branch.name : 'Bilinmiyor'} - ${schedule.time}`;
-        select.appendChild(option);
-    });
+
+    allSchedules
+        .filter(schedule => scheduleBelongsToCurrentTrainer(schedule))
+        .forEach(schedule => {
+            const option = document.createElement('option');
+            option.value = schedule.id;
+            option.textContent = getTrainerScheduleDisplayLabel(schedule);
+            select.appendChild(option);
+        });
 }
 
 async function loadAttendanceForSchedule() {
@@ -2355,15 +2482,17 @@ async function loadAttendanceForSchedule() {
         const schedule = allSchedules.find(s => s.id === scheduleId);
         const branch = allBranches.find(item => item.id === schedule?.branchId);
         const lessonsCount = schedule?.lessonsCount || 8; // Default to 8 lessons if not set
-        const studentsInClass = allStudents.filter(s => s.scheduleId === scheduleId);
+        const studentsInClass = allStudents.filter(student =>
+            student.scheduleId === scheduleId && studentBelongsToCurrentTrainerScope(student, schedule)
+        );
         const postponementCount = getSchedulePostponementCount(schedule);
 
         if (info && schedule) {
-            info.textContent = `${branch ? branch.name : 'Bilinmeyen şube'} • ${schedule.time || '-'} • ${getScheduleLessonTypeLabel(schedule)}${postponementCount ? ` • ${postponementCount} erteleme` : ''}`;
+            info.textContent = `${getTrainerScheduleDisplayLabel(schedule)} • ${getScheduleLessonTypeLabel(schedule)}${postponementCount ? ` • ${postponementCount} erteleme` : ''}`;
         }
-        
+
         if (studentsInClass.length === 0) {
-            container.innerHTML = '<p style="color: #95a5a6;">Bu saat grubunda öğrenci bulunmamaktadır.</p>';
+            container.innerHTML = '<p style="color: #95a5a6;">Bu saat grubunda size ait ogrenci bulunmamaktadir.</p>';
             return;
         }
         
@@ -2880,10 +3009,13 @@ async function loadPerformanceHistory(studentId) {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             if (dateA.getTime() !== dateB.getTime()) {
-                return dateB - dateA; // newest date first
+                return dateB - dateA;
             }
             return new Date(b.createdAt) - new Date(a.createdAt);
         });
+
+        const limitedPerformances = performances.slice(0, PERFORMANCE_HISTORY_LIMIT);
+        const hasMore = performances.length > PERFORMANCE_HISTORY_LIMIT;
 
         const container = document.getElementById('performanceList');
         container.innerHTML = '';
@@ -2893,9 +3025,8 @@ async function loadPerformanceHistory(studentId) {
             return;
         }
 
-        // Group performances by style and distance
         const groupedPerformances = {};
-        performances.forEach(perf => {
+        limitedPerformances.forEach(perf => {
             const key = `${perf.style}_${perf.distance}`;
             if (!groupedPerformances[key]) {
                 groupedPerformances[key] = [];
@@ -2976,6 +3107,17 @@ async function loadPerformanceHistory(studentId) {
 
             container.appendChild(card);
         });
+
+        if (hasMore) {
+            const note = document.createElement('p');
+            note.style.cssText = 'text-align:center;color:#64748b;padding:12px;font-size:0.9em;';
+            note.textContent = `Son ${PERFORMANCE_HISTORY_LIMIT} kayıt gösteriliyor. Toplam ${performances.length} kayıt var.`;
+            container.appendChild(note);
+        }
+
+        if (window.PanelEnhancements?.convertTablesToMobileCards) {
+            window.PanelEnhancements.convertTablesToMobileCards();
+        }
 
     } catch (error) {
         console.error('Dereceler yüklenirken hata:', error);
@@ -3097,7 +3239,17 @@ function updateReportStudentFilter() {
         studentSelect.value = previousValue;
     }
 
-    loadPerformanceReport();
+    schedulePerformanceReportReload();
+}
+
+function schedulePerformanceReportReload() {
+    if (performanceReportDebounceTimer) {
+        clearTimeout(performanceReportDebounceTimer);
+    }
+    performanceReportDebounceTimer = setTimeout(() => {
+        performanceReportDebounceTimer = null;
+        loadPerformanceReport();
+    }, 450);
 }
 
 async function initializePerformanceReportDropdowns() {
@@ -3132,12 +3284,18 @@ async function initializePerformanceReportDropdowns() {
 }
 
 async function loadPerformanceReport() {
+    const container = document.getElementById('performanceReportContainer');
+    if (!container) {
+        return;
+    }
+
     try {
+        container.innerHTML = '<div class="premium-loading">Rapor hazırlanıyor...</div>';
+
         const branchFilter = document.getElementById('reportBranchFilter')?.value || '';
         const scheduleFilter = document.getElementById('reportScheduleFilter')?.value || '';
         const styleFilter = document.getElementById('reportStyleFilter')?.value || '';
         const studentFilter = document.getElementById('reportStudentFilter')?.value || '';
-        const container = document.getElementById('performanceReportContainer');
 
         // Filter students based on branch and schedule
         let filteredStudents = allStudents;
@@ -3287,6 +3445,10 @@ async function loadPerformanceReport() {
         }
         
         container.innerHTML = html;
+
+        if (window.PanelEnhancements?.convertTablesToMobileCards) {
+            window.PanelEnhancements.convertTablesToMobileCards();
+        }
     } catch (error) {
         console.error('Rapor yüklenirken hata:', error);
         document.getElementById('performanceReportContainer').innerHTML = '<p style="color: #e74c3c;">Rapor yüklenirken hata oluştu: ' + error.message + '</p>';

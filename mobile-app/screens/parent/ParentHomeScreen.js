@@ -1,10 +1,12 @@
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import ActionButton from '../../components/ActionButton';
 import EmptyState from '../../components/EmptyState';
+import HeroBanner from '../../components/HeroBanner';
 import LoadingBlock from '../../components/LoadingBlock';
+import PanelCard from '../../components/PanelCard';
 import ScreenLayout from '../../components/ScreenLayout';
 import SectionHeader from '../../components/SectionHeader';
 import StatCard from '../../components/StatCard';
@@ -14,9 +16,9 @@ import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../utils/date';
 
 const quickLinks = [
-  { key: 'shopping', title: 'Alisveris', caption: 'Kulup urunleri, sepet ve siparis takibi.', routeName: 'PRShoppingOps', icon: 'shopping-outline', bgColor: '#fff1e6', accentColor: '#c56b1f' },
-  { key: 'daily', title: 'Gunluk Yasam', caption: 'Odeme, devam, etkinlik, duyuru ve antrenmanlar.', routeName: 'PRDailyOps', icon: 'calendar-today', bgColor: '#fff9c4', accentColor: '#f9a825' },
-  { key: 'progress', title: 'Performans', caption: 'Dereceler, barajlar ve antrenor degerlendirmeleri.', routeName: 'PRProgressOps', icon: 'chart-line', bgColor: '#e3f2fd', accentColor: '#1976d2' },
+  { key: 'shopping', title: 'Alisveris', caption: 'Kulup urunleri, sepet ve siparis takibi.', routeName: 'PRShoppingOps', icon: 'bag-handle-outline', accent: theme.colors.warning, tint: '#fffbeb' },
+  { key: 'daily', title: 'Gunluk Yasam', caption: 'Odeme, devam, etkinlik, duyuru ve antrenmanlar.', routeName: 'PRDailyOps', icon: 'calendar-outline', accent: theme.colors.primary, tint: theme.colors.primaryLight },
+  { key: 'progress', title: 'Performans', caption: 'Dereceler, barajlar ve antrenor degerlendirmeleri.', routeName: 'PRProgressOps', icon: 'speedometer-outline', accent: theme.colors.success, tint: '#dcfce7' },
 ];
 
 export default function ParentHomeScreen({ navigation }) {
@@ -34,28 +36,52 @@ export default function ParentHomeScreen({ navigation }) {
   const data = dashboardQuery.data;
 
   return (
-    <ScreenLayout title="Veli" subtitle="Ogrencinin finans, devam, etkinlik ve iletisim akislarini tek merkezde toplar.">
-      <View style={styles.hero}>
-        <Text style={styles.heroName}>{data.student.fullName}</Text>
-        <Text style={styles.heroText}>{data.student.branchName} | {data.student.scheduleName}</Text>
-        <Text style={styles.heroText}>Yas: {data.student.age || '-'} | Gelisim, market ve iletisim ayni merkezde</Text>
-      </View>
+    <ScreenLayout
+      eyebrow="VELI MERKEZI"
+      title="Veli paneli"
+      subtitle="Ogrencinin finans, devam, etkinlik ve iletisim akislari tek merkezde."
+    >
+      <HeroBanner
+        eyebrow="SPORCU"
+        title={data.student.fullName}
+        description={`${data.student.branchName || 'Sube'} | ${data.student.scheduleName || 'Ders'} | Yas: ${data.student.age || '-'}`}
+        stats={[
+          { label: 'Devam', value: `%${data.attendanceSummary.attendanceRate}` },
+          { label: 'Taksit', value: String(data.installments?.length ?? 0) },
+        ]}
+      />
 
       <View style={styles.statsGrid}>
-        {data.stats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label} value={stat.value} />
+        {data.stats.map((stat, index) => (
+          <StatCard
+            key={stat.label}
+            label={stat.label}
+            value={stat.value}
+            tone={['primary', 'success', 'warning', 'info'][index % 4]}
+          />
         ))}
       </View>
 
-      <SectionHeader title="Hizli merkezler" caption="Veli icin ilk ekranda sadece en sik 3 akis gosterilir" />
+      <SectionHeader title="Hizli merkezler" caption="Veli icin ilk ekranda en sik 3 akis gosterilir." />
       <View style={styles.quickGrid}>
         {quickLinks.map((item) => (
-          <Pressable key={item.key} onPress={() => navigation.navigate(item.routeName)} style={({ pressed }) => [styles.quickCard, { backgroundColor: item.bgColor }, pressed && styles.pressed]}>
-            <View style={styles.quickHeader}>
-              <MaterialCommunityIcons name={item.icon} size={32} color={item.accentColor} />
-              <Text style={[styles.quickTitle, { color: item.accentColor }]}>{item.title}</Text>
+          <Pressable
+            key={item.key}
+            onPress={() => navigation.navigate(item.routeName)}
+            style={({ pressed }) => [
+              styles.quickCard,
+              { borderLeftColor: item.accent },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={[styles.quickIconWrap, { backgroundColor: item.tint }]}>
+              <Ionicons name={item.icon} size={22} color={item.accent} />
             </View>
-            <Text style={styles.quickCaption}>{item.caption}</Text>
+            <View style={styles.quickBody}>
+              <Text style={styles.quickTitle}>{item.title}</Text>
+              <Text style={styles.quickCaption} numberOfLines={2}>{item.caption}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
           </Pressable>
         ))}
       </View>
@@ -67,26 +93,32 @@ export default function ParentHomeScreen({ navigation }) {
           <EmptyState title="Taksit bilgisi yok" description="Ogrenci kaydinda taksit plani bulunamadi." />
         ) : (
           data.installments.map((item) => (
-            <View key={item.installmentNumber} style={[styles.listCard, { borderLeftColor: item.remainingAmount <= 0.009 ? '#4caf50' : '#ff9800' }]}>
+            <PanelCard
+              key={item.installmentNumber}
+              style={{ borderLeftWidth: 4, borderLeftColor: item.remainingAmount <= 0.009 ? theme.colors.success : theme.colors.warning }}
+            >
               <Text style={styles.cardTitle}>{item.installmentNumber}. taksit</Text>
               <Text style={styles.cardText}>Tutar: <Text style={{ fontWeight: '700', color: theme.colors.text }}>₺{Number(item.amount || 0).toFixed(2)}</Text></Text>
               <Text style={styles.cardText}>Vade: {formatDate(item.dueDate)}</Text>
               {item.lessonLabel ? <Text style={styles.cardText}>Not: {item.lessonLabel}</Text> : null}
               <Text style={[styles.cardText, item.remainingAmount <= 0.009 ? styles.success : styles.warning, { fontWeight: '700', fontSize: 14 }]}>
-                {item.remainingAmount <= 0.009 ? '✓ Odendi' : `⊘ Kalan ₺${item.remainingAmount.toFixed(2)}`}
+                {item.remainingAmount <= 0.009 ? 'Odendi' : `Kalan ₺${item.remainingAmount.toFixed(2)}`}
               </Text>
-            </View>
+            </PanelCard>
           ))
         )}
       </View>
 
       <SectionHeader title="Devam ozeti" caption="Katilim durumu" />
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryLine}>Toplam ders: {data.attendanceSummary.totalLessons}</Text>
-        <Text style={styles.summaryLine}>Katilinan: {data.attendanceSummary.present}</Text>
-        <Text style={styles.summaryLine}>Kacirilan: {data.attendanceSummary.missed}</Text>
-        <Text style={styles.summaryValue}>Devam: %{data.attendanceSummary.attendanceRate}</Text>
-      </View>
+      <PanelCard tone="tint">
+        <Text style={styles.summaryEyebrow}>DEVAM ORANI</Text>
+        <Text style={styles.summaryValue}>%{data.attendanceSummary.attendanceRate}</Text>
+        <View style={styles.summaryMetaRow}>
+          <Text style={styles.summaryLine}>Toplam ders: {data.attendanceSummary.totalLessons}</Text>
+          <Text style={styles.summaryLine}>Katilinan: {data.attendanceSummary.present}</Text>
+          <Text style={styles.summaryLine}>Kacirilan: {data.attendanceSummary.missed}</Text>
+        </View>
+      </PanelCard>
 
       <SectionHeader title="Yaklasan etkinlikler" caption="Takvimdeki sonraki kayitlar" />
       <View style={styles.stack}>
@@ -94,31 +126,31 @@ export default function ParentHomeScreen({ navigation }) {
           <EmptyState title="Etkinlik yok" description="Yaklasan etkinlik bulunmuyor." />
         ) : (
           data.upcomingEvents.map((event) => (
-            <View key={event.id} style={[styles.listCard, { borderLeftColor: '#7b1fa2' }]}>
-              <View style={styles.eventHeader}>
-                <MaterialCommunityIcons name="calendar-check" size={20} color="#7b1fa2" />
+            <PanelCard key={event.id} style={{ borderLeftWidth: 4, borderLeftColor: '#7c3aed' }}>
+              <View style={styles.rowHeader}>
+                <MaterialCommunityIcons name="calendar-check" size={18} color="#7c3aed" />
                 <Text style={styles.cardTitle}>{event.name}</Text>
               </View>
               <Text style={styles.cardText}>{formatDate(event.date)} • {event.type || 'Etkinlik'}</Text>
               <Text style={styles.cardText}>{event.description || 'Aciklama yok'}</Text>
-            </View>
+            </PanelCard>
           ))
         )}
       </View>
 
-      <SectionHeader title="Duyurular" caption="Ogrenciye ilgili en guncel bildiriler" />
+      <SectionHeader title="Duyurular" caption="Ogrenciye iliskin en guncel bildiriler" />
       <View style={styles.stack}>
         {!data.announcements.length ? (
           <EmptyState title="Duyuru yok" description="Bu ogrenciye hedefli duyuru bulunmuyor." />
         ) : (
           data.announcements.map((announcement) => (
-            <View key={announcement.id} style={[styles.listCard, { borderLeftColor: '#d32f2f' }]}>
-              <View style={styles.announcementHeader}>
-                <MaterialCommunityIcons name="bell-circle" size={20} color="#d32f2f" />
+            <PanelCard key={announcement.id} style={{ borderLeftWidth: 4, borderLeftColor: theme.colors.danger }}>
+              <View style={styles.rowHeader}>
+                <MaterialCommunityIcons name="bell-circle" size={18} color={theme.colors.danger} />
                 <Text style={styles.cardTitle}>{announcement.title}</Text>
               </View>
               <Text style={styles.cardText}>{announcement.content}</Text>
-            </View>
+            </PanelCard>
           ))
         )}
       </View>
@@ -127,61 +159,49 @@ export default function ParentHomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    backgroundColor: theme.colors.primaryDeep,
-    borderRadius: theme.radius.lg,
-    padding: 20,
-    gap: 10,
-    marginBottom: 8,
-  },
-  heroName: {
-    color: '#ffffff',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  heroText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
-    lineHeight: 18,
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
   quickGrid: {
-    gap: 12,
+    gap: 10,
   },
   quickCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
-    gap: 12,
-  },
-  quickHeader: {
+    borderLeftWidth: 4,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    ...theme.shadow.sm,
+  },
+  quickIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickBody: {
+    flex: 1,
+    gap: 4,
   },
   quickTitle: {
     color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: 17,
-    flex: 1,
+    fontWeight: '700',
+    fontSize: 15,
   },
   quickCaption: {
     color: theme.colors.textMuted,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
   },
-  eventHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  announcementHeader: {
+  rowHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -189,44 +209,36 @@ const styles = StyleSheet.create({
   stack: {
     gap: 12,
   },
-  listCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1976d2',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: theme.spacing.md,
-    gap: 6,
-  },
   cardTitle: {
     color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: 16,
+    fontWeight: '700',
+    fontSize: 15,
   },
   cardText: {
     color: theme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
-  summaryCard: {
-    backgroundColor: '#eef8ff',
-    borderRadius: theme.radius.md,
-    borderWidth: 2,
-    borderColor: '#bbdefb',
-    padding: theme.spacing.lg,
-    gap: 10,
-  },
-  summaryLine: {
-    color: '#0d47a1',
-    fontSize: 14,
-    fontWeight: '500',
+  summaryEyebrow: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   summaryValue: {
-    color: '#1565c0',
+    color: theme.colors.primaryDeep,
     fontSize: 28,
     fontWeight: '800',
+  },
+  summaryMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
     marginTop: 4,
+  },
+  summaryLine: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
   },
   success: {
     color: theme.colors.success,
@@ -236,5 +248,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.88,
+    transform: [{ scale: 0.99 }],
   },
 });

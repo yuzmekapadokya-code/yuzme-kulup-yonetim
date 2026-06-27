@@ -23,7 +23,12 @@ import {
   normalizeMarketOrder,
 } from './marketService';
 import { createAppNotification } from './notificationService';
+import { getClubDisplayName } from '../utils/clubProfileHelpers';
+import { EXPENSE_CATEGORIES, getExpenseCategoryMeta, getExpenseDisplayLabel } from '../utils/clubProfileHelpers';
+import { getScheduleDisplayLabel } from '../utils/scheduleDisplay';
 import { nowIso, sortByDateDesc } from '../utils/date';
+
+export { EXPENSE_CATEGORIES, getExpenseDisplayLabel };
 
 function toNumber(value, fallback = 0) {
   if (value === '' || value === null || typeof value === 'undefined') return fallback;
@@ -182,6 +187,9 @@ function normalizeScheduleTrainerAssignments(schedule, trainers) {
           trainers.find((trainer) => trainer.id === assignment.trainerDocId || trainer.uid === assignment.trainerId)?.name ||
           'Bilinmiyor',
         role: assignment.role || (index === 0 ? 'head' : 'assistant'),
+        headTrainerId: assignment.headTrainerId || '',
+        headTrainerDocId: assignment.headTrainerDocId || '',
+        headTrainerName: assignment.headTrainerName || '',
         trainerRate: toNumber(assignment.trainerRate, 0),
         trainerPaymentDetails: Array.isArray(assignment.trainerPaymentDetails) ? assignment.trainerPaymentDetails : [],
         trainerPaymentStatus: assignment.trainerPaymentStatus === 'paid' ? 'paid' : 'pending',
@@ -403,11 +411,12 @@ function doesIncomeMatchFinanceDetail(income, branchId, scheduleId) {
   return incomeScheduleId === scheduleId || isBranchLevelIncomeRecord(income);
 }
 
-function createFinanceScheduleEntry(scheduleId, schedules) {
+function createFinanceScheduleEntry(scheduleId, schedules, branches = []) {
   const schedule = schedules.find((item) => item.id === scheduleId);
+  const branch = schedule ? branches.find((item) => item.id === schedule.branchId) : null;
   return {
     scheduleId,
-    scheduleName: schedule ? `${schedule.time} (${schedule.lessonsCount || 1} Ders)` : 'Bilinmiyor',
+    scheduleName: getScheduleDisplayLabel(schedule, branch),
     turnover: 0,
     income: 0,
     paymentIncome: 0,
@@ -443,7 +452,7 @@ function ensureFinanceBranchEntry(branchData, branchId, branches) {
 function ensureFinanceScheduleEntry(branchData, branchId, scheduleId, branches, schedules) {
   const branchEntry = ensureFinanceBranchEntry(branchData, branchId, branches);
   if (!branchEntry.schedules[scheduleId]) {
-    branchEntry.schedules[scheduleId] = createFinanceScheduleEntry(scheduleId, schedules);
+    branchEntry.schedules[scheduleId] = createFinanceScheduleEntry(scheduleId, schedules, branches);
   }
   return branchEntry.schedules[scheduleId];
 }
@@ -645,10 +654,12 @@ export async function getAdminOrganizationOverview(adminId) {
 }
 
 export async function saveClubProfile({ adminId, values, currentAdminId }) {
+  const clubName = String(values.clubName || '').trim();
   await setDoc(
     doc(db, 'clubProfiles', adminId),
     {
-      clubName: values.clubName.trim(),
+      clubName,
+      name: clubName,
       logoUrl: values.logoUrl?.trim() || '',
       adminId,
       updatedAt: nowIso(),
@@ -799,6 +810,7 @@ export async function getAdminScheduleOverview(adminId) {
       return {
         ...schedule,
         branchName: branch?.name || 'Bilinmiyor',
+        displayLabel: getScheduleDisplayLabel(schedule, branch),
         dayLabels: (schedule.days || []).map(mapDayLabel).join(', '),
         trainerSummary: paymentSummary.assignments.map((item) => `${item.trainerName} (${item.role === 'assistant' ? 'yardimci' : 'bas'})`).join(', '),
         postponementCount: getSchedulePostponementCount(schedule),
@@ -980,10 +992,18 @@ export async function getAdminFinanceOverview(adminId, options = {}) {
   const rangedIncomes = incomes.filter((income) => isDateInFinanceRange(income.date || income.createdAt, range));
   const rangedExpenses = expenses.filter((expense) => isDateInFinanceRange(expense.date || expense.createdAt, range));
 
+  const enrichedSchedules = schedules.map((schedule) => {
+    const branch = branches.find((item) => item.id === schedule.branchId);
+    return {
+      ...schedule,
+      displayLabel: getScheduleDisplayLabel(schedule, branch),
+    };
+  });
+
   return {
     rangePreset,
     branches,
-    schedules,
+    schedules: enrichedSchedules,
     range,
     summary: {
       ...summary,
@@ -994,6 +1014,132 @@ export async function getAdminFinanceOverview(adminId, options = {}) {
     recentIncomes: sortByDateDesc(rangedIncomes).slice(0, 8),
     recentExpenses: sortByDateDesc(rangedExpenses).slice(0, 8),
     discounts: sortByDateDesc(discounts).slice(0, 12),
+  };
+}
+
+function getAdminStudentFinanceTotals(student) {
+  const totalAmount = Number(student?.totalAmount || 0);
+  const installments = Array.isArray(student?.installments) ? student.installments : [];
+  let paidAmount = Number(student?.totalPaid);
+  if (!Number.isFinite(paidAmount)) {
+    paidAmount = installments.reduce((sum, item) => sum + Number(item?.paidAmount || 0), 0);
+  }
+  const remainingAmount = Math.max(0, totalAmount - paidAmount);
+  return {
+    totalAmount: Math.round(totalAmount * 100) / 100,
+    paidAmount: Math.round(paidAmount * 100) / 100,
+    remainingAmount: Math.round(remainingAmount * 100) / 100,
+  };
+}
+
+function summarizeFinanceExpensesByCategory(expenses) {
+  const summary = {};
+  expenses.forEach((expense) => {
+    const key = expense.category || 'legacy';
+    const label = getExpenseDisplayLabel(expense);
+    if (!summary[key]) {
+      summary[key] = { label, total: 0, count: 0 };
+    }
+    summary[key].total += Number(expense.amount || 0);
+    summary[key].count += 1;
+  });
+  return Object.values(summary).sort((left, right) => right.total - left.total);
+}
+
+function formatFinanceRangeLabel(range, rangePreset) {
+  if (!range) {
+    return 'Tum Zaman';
+  }
+  const fmt = (date) => date.toLocaleDateString('tr-TR');
+  const presetLabels = {
+    week: '7 gun',
+    twoWeeks: '14 gun',
+    month: '1 ay',
+    twoMonths: '2 ay',
+    threeMonths: '3 ay',
+    year: '1 yil',
+  };
+  const presetName = presetLabels[rangePreset] || '';
+  return `${presetName ? presetName + ' • ' : ''}${fmt(range.start)} - ${fmt(range.end)}`;
+}
+
+export async function getAdminFinancePdfData(adminId, options = {}) {
+  const rangePreset = options.rangePreset || 'all';
+  const branchFilter = options.branchId || '';
+  const scheduleFilter = options.scheduleId || '';
+  const range = getFinanceDateRange(rangePreset);
+
+  const [branches, schedules, students, expenses, payments, incomes, clubProfileSnap] = await Promise.all([
+    listAll('branches', [where('adminId', '==', adminId)]),
+    listAll('schedules', [where('adminId', '==', adminId)]),
+    listAll('students', [where('adminId', '==', adminId)]),
+    listAll('expenses', [where('adminId', '==', adminId)]),
+    listAll('payments', [where('adminId', '==', adminId)]),
+    listAll('incomes', [where('adminId', '==', adminId)]),
+    getDoc(doc(db, 'clubProfiles', adminId)).catch(() => null),
+  ]);
+
+  const clubData = clubProfileSnap?.exists?.() ? clubProfileSnap.data() : {};
+  const clubName = getClubDisplayName(clubData) || 'Yuzme Kulubu';
+
+  const filteredStudents = students.filter((student) => {
+    if (branchFilter && resolveFinanceBranchId(student, student) !== branchFilter) return false;
+    if (scheduleFilter && resolveFinanceScheduleId(student, student) !== scheduleFilter) return false;
+    return true;
+  });
+
+  const filteredExpenses = expenses.filter((expense) => {
+    if (!isDateInFinanceRange(expense.date || expense.createdAt, range)) return false;
+    if (branchFilter && resolveFinanceBranchId(expense) !== branchFilter) return false;
+    if (scheduleFilter && resolveFinanceScheduleId(expense) !== scheduleFilter) return false;
+    return true;
+  });
+
+  const filteredPayments = payments.filter((payment) => {
+    if (!isDateInFinanceRange(getFinanceRecordDate(payment), range)) return false;
+    const student = students.find((item) => item.id === payment.studentId) || null;
+    if (branchFilter && resolveFinanceBranchId(payment, student) !== branchFilter) return false;
+    if (scheduleFilter && resolveFinanceScheduleId(payment, student) !== scheduleFilter) return false;
+    return true;
+  });
+
+  const filteredIncomes = incomes.filter((income) => {
+    if (!isDateInFinanceRange(income.date || income.createdAt, range)) return false;
+    if (branchFilter && resolveFinanceBranchId(income) !== branchFilter) return false;
+    if (scheduleFilter && resolveFinanceScheduleId(income) !== scheduleFilter) return false;
+    return true;
+  });
+
+  const incomeTotal = filteredIncomes.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    + filteredPayments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const expenseTotal = filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const turnoverTotal = filteredStudents.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+
+  const studentGroups = {};
+  filteredStudents.forEach((student) => {
+    const schedule = schedules.find((item) => item.id === student.scheduleId) || null;
+    const branch = branches.find((item) => item.id === student.branchId) || null;
+    const label = getScheduleDisplayLabel(schedule, branch) || 'Genel';
+    if (!studentGroups[label]) {
+      studentGroups[label] = { label, students: [] };
+    }
+    studentGroups[label].students.push({
+      ...student,
+      totals: getAdminStudentFinanceTotals(student),
+    });
+  });
+
+  return {
+    clubName,
+    rangeLabel: formatFinanceRangeLabel(range, rangePreset),
+    summary: {
+      turnover: turnoverTotal,
+      income: incomeTotal,
+      expense: expenseTotal,
+      profit: incomeTotal - expenseTotal,
+    },
+    expenseSummary: summarizeFinanceExpensesByCategory(filteredExpenses),
+    studentGroups: Object.values(studentGroups).sort((left, right) => left.label.localeCompare(right.label, 'tr')),
   };
 }
 
@@ -1050,15 +1196,22 @@ export async function getAdminStandardsOverview(adminId) {
 }
 
 export async function saveSchedule({ adminId, scheduleId = null, values, currentAdminId }) {
+  const assistantHeadMap = values.assistantHeadMap || {};
   const trainerAssignments = (values.trainerIds || [])
     .filter(Boolean)
     .map((trainerId, index) => {
       const trainer = values.trainers.find((item) => item.uid === trainerId || item.id === trainerId);
+      const role = values.primaryTrainerId === trainerId || (!values.primaryTrainerId && index === 0) ? 'head' : 'assistant';
+      const headTrainerKey = role === 'assistant' ? (assistantHeadMap[trainerId] || values.primaryTrainerId || '') : trainerId;
+      const headTrainer = values.trainers.find((item) => item.uid === headTrainerKey || item.id === headTrainerKey);
       return {
         trainerId: trainer?.uid || trainerId,
         trainerDocId: trainer?.id || trainerId,
         trainerName: trainer?.name || 'Bilinmiyor',
-        role: values.primaryTrainerId === trainerId || (!values.primaryTrainerId && index === 0) ? 'head' : 'assistant',
+        role,
+        headTrainerId: role === 'assistant' ? (headTrainer?.uid || headTrainerKey) : (trainer?.uid || trainerId),
+        headTrainerDocId: role === 'assistant' ? (headTrainer?.id || '') : (trainer?.id || ''),
+        headTrainerName: role === 'assistant' ? (headTrainer?.name || '') : (trainer?.name || ''),
       };
     });
 
@@ -1066,9 +1219,16 @@ export async function saveSchedule({ adminId, scheduleId = null, values, current
     throw new Error('En az bir antrenor secin.');
   }
 
+  const missingHead = trainerAssignments.find((item) => item.role === 'assistant' && !item.headTrainerId);
+  if (missingHead) {
+    throw new Error('Yardimci antrenor icin bas antrenor secmelisiniz.');
+  }
+
   const headAssignment = trainerAssignments.find((item) => item.role === 'head') || trainerAssignments[0];
+  const customName = String(values.customName || '').trim();
   const payload = {
     branchId: values.branchId,
+    customName: customName || null,
     time: values.time,
     lessonType: values.lessonType === 'private' ? 'private' : 'group',
     startDate: values.startDate,
@@ -1274,8 +1434,20 @@ export async function saveIncome({ adminId, values, currentAdminId }) {
 }
 
 export async function saveExpense({ adminId, values, currentAdminId }) {
+  const categoryMeta = getExpenseCategoryMeta(values.category);
+  if (!categoryMeta) {
+    throw new Error('Gider turu secin.');
+  }
+  const otherNote = String(values.otherNote || '').trim();
+  if (values.category === 'other' && !otherNote) {
+    throw new Error('Diger gider turu icin kisa aciklama yazin.');
+  }
+
   await addDoc(collection(db, 'expenses'), {
-    description: values.description.trim(),
+    category: values.category,
+    categoryLabel: categoryMeta.label,
+    otherNote: values.category === 'other' ? otherNote : '',
+    description: values.category === 'other' ? `Diger: ${otherNote}` : categoryMeta.label,
     amount: toNumber(values.amount),
     date: values.date,
     branchId: values.branchId || '',
@@ -1437,4 +1609,89 @@ export async function submitAdminMarketCheckout({
     itemCount,
     totalAmount,
   };
+}
+
+function escapeHtmlForPdf(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatPdfCurrency(value) {
+  const numeric = Number(value || 0);
+  return `\u20BA${numeric.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function buildAdminFinancePdfBody(pdfData) {
+  const summary = pdfData.summary || { turnover: 0, income: 0, expense: 0, profit: 0 };
+  const expenseRowsHtml = (pdfData.expenseSummary || []).length
+    ? pdfData.expenseSummary.map((item) => `
+        <tr>
+          <td>${escapeHtmlForPdf(item.label)}</td>
+          <td style="text-align:center;">${item.count}</td>
+          <td class="money">${escapeHtmlForPdf(formatPdfCurrency(item.total))}</td>
+        </tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">Bu donemde manuel gider yok.</td></tr>';
+
+  const studentGroupsHtml = (pdfData.studentGroups || []).length
+    ? pdfData.studentGroups.map((group) => {
+        const sortedStudents = group.students.slice().sort((left, right) => {
+          const nameLeft = `${left.name || ''} ${left.surname || ''}`.trim();
+          const nameRight = `${right.name || ''} ${right.surname || ''}`.trim();
+          return nameLeft.localeCompare(nameRight, 'tr');
+        });
+        const rowsHtml = sortedStudents.map((student, index) => `
+          <tr class="${index % 2 === 0 ? 'row-even' : ''}">
+            <td>${escapeHtmlForPdf(`${student.name || ''} ${student.surname || ''}`.trim())}</td>
+            <td class="money">${escapeHtmlForPdf(formatPdfCurrency(student.totals.totalAmount))}</td>
+            <td class="money">${escapeHtmlForPdf(formatPdfCurrency(student.totals.paidAmount))}</td>
+            <td class="money">${escapeHtmlForPdf(formatPdfCurrency(student.totals.remainingAmount))}</td>
+          </tr>`).join('');
+        return `
+          <section class="group-block">
+            <div class="group-title">Ders: ${escapeHtmlForPdf(group.label)} (${sortedStudents.length} ogrenci)</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40%;">Ad Soyad</th>
+                  <th class="money" style="width:20%;">Toplam</th>
+                  <th class="money" style="width:20%;">Odenen</th>
+                  <th class="money" style="width:20%;">Kalan</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </section>`;
+      }).join('')
+    : '<p style="text-align:center; color:#7f8c8d;">Secili filtreye uygun ogrenci bulunamadi.</p>';
+
+  return `
+    <div class="header">
+      <h1>${escapeHtmlForPdf(pdfData.clubName || 'Yuzme Kulubu')}</h1>
+      <p>Gelir / Gider Raporu • ${escapeHtmlForPdf(pdfData.rangeLabel || '')}</p>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-card"><span>Ciro</span><strong>${escapeHtmlForPdf(formatPdfCurrency(summary.turnover))}</strong></div>
+      <div class="summary-card"><span>Gelir</span><strong>${escapeHtmlForPdf(formatPdfCurrency(summary.income))}</strong></div>
+      <div class="summary-card"><span>Gider</span><strong>${escapeHtmlForPdf(formatPdfCurrency(summary.expense))}</strong></div>
+      <div class="summary-card"><span>Kar</span><strong>${escapeHtmlForPdf(formatPdfCurrency(summary.profit))}</strong></div>
+    </div>
+    <h2 class="section-title">Gider ozeti (manuel)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Gider turu</th>
+          <th style="width:14%; text-align:center;">Adet</th>
+          <th class="money" style="width:24%;">Toplam</th>
+        </tr>
+      </thead>
+      <tbody>${expenseRowsHtml}</tbody>
+    </table>
+    <h2 class="section-title">Ogrenci odeme durumu</h2>
+    ${studentGroupsHtml}
+    <p class="footer-note">Rapor tarihi: ${escapeHtmlForPdf(new Date().toLocaleString('tr-TR'))}</p>
+  `;
 }

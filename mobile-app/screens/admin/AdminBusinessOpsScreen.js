@@ -10,9 +10,10 @@ import SectionHeader from '../../components/SectionHeader';
 import StatCard from '../../components/StatCard';
 import { theme } from '../../config/theme';
 import { getAdminScope } from '../../services/roleService';
-import { deleteDiscount, deleteExpense, deleteIncome, getAdminFinanceOverview, saveDiscount, saveExpense, saveIncome } from '../../services/adminService';
+import { buildAdminFinancePdfBody, deleteDiscount, deleteExpense, deleteIncome, EXPENSE_CATEGORIES, getAdminFinanceOverview, getAdminFinancePdfData, getExpenseDisplayLabel, saveDiscount, saveExpense, saveIncome } from '../../services/adminService';
 import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../utils/date';
+import { generateAndSharePdf } from '../../utils/pdfExport';
 
 const rangeOptions = [
   { key: 'week', label: '7 Gun' },
@@ -24,8 +25,12 @@ const rangeOptions = [
   { key: 'all', label: 'Tum Zaman' },
 ];
 
-function initialFinanceForm() {
+function initialIncomeForm() {
   return { description: '', amount: '', date: '', branchId: '', scheduleId: '' };
+}
+
+function initialExpenseForm() {
+  return { category: '', otherNote: '', amount: '', date: '', branchId: '', scheduleId: '' };
 }
 
 function initialDiscountForm() {
@@ -43,8 +48,8 @@ export default function AdminBusinessOpsScreen() {
   const [rangePreset, setRangePreset] = useState('all');
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
-  const [incomeValues, setIncomeValues] = useState(initialFinanceForm());
-  const [expenseValues, setExpenseValues] = useState(initialFinanceForm());
+  const [incomeValues, setIncomeValues] = useState(initialIncomeForm());
+  const [expenseValues, setExpenseValues] = useState(initialExpenseForm());
   const [discountValues, setDiscountValues] = useState(initialDiscountForm());
 
   const financeQuery = useQuery({
@@ -61,7 +66,7 @@ export default function AdminBusinessOpsScreen() {
   const incomeMutation = useMutation({
     mutationFn: () => saveIncome({ adminId: adminScope, values: incomeValues, currentAdminId: profile?.uid || adminScope }),
     onSuccess: () => {
-      setIncomeValues(initialFinanceForm());
+      setIncomeValues(initialIncomeForm());
       invalidate();
     },
     onError: (error) => Alert.alert('Gelir', error.message || 'Gelir kaydedilemedi.'),
@@ -70,7 +75,7 @@ export default function AdminBusinessOpsScreen() {
   const expenseMutation = useMutation({
     mutationFn: () => saveExpense({ adminId: adminScope, values: expenseValues, currentAdminId: profile?.uid || adminScope }),
     onSuccess: () => {
-      setExpenseValues(initialFinanceForm());
+      setExpenseValues(initialExpenseForm());
       invalidate();
     },
     onError: (error) => Alert.alert('Gider', error.message || 'Gider kaydedilemedi.'),
@@ -88,6 +93,24 @@ export default function AdminBusinessOpsScreen() {
   const deleteIncomeMutation = useMutation({ mutationFn: deleteIncome, onSuccess: invalidate });
   const deleteExpenseMutation = useMutation({ mutationFn: deleteExpense, onSuccess: invalidate });
   const deleteDiscountMutation = useMutation({ mutationFn: deleteDiscount, onSuccess: invalidate });
+
+  const pdfMutation = useMutation({
+    mutationFn: async () => {
+      const pdfData = await getAdminFinancePdfData(adminScope, {
+        rangePreset,
+        branchId: selectedBranchId,
+        scheduleId: selectedScheduleId,
+      });
+      const body = buildAdminFinancePdfBody(pdfData);
+      const suffix = new Date().toISOString().slice(0, 10);
+      await generateAndSharePdf({
+        html: body,
+        orientation: 'landscape',
+        fileName: `gelir-gider-${suffix}.pdf`,
+      });
+    },
+    onError: (error) => Alert.alert('PDF', error.message || 'PDF olusturulamadi.'),
+  });
 
   if (financeQuery.isLoading) {
     return <LoadingBlock label="Finans modulu yukleniyor..." />;
@@ -130,6 +153,13 @@ export default function AdminBusinessOpsScreen() {
           <StatCard label="Kar" value={formatCurrency(data.summary.profit)} tone="success" />
         </View>
 
+        <ActionButton
+          label={pdfMutation.isPending ? 'PDF olusturuluyor...' : 'PDF olarak indir'}
+          onPress={() => pdfMutation.mutate()}
+          disabled={pdfMutation.isPending}
+          fullWidth
+        />
+
         <SectionHeader title="Sube ve saat filtresi" caption="Gelir-gideri ayni web ekranindaki gibi kir" />
         <View style={styles.card}>
           <Text style={styles.label}>Sube</Text>
@@ -143,7 +173,7 @@ export default function AdminBusinessOpsScreen() {
           <View style={styles.chipRow}>
             <ActionButton label="Tum Saatler" variant={!selectedScheduleId ? 'primary' : 'secondary'} onPress={() => setSelectedScheduleId('')} />
             {schedulesForSelectedBranch.map((schedule) => (
-              <ActionButton key={schedule.id} label={schedule.time} variant={selectedScheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setSelectedScheduleId(schedule.id)} />
+              <ActionButton key={schedule.id} label={schedule.displayLabel || schedule.time} variant={selectedScheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setSelectedScheduleId(schedule.id)} />
             ))}
           </View>
         </View>
@@ -162,7 +192,7 @@ export default function AdminBusinessOpsScreen() {
             </View>
             <View style={styles.chipRow}>
               {data.schedules.filter((schedule) => !incomeValues.branchId || schedule.branchId === incomeValues.branchId).map((schedule) => (
-                <ActionButton key={`income-sch-${schedule.id}`} label={schedule.time} variant={incomeValues.scheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setIncomeValues((current) => ({ ...current, scheduleId: schedule.id }))} />
+                <ActionButton key={`income-sch-${schedule.id}`} label={schedule.displayLabel || schedule.time} variant={incomeValues.scheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setIncomeValues((current) => ({ ...current, scheduleId: schedule.id }))} />
               ))}
             </View>
             <ActionButton label={incomeMutation.isPending ? 'Kaydediliyor...' : 'Gelir Kaydet'} onPress={() => incomeMutation.mutate()} fullWidth />
@@ -170,7 +200,20 @@ export default function AdminBusinessOpsScreen() {
 
           <View style={styles.formBlockSecondary}>
             <Text style={styles.blockTitle}>➖ Gider</Text>
-            <TextInput style={styles.input} placeholder="Aciklama" value={expenseValues.description} onChangeText={(text) => setExpenseValues((current) => ({ ...current, description: text }))} />
+            <Text style={styles.label}>Gider turu</Text>
+            <View style={styles.chipRow}>
+              {EXPENSE_CATEGORIES.map((category) => (
+                <ActionButton
+                  key={category.id}
+                  label={category.label}
+                  variant={expenseValues.category === category.id ? 'primary' : 'secondary'}
+                  onPress={() => setExpenseValues((current) => ({ ...current, category: category.id }))}
+                />
+              ))}
+            </View>
+            {expenseValues.category === 'other' ? (
+              <TextInput style={styles.input} placeholder="Diger gider aciklamasi" value={expenseValues.otherNote} onChangeText={(text) => setExpenseValues((current) => ({ ...current, otherNote: text }))} />
+            ) : null}
             <TextInput style={styles.input} placeholder="Tutar" keyboardType="numeric" value={expenseValues.amount} onChangeText={(text) => setExpenseValues((current) => ({ ...current, amount: text }))} />
             <TextInput style={styles.input} placeholder="Tarih (YYYY-MM-DD)" value={expenseValues.date} onChangeText={(text) => setExpenseValues((current) => ({ ...current, date: text }))} />
             <View style={styles.chipRow}>
@@ -180,7 +223,7 @@ export default function AdminBusinessOpsScreen() {
             </View>
             <View style={styles.chipRow}>
               {data.schedules.filter((schedule) => !expenseValues.branchId || schedule.branchId === expenseValues.branchId).map((schedule) => (
-                <ActionButton key={`expense-sch-${schedule.id}`} label={schedule.time} variant={expenseValues.scheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setExpenseValues((current) => ({ ...current, scheduleId: schedule.id }))} />
+                <ActionButton key={`expense-sch-${schedule.id}`} label={schedule.displayLabel || schedule.time} variant={expenseValues.scheduleId === schedule.id ? 'primary' : 'secondary'} onPress={() => setExpenseValues((current) => ({ ...current, scheduleId: schedule.id }))} />
               ))}
             </View>
             <ActionButton label={expenseMutation.isPending ? 'Kaydediliyor...' : 'Gider Kaydet'} onPress={() => expenseMutation.mutate()} fullWidth />
@@ -228,7 +271,7 @@ export default function AdminBusinessOpsScreen() {
           {!data.recentExpenses.length ? <EmptyState title="Gider yok" description="Gider kaydi bulunmuyor." /> : data.recentExpenses.map((expense) => (
             <View key={expense.id} style={styles.inlineCard}>
               <View style={styles.inlineBody}>
-                <Text style={styles.itemTitle}>{expense.description || 'Gider'}</Text>
+                <Text style={styles.itemTitle}>{getExpenseDisplayLabel(expense)}</Text>
                 <Text style={styles.itemText}>{formatCurrency(expense.amount)} | {formatDate(expense.date || expense.createdAt)}</Text>
               </View>
               <ActionButton label="Sil" variant="secondary" onPress={() => deleteExpenseMutation.mutate(expense.id)} />

@@ -16,6 +16,19 @@ let adminMarketCart = [];
 let allAdminMarketProducts = [];
 let adminMarketBankSettings = null;
 
+const EXPENSE_CATEGORIES = [
+    { id: 'pool_rent', label: 'Havuz kirası' },
+    { id: 'advertising', label: 'Reklam / tanıtım harcaması' },
+    { id: 'utilities', label: 'Elektrik / su / doğalgaz' },
+    { id: 'equipment', label: 'Malzeme ve ekipman' },
+    { id: 'maintenance', label: 'Bakım ve onarım' },
+    { id: 'insurance', label: 'Sigorta' },
+    { id: 'staff_services', label: 'Personel / dış hizmet' },
+    { id: 'taxes_fees', label: 'Vergi ve resmi harçlar' },
+    { id: 'office', label: 'Ofis / kırtasiye' },
+    { id: 'other', label: 'Diğer' }
+];
+
 function escapeHtml(value) {
     return String(value || '')
         .replace(/&/g, '&amp;')
@@ -152,7 +165,7 @@ function scheduleAdminRealtimeReload() {
         } catch (error) {
             console.warn('Realtime yenileme hatasi:', error);
         }
-    }, 350);
+    }, 900);
 }
 
 function setupAdminRealtimeSync() {
@@ -204,6 +217,15 @@ function formatTryCurrency(amount) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(Number(amount || 0));
+}
+
+function formatTryCurrencyCompact(amount) {
+    const value = Number(amount || 0);
+    const formatted = new Intl.NumberFormat('tr-TR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(value);
+    return `${formatted} ₺`;
 }
 
 function roundCurrency(value) {
@@ -315,6 +337,9 @@ function normalizeScheduleTrainerAssignments(schedule) {
                     trainerDocId,
                     trainerName: assignment.trainerName || trainer?.name || 'Bilinmiyor',
                     role: assignment.role || (index === 0 ? 'head' : 'assistant'),
+                    headTrainerId: assignment.headTrainerId || '',
+                    headTrainerDocId: assignment.headTrainerDocId || '',
+                    headTrainerName: assignment.headTrainerName || '',
                     trainerRate: Number.isFinite(Number(assignment.trainerRate)) ? Number(assignment.trainerRate) : null,
                     trainerPaymentDetails: Array.isArray(assignment.trainerPaymentDetails) ? assignment.trainerPaymentDetails : [],
                     trainerPaymentStatus: assignment.trainerPaymentStatus === 'paid' ? 'paid' : 'pending',
@@ -367,8 +392,22 @@ function formatScheduleTrainerAssignments(schedule) {
 
     return assignments.map(assignment => {
         const roleLabel = assignment.role === 'assistant' ? 'Yardımcı Antrenör' : 'Baş Antrenör';
+        if (assignment.role === 'assistant' && assignment.headTrainerName) {
+            return `${assignment.trainerName} (${roleLabel} • ${assignment.headTrainerName})`;
+        }
         return `${assignment.trainerName} (${roleLabel})`;
     }).join(', ');
+}
+
+function getScheduleHeadTrainerOptions(assignments = [], currentAssignment = {}) {
+    return assignments
+        .filter(item => item.role === 'head' && item.trainerId)
+        .map(item => ({
+            trainerId: item.trainerId,
+            trainerDocId: item.trainerDocId || '',
+            trainerName: item.trainerName || 'Baş Antrenör'
+        }))
+        .filter((item, index, list) => list.findIndex(other => other.trainerId === item.trainerId) === index);
 }
 
 function getNormalizedScheduleDays(schedule) {
@@ -454,27 +493,51 @@ function renderScheduleTrainerAssignmentRows(assignments = []) {
         ? assignments
         : [{ trainerId: '', trainerDocId: '', role: 'head' }];
 
+    const headTrainerOptions = getScheduleHeadTrainerOptions(effectiveAssignments);
+
     container.innerHTML = effectiveAssignments.map((assignment, index) => {
         const trainerOptions = ['<option value="">-- Antrenör Seçiniz --</option>']
             .concat(allTrainers.map(trainer => {
                 const trainerId = getTrainerUniqueId(trainer);
-                return `<option value="${trainerId}" data-doc-id="${trainer.id}" ${trainerId === assignment.trainerId || trainer.id === assignment.trainerDocId ? 'selected' : ''}>${trainer.name}</option>`;
+                return `<option value="${trainerId}" data-doc-id="${trainer.id}" ${trainerId === assignment.trainerId || trainer.id === assignment.trainerDocId ? 'selected' : ''}>${escapeHtml(trainer.name)}</option>`;
+            }))
+            .join('');
+
+        const isAssistant = assignment.role === 'assistant';
+        const headOptions = ['<option value="">-- Baş Antrenör Seçiniz --</option>']
+            .concat(headTrainerOptions.map(head => {
+                const selected = head.trainerId === assignment.headTrainerId || head.trainerDocId === assignment.headTrainerDocId;
+                return `<option value="${head.trainerId}" data-doc-id="${head.trainerDocId}" ${selected ? 'selected' : ''}>${escapeHtml(head.trainerName)}</option>`;
             }))
             .join('');
 
         return `
-            <div class="schedule-trainer-assignment-row" style="display: grid; grid-template-columns: minmax(0, 1.4fr) 180px auto; gap: 10px; align-items: center; margin-bottom: 10px; padding: 12px; border-radius: 8px; background: #f8fbff; border: 1px solid #dbe9f6;">
-                <select class="schedule-trainer-select" data-index="${index}" required>
+            <div class="schedule-trainer-assignment-row">
+                <select class="schedule-trainer-select" data-index="${index}" required aria-label="Antrenör">
                     ${trainerOptions}
                 </select>
-                <select class="schedule-trainer-role" data-index="${index}">
+                <select class="schedule-trainer-role" data-index="${index}" aria-label="Rol">
                     <option value="head" ${assignment.role === 'head' ? 'selected' : ''}>Baş Antrenör</option>
                     <option value="assistant" ${assignment.role === 'assistant' ? 'selected' : ''}>Yardımcı Antrenör</option>
+                </select>
+                <select class="schedule-head-trainer-select" data-index="${index}" aria-label="Baş antrenör" ${isAssistant ? '' : 'disabled'} style="${isAssistant ? '' : 'opacity:0.55;'}">
+                    ${headOptions}
                 </select>
                 <button type="button" class="btn btn-danger btn-sm" onclick="removeScheduleTrainerAssignmentRow(${index})" ${effectiveAssignments.length === 1 ? 'disabled' : ''}>Sil</button>
             </div>
         `;
     }).join('');
+
+    container.querySelectorAll('.schedule-trainer-role').forEach(select => {
+        select.addEventListener('change', () => {
+            renderScheduleTrainerAssignmentRows(collectScheduleTrainerAssignments({ allowEmpty: true }));
+        });
+    });
+    container.querySelectorAll('.schedule-trainer-select').forEach(select => {
+        select.addEventListener('change', () => {
+            renderScheduleTrainerAssignmentRows(collectScheduleTrainerAssignments({ allowEmpty: true }));
+        });
+    });
 }
 
 function addScheduleTrainerAssignmentRow() {
@@ -501,13 +564,21 @@ function collectScheduleTrainerAssignments(options = {}) {
     const assignments = rows.map(row => {
         const trainerSelect = row.querySelector('.schedule-trainer-select');
         const roleSelect = row.querySelector('.schedule-trainer-role');
+        const headTrainerSelect = row.querySelector('.schedule-head-trainer-select');
         const trainerId = trainerSelect?.value || '';
         const trainer = resolveTrainerByIdentifier(trainerId);
+        const role = roleSelect?.value === 'assistant' ? 'assistant' : 'head';
+        const headTrainerId = role === 'assistant' ? (headTrainerSelect?.value || '') : trainerId;
+        const headTrainer = resolveTrainerByIdentifier(headTrainerId);
+
         return {
             trainerId,
             trainerDocId: trainer?.id || '',
             trainerName: trainer?.name || '',
-            role: roleSelect?.value === 'assistant' ? 'assistant' : 'head'
+            role,
+            headTrainerId: role === 'assistant' ? headTrainerId : trainerId,
+            headTrainerDocId: role === 'assistant' ? (headTrainer?.id || headTrainerSelect?.selectedOptions?.[0]?.dataset?.docId || '') : (trainer?.id || ''),
+            headTrainerName: role === 'assistant' ? (headTrainer?.name || '') : (trainer?.name || '')
         };
     }).filter(item => options.allowEmpty || item.trainerId);
 
@@ -538,10 +609,455 @@ function summarizeTrainerPaymentDetails(schedule) {
     };
 }
 
+function getAdminScheduleDisplayLabel(schedule, branch = null) {
+    if (!schedule) {
+        return 'Bilinmiyor';
+    }
+    const resolvedBranch = branch || allBranches.find(item => item.id === schedule.branchId);
+    const customName = String(schedule.customName || '').trim();
+    const time = schedule.time || '';
+    const days = formatScheduleDays(schedule);
+    const daySuffix = days ? ` • ${days}` : '';
+    if (customName) {
+        return `${customName} • ${time}${daySuffix}`;
+    }
+    const branchName = resolvedBranch?.name || 'Şube';
+    return `${branchName} • ${time}${daySuffix}`;
+}
+
+function getExpenseCategoryMeta(categoryId) {
+    return EXPENSE_CATEGORIES.find(item => item.id === categoryId) || null;
+}
+
+function getExpenseDisplayLabel(expense) {
+    if (!expense) {
+        return 'Gider';
+    }
+    if (expense.category === 'other' && expense.otherNote) {
+        return `Diğer: ${expense.otherNote}`;
+    }
+    if (expense.categoryLabel) {
+        return expense.categoryLabel;
+    }
+    const categoryMeta = getExpenseCategoryMeta(expense.category);
+    if (categoryMeta) {
+        return categoryMeta.label;
+    }
+    return expense.description || 'Gider';
+}
+
+function populateExpenseCategorySelect() {
+    const select = document.getElementById('expenseCategory');
+    if (!select) {
+        return;
+    }
+    select.innerHTML = '<option value="">-- Gider türü seçiniz --</option>' +
+        EXPENSE_CATEGORIES.map(category => `<option value="${category.id}">${escapeHtml(category.label)}</option>`).join('');
+}
+
+function toggleExpenseOtherNote() {
+    const category = document.getElementById('expenseCategory')?.value || '';
+    const group = document.getElementById('expenseOtherNoteGroup');
+    if (!group) {
+        return;
+    }
+    group.style.display = category === 'other' ? 'block' : 'none';
+    if (category !== 'other') {
+        const noteInput = document.getElementById('expenseOtherNote');
+        if (noteInput) {
+            noteInput.value = '';
+        }
+    }
+}
+
+function getStudentFinanceTotals(student) {
+    const totalAmount = roundCurrency(student?.totalAmount || 0);
+    const paidAmount = roundCurrency(student?.totalPaid || 0);
+    const remainingAmount = Math.max(0, roundCurrency(totalAmount - paidAmount));
+    return { totalAmount, paidAmount, remainingAmount };
+}
+
+function escapeHtmlForPdf(value) {
+    return escapeHtml(value);
+}
+
+function formatReportDateTR(date = new Date()) {
+    return date.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    });
+}
+
+function studentMatchesFinanceFilters(student, branchFilter, scheduleFilter) {
+    const branchId = resolveFinanceBranchId(student, student);
+    const scheduleId = resolveFinanceScheduleId(student, student);
+    if (branchFilter && branchId !== branchFilter) {
+        return false;
+    }
+    if (scheduleFilter && scheduleId !== scheduleFilter) {
+        return false;
+    }
+    return true;
+}
+
+function groupFinanceStudentsForPdf(students) {
+    const groups = {};
+
+    students.forEach(student => {
+        const schedule = allSchedules.find(item => item.id === student.scheduleId);
+        const branch = allBranches.find(item => item.id === resolveFinanceBranchId(student, student));
+        const label = getAdminScheduleDisplayLabel(schedule, branch);
+        if (!groups[label]) {
+            groups[label] = { label, students: [] };
+        }
+        groups[label].students.push(student);
+    });
+
+    return Object.values(groups).sort((left, right) => left.label.localeCompare(right.label, 'tr'));
+}
+
+function summarizeFinanceExpensesByCategory(expenses) {
+    const summary = {};
+    expenses.forEach(expense => {
+        const key = expense.category || 'legacy';
+        const label = getExpenseDisplayLabel(expense);
+        if (!summary[key]) {
+            summary[key] = { label, total: 0, count: 0 };
+        }
+        summary[key].total += Number(expense.amount || 0);
+        summary[key].count += 1;
+    });
+    return Object.values(summary).sort((left, right) => right.total - left.total);
+}
+
+async function resolveAdminClubPdfName() {
+    try {
+        const clubDoc = await db.collection('clubProfiles').doc(currentAdmin.id).get();
+        if (clubDoc.exists) {
+            const clubData = clubDoc.data() || {};
+            return getClubDisplayNameFromData(clubData) || currentAdmin.name || 'Yüzme Kulübü';
+        }
+    } catch (error) {
+        console.warn('Kulüp adı alınamadı:', error);
+    }
+    return currentAdmin?.name || 'Yüzme Kulübü';
+}
+
+function buildFinancePdfHtml(options = {}) {
+    const {
+        clubName = 'Yüzme Kulübü',
+        rangeLabel = '',
+        summary = {},
+        expenseSummary = [],
+        studentGroups = []
+    } = options;
+
+    const expenseRowsHtml = expenseSummary.length
+        ? expenseSummary.map(item => `
+            <tr>
+                <td>${escapeHtmlForPdf(item.label)}</td>
+                <td style="text-align:center;">${item.count}</td>
+                <td class="pdf-money">${escapeHtmlForPdf(formatTryCurrencyCompact(item.total))}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">Bu dönemde manuel gider yok.</td></tr>';
+
+    const studentGroupsHtml = studentGroups.length
+        ? studentGroups.map(group => {
+            const sortedStudents = group.students.slice().sort((left, right) => {
+                const nameLeft = `${left.name || ''} ${left.surname || ''}`.trim();
+                const nameRight = `${right.name || ''} ${right.surname || ''}`.trim();
+                return nameLeft.localeCompare(nameRight, 'tr');
+            });
+
+            const rowsHtml = sortedStudents.map((student, index) => {
+                const totals = getStudentFinanceTotals(student);
+                return `
+                    <tr class="${index % 2 === 0 ? 'pdf-row-even' : 'pdf-row-odd'}">
+                        <td class="pdf-name">${escapeHtmlForPdf(`${student.name || ''} ${student.surname || ''}`.trim())}</td>
+                        <td class="pdf-money">${escapeHtmlForPdf(formatTryCurrencyCompact(totals.totalAmount))}</td>
+                        <td class="pdf-money">${escapeHtmlForPdf(formatTryCurrencyCompact(totals.paidAmount))}</td>
+                        <td class="pdf-money">${escapeHtmlForPdf(formatTryCurrencyCompact(totals.remainingAmount))}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <section class="pdf-group-block">
+                    <div class="pdf-group-title">Ders: ${escapeHtmlForPdf(group.label)} (${sortedStudents.length} öğrenci)</div>
+                    <table class="pdf-finance-table">
+                        <colgroup>
+                            <col class="col-name">
+                            <col class="col-money">
+                            <col class="col-money">
+                            <col class="col-money">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Ad Soyad</th>
+                                <th class="pdf-money">Toplam</th>
+                                <th class="pdf-money">Ödenen</th>
+                                <th class="pdf-money">Kalan</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </section>
+            `;
+        }).join('')
+        : '<p style="text-align:center; color:#7f8c8d;">Seçili filtreye uygun öğrenci bulunamadı.</p>';
+
+    return `
+        <style>
+            .finance-pdf-root {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #1e293b;
+                background: #ffffff;
+                width: 1060px;
+                padding: 22px 24px 30px;
+                box-sizing: border-box;
+            }
+            .pdf-main-title { margin: 0; text-align: center; font-size: 22px; font-weight: 700; }
+            .pdf-main-subtitle { margin: 8px 0 20px; text-align: center; font-size: 12px; color: #64748b; }
+            .pdf-summary-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+                margin-bottom: 22px;
+            }
+            .pdf-summary-card {
+                border: 1px solid #dbe4ef;
+                border-radius: 8px;
+                padding: 10px;
+                background: #f8fbff;
+                text-align: center;
+            }
+            .pdf-summary-card span { display: block; font-size: 10px; color: #64748b; margin-bottom: 4px; }
+            .pdf-summary-card strong { font-size: 11px; color: #0b7ea8; word-break: break-word; }
+            .pdf-section-title {
+                margin: 18px 0 10px;
+                font-size: 13px;
+                font-weight: 700;
+                color: #0f2942;
+                border-bottom: 2px solid #e2e8f0;
+                padding-bottom: 6px;
+            }
+            .pdf-finance-table, .pdf-expense-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 9.5px;
+                table-layout: fixed;
+            }
+            .pdf-finance-table col.col-name { width: 38%; }
+            .pdf-finance-table col.col-money { width: 20.66%; }
+            .pdf-finance-table thead th, .pdf-expense-table thead th {
+                background: #0f2942;
+                color: #fff;
+                padding: 7px 5px;
+                text-align: left;
+                border: 1px solid #0f2942;
+            }
+            .pdf-finance-table thead th.pdf-money,
+            .pdf-finance-table td.pdf-money,
+            .pdf-expense-table td.pdf-money {
+                text-align: right;
+                white-space: nowrap;
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -0.15px;
+                padding-left: 4px;
+                padding-right: 6px;
+            }
+            .pdf-finance-table tbody td, .pdf-expense-table tbody td {
+                border: 1px solid #dbe4ef;
+                padding: 6px 5px;
+                vertical-align: middle;
+            }
+            .pdf-finance-table tbody td.pdf-name {
+                word-wrap: break-word;
+                overflow-wrap: anywhere;
+                line-height: 1.35;
+            }
+            .pdf-finance-table tbody tr.pdf-row-even td { background: #f8fafc; }
+            .pdf-group-block { margin-bottom: 18px; page-break-inside: avoid; }
+            .pdf-group-title {
+                background: #e8f6fc;
+                border: 1px solid #b8d9e8;
+                border-bottom: none;
+                padding: 8px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            .pdf-footer-note { margin-top: 16px; font-size: 10px; color: #94a3b8; }
+        </style>
+        <div class="finance-pdf-root">
+            <h1 class="pdf-main-title">${escapeHtmlForPdf(clubName)}</h1>
+            <p class="pdf-main-subtitle">Gelir / Gider Raporu • ${escapeHtmlForPdf(rangeLabel)}</p>
+            <div class="pdf-summary-grid">
+                <div class="pdf-summary-card"><span>Ciro</span><strong>${escapeHtmlForPdf(formatTryCurrencyCompact(summary.turnover || 0))}</strong></div>
+                <div class="pdf-summary-card"><span>Gelir</span><strong>${escapeHtmlForPdf(formatTryCurrencyCompact(summary.income || 0))}</strong></div>
+                <div class="pdf-summary-card"><span>Gider</span><strong>${escapeHtmlForPdf(formatTryCurrencyCompact(summary.expense || 0))}</strong></div>
+                <div class="pdf-summary-card"><span>Kâr</span><strong>${escapeHtmlForPdf(formatTryCurrencyCompact(summary.profit || 0))}</strong></div>
+            </div>
+            <h2 class="pdf-section-title">Gider özeti (manuel)</h2>
+            <table class="pdf-expense-table">
+                <thead>
+                    <tr>
+                        <th>Gider türü</th>
+                        <th style="width:12%; text-align:center;">Adet</th>
+                        <th style="width:22%; text-align:right;">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody>${expenseRowsHtml}</tbody>
+            </table>
+            <h2 class="pdf-section-title">Öğrenci ödeme durumu</h2>
+            ${studentGroupsHtml}
+            <p class="pdf-footer-note">Rapor tarihi: ${escapeHtmlForPdf(formatReportDateTR())}</p>
+        </div>
+    `;
+}
+
+async function downloadFinancePdf(html, filename = 'gelir-gider-raporu.pdf') {
+    if (typeof window.html2pdf !== 'function') {
+        throw new Error('PDF kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyin.');
+    }
+
+    const host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    // html2canvas, "left:-10000px" gibi viewport disindaki konteynerleri bazi
+    // kombinasyonlarda (body overflow-x:hidden / panel-enhanced stilleriyle)
+    // bos olarak yakalayabiliyor. Bunun yerine ekranda gorunur konuma alip
+    // opacity:0 + pointer-events:none ile gozden gizliyoruz. Boylece layout
+    // gercek pikseller uzerinden hesaplanir ve PDF dolu uretilir.
+    host.style.cssText = [
+        'position: fixed',
+        'top: 0',
+        'left: 0',
+        'width: 1123px',
+        'max-width: 1123px',
+        'background: #ffffff',
+        'opacity: 0',
+        'pointer-events: none',
+        'z-index: -1',
+        'overflow: visible'
+    ].join('; ') + ';';
+    host.innerHTML = html;
+    document.body.appendChild(host);
+
+    const root = host.querySelector('.finance-pdf-root');
+    if (!root) {
+        document.body.removeChild(host);
+        throw new Error('PDF içeriği oluşturulamadı.');
+    }
+
+    try {
+        await window.html2pdf()
+            .set({
+                margin: [10, 8, 12, 8],
+                filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    width: 1123,
+                    windowWidth: 1123,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'landscape'
+                },
+                pagebreak: { mode: ['css', 'legacy'] }
+            })
+            .from(root)
+            .save();
+    } finally {
+        document.body.removeChild(host);
+    }
+}
+
+async function exportFinancePdf() {
+    if (!currentAdmin?.id) {
+        alert('Oturum bulunamadı.');
+        return;
+    }
+
+    const branchFilter = document.getElementById('financeBranchFilter')?.value || '';
+    const scheduleFilter = document.getElementById('financeScheduleFilter')?.value || '';
+    const range = getFinanceDateRange();
+    const rangeLabel = formatFinanceRangeLabel(range);
+
+    try {
+        const turnoverEl = document.getElementById('currentTurnover');
+        const incomeEl = document.getElementById('currentIncome');
+        const expenseEl = document.getElementById('currentExpense');
+        const profitEl = document.getElementById('currentProfit');
+
+        const filteredStudents = allStudents.filter(student => studentMatchesFinanceFilters(student, branchFilter, scheduleFilter));
+        const filteredExpenses = allExpenses.filter(expense => {
+            if (!isDateInFinanceRange(expense.date || expense.createdAt, range)) {
+                return false;
+            }
+            const branchId = resolveFinanceBranchId(expense);
+            const scheduleId = resolveFinanceScheduleId(expense);
+            if (branchFilter && branchId !== branchFilter) {
+                return false;
+            }
+            if (scheduleFilter && scheduleId !== scheduleFilter) {
+                return false;
+            }
+            return true;
+        });
+
+        const clubName = await resolveAdminClubPdfName();
+        const html = buildFinancePdfHtml({
+            clubName,
+            rangeLabel,
+            summary: {
+                turnover: parseTryCurrencyText(turnoverEl?.textContent),
+                income: parseTryCurrencyText(incomeEl?.textContent),
+                expense: parseTryCurrencyText(expenseEl?.textContent),
+                profit: parseTryCurrencyText(profitEl?.textContent)
+            },
+            expenseSummary: summarizeFinanceExpensesByCategory(filteredExpenses),
+            studentGroups: groupFinanceStudentsForPdf(filteredStudents)
+        });
+
+        const suffix = new Date().toISOString().slice(0, 10);
+        await downloadFinancePdf(html, `gelir-gider-${suffix}.pdf`);
+    } catch (error) {
+        console.error('Finans PDF hatası:', error);
+        alert('PDF oluşturulamadı: ' + error.message);
+    }
+}
+
+function parseTryCurrencyText(text) {
+    if (!text) {
+        return 0;
+    }
+    const cleaned = String(text).replace(/[^\d,.-]/g, '').trim();
+    if (!cleaned) {
+        return 0;
+    }
+    if (cleaned.includes(',')) {
+        const normalized = cleaned.replace(/\./g, '').replace(',', '.');
+        const value = Number(normalized);
+        return Number.isFinite(value) ? value : 0;
+    }
+    const value = Number(cleaned);
+    return Number.isFinite(value) ? value : 0;
+}
+
 function createFinanceScheduleEntry(scheduleId) {
     const schedule = allSchedules.find(item => item.id === scheduleId);
+    const branch = schedule ? allBranches.find(item => item.id === schedule.branchId) : null;
     return {
-        scheduleName: schedule ? `${schedule.time} (${schedule.lessonsCount || 1} Ders)` : 'Bilinmiyor',
+        scheduleName: getAdminScheduleDisplayLabel(schedule, branch),
         turnover: 0,
         income: 0,
         paymentIncome: 0,
@@ -1237,14 +1753,8 @@ async function loadAllData() {
         allTrainerReviews = trainerReviewsSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
         const clubLink = document.getElementById('clubNavLink');
-        if (clubDoc.exists) {
-            if (clubLink) {
-                clubLink.style.display = 'none';
-            }
-        } else {
-            if (clubLink) {
-                clubLink.style.display = 'block';
-            }
+        if (clubLink) {
+            clubLink.style.display = 'block';
         }
 
         // Update dropdowns
@@ -1672,6 +2182,12 @@ async function saveSchedule(e) {
         trainerAssignments[0].role = 'head';
     }
 
+    const missingHeadLink = trainerAssignments.find(item => item.role === 'assistant' && !item.headTrainerId);
+    if (missingHeadLink) {
+        alert('Yardımcı antrenör atamalarında bağlı olduğu baş antrenörü seçmelisiniz.');
+        return;
+    }
+
     const primaryAssignment = trainerAssignments.find(item => item.role === 'head') || trainerAssignments[0];
     const scheduleData = {
         customName: String(document.getElementById('scheduleCustomName').value || '').trim() || null,
@@ -1702,6 +2218,9 @@ async function saveSchedule(e) {
         await loadAllData();
         closeScheduleModal();
         loadSchedules();
+        if (getActiveAdminPage() === 'schedule_table') {
+            loadScheduleTable();
+        }
         alert('Ders saati başarıyla kaydedildi!');
     } catch (error) {
         alert('Hata: ' + error.message);
@@ -1740,10 +2259,76 @@ async function loadSchedules() {
     await loadAvailabilityPlanner();
 }
 
+function renderScheduleTimeGridSummary() {
+    const container = document.getElementById('scheduleTimeGridSummary');
+    if (!container) return;
+
+    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayLabels = {
+        monday: 'Pzt',
+        tuesday: 'Sal',
+        wednesday: 'Çar',
+        thursday: 'Per',
+        friday: 'Cum',
+        saturday: 'Cmt',
+        sunday: 'Paz'
+    };
+    const slots = {};
+
+    allSchedules.forEach(schedule => {
+        const branch = allBranches.find(item => item.id === schedule.branchId);
+        const scheduleName = schedule.customName || branch?.name || 'Ders';
+        const days = getNormalizedScheduleDays(schedule);
+        const time = schedule.time || '-';
+        days.forEach(dayKey => {
+            if (!slots[dayKey]) slots[dayKey] = {};
+            if (!slots[dayKey][time]) slots[dayKey][time] = [];
+            slots[dayKey][time].push({
+                name: scheduleName,
+                branch: branch?.name || '-',
+                trainers: formatScheduleTrainerAssignments(schedule)
+            });
+        });
+    });
+
+    const activeDays = dayOrder.filter(day => slots[day] && Object.keys(slots[day]).length);
+    if (!activeDays.length) {
+        container.innerHTML = '<p style="color:#95a5a6;">Henüz tanımlı ders saati yok.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <h3 style="margin:0 0 10px;">Haftalık Ders Saatleri Özeti</h3>
+        <div style="display:grid; gap:12px;">
+            ${activeDays.map(dayKey => {
+                const times = Object.keys(slots[dayKey]).sort();
+                return `
+                    <div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px; background:#f8fbff;">
+                        <strong>${dayLabels[dayKey] || dayKey}</strong>
+                        <div style="margin-top:8px; display:grid; gap:8px;">
+                            ${times.map(time => `
+                                <div style="padding:8px 10px; border-radius:6px; background:#fff; border:1px solid #dbe9f6;">
+                                    <div style="font-weight:600; color:#2c3e50;">${escapeHtml(time)}</div>
+                                    ${slots[dayKey][time].map(item => `
+                                        <div style="font-size:0.92em; color:#5d7285; margin-top:4px;">
+                                            <strong>${escapeHtml(item.name)}</strong> • ${escapeHtml(item.branch)} • ${escapeHtml(item.trainers)}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
 async function loadScheduleTable() {
     const tbody = document.getElementById('scheduleTableBody');
     tbody.innerHTML = '';
-    
+    renderScheduleTimeGridSummary();
+
     allSchedules.forEach(schedule => {
         const branch = allBranches.find(b => b.id === schedule.branchId);
         const scheduleName = schedule.customName || branch?.name || 'Bilinmiyor';
@@ -2842,6 +3427,8 @@ async function saveIncome(e) {
 function openExpenseModal() {
     document.getElementById('expenseForm').reset();
     document.getElementById('expenseDate').valueAsDate = new Date();
+    populateExpenseCategorySelect();
+    toggleExpenseOtherNote();
     updateExpenseScheduleOptions();
     document.getElementById('expenseModal').classList.add('active');
 }
@@ -2855,9 +3442,25 @@ async function saveExpense(e) {
 
     const expenseBranchEl = document.getElementById('expenseBranch');
     const expenseScheduleEl = document.getElementById('expenseSchedule');
+    const categoryId = document.getElementById('expenseCategory')?.value || '';
+    const categoryMeta = getExpenseCategoryMeta(categoryId);
+    const otherNote = String(document.getElementById('expenseOtherNote')?.value || '').trim();
+
+    if (!categoryMeta) {
+        alert('Lütfen gider türü seçin.');
+        return;
+    }
+
+    if (categoryId === 'other' && !otherNote) {
+        alert('“Diğer” seçeneği için kısa bir açıklama yazın.');
+        return;
+    }
 
     const expenseData = {
-        description: document.getElementById('expenseDescription').value,
+        category: categoryId,
+        categoryLabel: categoryMeta.label,
+        otherNote: categoryId === 'other' ? otherNote : '',
+        description: categoryId === 'other' ? `Diğer: ${otherNote}` : categoryMeta.label,
         amount: parseFloat(document.getElementById('expenseAmount').value),
         date: document.getElementById('expenseDate').value,
         branchId: expenseBranchEl ? expenseBranchEl.value : '',
@@ -3054,7 +3657,7 @@ async function openDetailsModal(branchId, scheduleId) {
                             : manualExpenses.map(expense => `
                                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid #eef2f6;">
                                     <div>
-                                        <div style="font-weight:600; color:#2c3e50;">${expense.description || 'Gider'}</div>
+                                        <div style="font-weight:600; color:#2c3e50;">${escapeHtml(getExpenseDisplayLabel(expense))}</div>
                                         <div style="font-size:0.9em; color:#6f8091;">${expense.date ? new Date(expense.date).toLocaleDateString('tr-TR') : '-'} • ${formatTryCurrency(expense.amount || 0)}</div>
                                     </div>
                                     <button class="btn btn-danger btn-sm" onclick="deleteExpense('${expense.id}')">Sil</button>
@@ -3362,20 +3965,78 @@ function renderClubProfileStatus(targetId, clubData, successMessage) {
     target.textContent = successMessage || 'Kulüp profili hazır.';
 }
 
+function getClubProfileHelpers() {
+    return window.ClubProfileHelpers || null;
+}
+
+function getClubDisplayNameFromData(clubData) {
+    const helpers = getClubProfileHelpers();
+    if (helpers?.getClubDisplayName) {
+        return helpers.getClubDisplayName(clubData);
+    }
+    return String(clubData?.clubName || clubData?.name || '').trim();
+}
+
+function bindClubLogoPreviewInput() {
+    const logoInput = document.getElementById('clubLogo');
+    const preview = document.getElementById('clubLogoPreview');
+    if (!logoInput || !preview || logoInput.dataset.boundPreview === '1') {
+        return;
+    }
+    logoInput.dataset.boundPreview = '1';
+    logoInput.addEventListener('change', () => {
+        const file = logoInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            preview.src = event.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 async function loadClubProfile() {
+    const clubForm = document.getElementById('clubForm');
+    const clubNameInput = document.getElementById('clubName');
+    const logoPreview = document.getElementById('clubLogoPreview');
+    const clubLink = document.getElementById('clubNavLink');
+
     try {
+        bindClubLogoPreviewInput();
+        if (clubLink) {
+            clubLink.style.display = 'block';
+        }
+        if (clubForm) {
+            clubForm.style.display = 'block';
+        }
+
         const clubDoc = await db.collection('clubProfiles').doc(currentAdmin.id).get();
         if (clubDoc.exists) {
             const clubData = clubDoc.data() || {};
-            // Profile exists, hide form and show message
-            document.getElementById('clubForm').style.display = 'none';
-            renderClubProfileStatus('clubMessage', clubData, 'Kulüp profili kaydedildi. Düzenlemek için yukarıdaki yönetici avatarına tıklayın.');
-        } else {
-            // Profile doesn't exist, show form
-            document.getElementById('clubForm').style.display = 'block';
-            renderClubProfileStatus('clubMessage', {}, '');
-            document.getElementById('clubName').value = '';
-            document.getElementById('clubLogoPreview').style.display = 'none';
+            if (clubNameInput) {
+                clubNameInput.value = getClubDisplayNameFromData(clubData);
+            }
+            if (logoPreview) {
+                const logoUrl = clubData.logoUrl || '';
+                if (logoUrl) {
+                    logoPreview.src = logoUrl;
+                    logoPreview.style.display = 'block';
+                } else {
+                    logoPreview.removeAttribute('src');
+                    logoPreview.style.display = 'none';
+                }
+            }
+            renderClubProfileStatus('clubMessage', clubData, 'Kulüp adı ve logosunu buradan güncelleyebilirsiniz. Hızlı düzenleme için üstteki avatara da tıklayabilirsiniz.');
+        } else if (clubNameInput) {
+            clubNameInput.value = '';
+            if (logoPreview) {
+                logoPreview.removeAttribute('src');
+                logoPreview.style.display = 'none';
+            }
+            renderClubProfileStatus('clubMessage', {}, 'İlk kurulum: kulüp adınızı ve logonuzu kaydedin.');
         }
     } catch (error) {
         console.error('Kulüp profili yüklenirken hata:', error);
@@ -3395,45 +4056,71 @@ document.addEventListener('DOMContentLoaded', () => {
             await saveClubProfileUpdate();
         });
     }
+
+    const editClubLogo = document.getElementById('editClubLogo');
+    const editClubLogoPreview = document.getElementById('editClubLogoPreview');
+    if (editClubLogo && editClubLogoPreview && editClubLogo.dataset.boundPreview !== '1') {
+        editClubLogo.dataset.boundPreview = '1';
+        editClubLogo.addEventListener('change', () => {
+            const file = editClubLogo.files?.[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                editClubLogoPreview.src = event.target.result;
+                editClubLogoPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 });
 
 async function saveClubProfile() {
-    const clubName = document.getElementById('clubName').value;
+    const clubName = document.getElementById('clubName').value.trim();
     const logoFile = document.getElementById('clubLogo').files[0];
     const resultDiv = document.getElementById('clubMessage');
 
+    if (!clubName) {
+        alert('Kulüp adı zorunludur.');
+        return;
+    }
+
     try {
         resultDiv.textContent = 'Kaydediliyor...';
+        resultDiv.style.color = '#000';
 
-        const clubData = {
-            clubName: clubName,
-            adminId: currentAdmin.id,
-            updatedAt: new Date().toISOString()
-        };
-
-        // Logo yüklenmişse (basit base64 kullanalım)
+        const helpers = getClubProfileHelpers();
+        let logoUrl;
         if (logoFile) {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                clubData.logoUrl = event.target.result;
-                await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
-                renderClubProfileStatus('clubMessage', clubData, '✓ Kulüp profili kaydedildi!');
-                // Hide the nav link after saving
-                const clubLink = document.querySelector('[data-page="club"]');
-                if (clubLink) {
-                    clubLink.style.display = 'none';
-                }
-            };
-            reader.readAsDataURL(logoFile);
-        } else {
-            await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
-            renderClubProfileStatus('clubMessage', clubData, '✓ Kulüp profili kaydedildi!');
-            // Hide the nav link after saving
-            const clubLink = document.querySelector('[data-page="club"]');
-            if (clubLink) {
-                clubLink.style.display = 'none';
-            }
+            logoUrl = helpers?.readImageFileAsDataUrl
+                ? await helpers.readImageFileAsDataUrl(logoFile, 2 * 1024 * 1024)
+                : await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(logoFile);
+                });
         }
+
+        const clubData = helpers?.buildClubProfileWritePayload
+            ? helpers.buildClubProfileWritePayload({
+                clubName,
+                logoUrl,
+                adminId: currentAdmin.id
+            })
+            : {
+                clubName,
+                name: clubName,
+                logoUrl,
+                adminId: currentAdmin.id,
+                updatedAt: new Date().toISOString()
+            };
+
+        await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
+        renderClubProfileStatus('clubMessage', clubData, '✓ Kulüp profili kaydedildi!');
+        document.getElementById('clubLogo').value = '';
+        await loadClubProfile();
     } catch (error) {
         resultDiv.style.color = '#e74c3c';
         resultDiv.textContent = 'Hata: ' + error.message;
@@ -3446,7 +4133,7 @@ async function openClubProfileModal() {
         const clubDoc = await db.collection('clubProfiles').doc(currentAdmin.id).get();
         if (clubDoc.exists) {
             const clubData = clubDoc.data();
-            document.getElementById('editClubName').value = clubData.clubName || '';
+            document.getElementById('editClubName').value = getClubDisplayNameFromData(clubData);
             if (clubData.logoUrl) {
                 document.getElementById('editClubLogoPreview').src = clubData.logoUrl;
                 document.getElementById('editClubLogoPreview').style.display = 'block';
@@ -3476,39 +4163,60 @@ function closeClubProfileModal() {
 async function saveClubProfileUpdate(e) {
     e.preventDefault();
 
-    const clubName = document.getElementById('editClubName').value;
+    const clubName = document.getElementById('editClubName').value.trim();
     const logoFile = document.getElementById('editClubLogo').files[0];
     const resultDiv = document.getElementById('clubProfileMessage');
+
+    if (!clubName) {
+        alert('Kulüp adı zorunludur.');
+        return;
+    }
 
     try {
         resultDiv.textContent = 'Kaydediliyor...';
         resultDiv.style.color = '#000';
 
-        const clubData = {
-            clubName: clubName,
-            adminId: currentAdmin.id,
-            updatedAt: new Date().toISOString()
-        };
+        const helpers = getClubProfileHelpers();
+        const existingDoc = await db.collection('clubProfiles').doc(currentAdmin.id).get();
+        const existingData = existingDoc.exists ? existingDoc.data() || {} : {};
 
-        // Logo yüklenmişse (basit base64 kullanalım)
+        let logoUrl = existingData.logoUrl || '';
         if (logoFile) {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                clubData.logoUrl = event.target.result;
-                await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
-                renderClubProfileStatus('clubProfileMessage', clubData, '✓ Kulüp profili güncellendi!');
-                setTimeout(() => {
-                    closeClubProfileModal();
-                }, 1500);
-            };
-            reader.readAsDataURL(logoFile);
-        } else {
-            await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
-            renderClubProfileStatus('clubProfileMessage', clubData, '✓ Kulüp profili güncellendi!');
-            setTimeout(() => {
-                closeClubProfileModal();
-            }, 1500);
+            logoUrl = helpers?.readImageFileAsDataUrl
+                ? await helpers.readImageFileAsDataUrl(logoFile, 2 * 1024 * 1024)
+                : await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(logoFile);
+                });
         }
+
+        const clubData = helpers?.buildClubProfileWritePayload
+            ? helpers.buildClubProfileWritePayload({
+                clubName,
+                logoUrl,
+                adminId: currentAdmin.id,
+                leadFormSettings: existingData.leadFormSettings || null
+            })
+            : {
+                clubName,
+                name: clubName,
+                logoUrl,
+                adminId: currentAdmin.id,
+                updatedAt: new Date().toISOString()
+            };
+
+        if (clubData.leadFormSettings === null) {
+            delete clubData.leadFormSettings;
+        }
+
+        await db.collection('clubProfiles').doc(currentAdmin.id).set(clubData, { merge: true });
+        renderClubProfileStatus('clubProfileMessage', clubData, '✓ Kulüp profili güncellendi!');
+        await loadClubProfile();
+        setTimeout(() => {
+            closeClubProfileModal();
+        }, 1200);
     } catch (error) {
         resultDiv.style.color = '#e74c3c';
         resultDiv.textContent = 'Hata: ' + error.message;

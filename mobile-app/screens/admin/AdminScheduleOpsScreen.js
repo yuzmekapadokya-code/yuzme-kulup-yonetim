@@ -42,15 +42,30 @@ function initialScheduleForm() {
   return {
     id: null,
     branchId: '',
+    customName: '',
     time: '',
     lessonType: 'group',
     startDate: '',
     days: ['monday'],
     trainerIds: [],
     primaryTrainerId: '',
+    assistantHeadMap: {},
     capacity: '1',
     lessonsCount: '1',
   };
+}
+
+function buildAssistantHeadMapFromSchedule(schedule) {
+  const assignments = schedule.paymentSummary?.assignments || schedule.trainerAssignments || [];
+  return assignments.reduce((result, assignment) => {
+    if (assignment.role !== 'assistant') return result;
+    const assistantKey = assignment.trainerId || assignment.trainerDocId;
+    const headKey = assignment.headTrainerId || assignment.headTrainerDocId;
+    if (assistantKey && headKey) {
+      result[assistantKey] = headKey;
+    }
+    return result;
+  }, {});
 }
 
 function formatLocalDateInputValue(date) {
@@ -292,6 +307,7 @@ export default function AdminScheduleOpsScreen() {
               <ActionButton key={branch.id} label={branch.name} variant={scheduleForm.branchId === branch.id ? 'primary' : 'secondary'} onPress={() => setScheduleForm((current) => ({ ...current, branchId: branch.id }))} />
             ))}
           </View>
+          <TextInput style={styles.input} placeholder="Ozel program adi (istege bagli)" value={scheduleForm.customName} onChangeText={(text) => setScheduleForm((current) => ({ ...current, customName: text }))} />
           <TextInput style={styles.input} placeholder="Saat (18:00)" value={scheduleForm.time} onChangeText={(text) => setScheduleForm((current) => ({ ...current, time: text }))} />
           <TextInput style={styles.input} placeholder="Baslangic tarihi (YYYY-MM-DD)" value={scheduleForm.startDate} onChangeText={(text) => setScheduleForm((current) => ({ ...current, startDate: text }))} />
           <View style={styles.buttonRow}>
@@ -352,13 +368,43 @@ export default function AdminScheduleOpsScreen() {
               );
             })}
           </View>
+          {scheduleForm.trainerIds
+            .filter((trainerId) => trainerId && trainerId !== scheduleForm.primaryTrainerId)
+            .map((assistantId) => {
+              const assistant = data.trainers.find((item) => item.uid === assistantId || item.id === assistantId);
+              const headOptions = scheduleForm.trainerIds.filter((trainerId) => trainerId !== assistantId);
+              return (
+                <View key={`assistant-head-${assistantId}`} style={styles.assistantHeadBlock}>
+                  <Text style={styles.label}>{assistant?.name || 'Yardimci'} icin bas antrenor</Text>
+                  <View style={styles.chipRow}>
+                    {headOptions.map((headId) => {
+                      const headTrainer = data.trainers.find((item) => item.uid === headId || item.id === headId);
+                      const selected = scheduleForm.assistantHeadMap[assistantId] === headId;
+                      return (
+                        <ActionButton
+                          key={`${assistantId}-${headId}`}
+                          label={headTrainer?.name || 'Antrenor'}
+                          variant={selected ? 'primary' : 'secondary'}
+                          onPress={() =>
+                            setScheduleForm((current) => ({
+                              ...current,
+                              assistantHeadMap: { ...current.assistantHeadMap, [assistantId]: headId },
+                            }))
+                          }
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
           <TextInput style={styles.input} placeholder="Kapasite" keyboardType="numeric" value={scheduleForm.capacity} onChangeText={(text) => setScheduleForm((current) => ({ ...current, capacity: text }))} />
           <TextInput style={styles.input} placeholder="Ders sayisi" keyboardType="numeric" value={scheduleForm.lessonsCount} onChangeText={(text) => setScheduleForm((current) => ({ ...current, lessonsCount: text }))} />
           <ActionButton label={scheduleMutation.isPending ? 'Kaydediliyor...' : scheduleForm.id ? 'Ders Saatini Guncelle' : 'Ders Saati Ekle'} onPress={() => scheduleMutation.mutate()} fullWidth />
           {data.schedules.map((schedule) => (
             <View key={schedule.id} style={styles.scheduleCard}>
               <View style={styles.scheduleBadge}>
-                <Text style={styles.scheduleBadgeText}>⏰ {schedule.time}</Text>
+                <Text style={styles.scheduleBadgeText}>⏰ {schedule.displayLabel || schedule.time}</Text>
               </View>
               <Text style={styles.itemTitle}>{schedule.branchName}</Text>
               <Text style={styles.itemText}>{schedule.dayLabels}</Text>
@@ -372,12 +418,14 @@ export default function AdminScheduleOpsScreen() {
                   setScheduleForm({
                     id: schedule.id,
                     branchId: schedule.branchId || '',
+                    customName: schedule.customName || '',
                     time: schedule.time || '',
                     lessonType: schedule.lessonType || 'group',
                     startDate: schedule.startDate || '',
                     days: schedule.days || ['monday'],
                     trainerIds: schedule.trainerIds || schedule.paymentSummary.assignments.map((item) => item.trainerId),
                     primaryTrainerId: schedule.trainerId || '',
+                    assistantHeadMap: buildAssistantHeadMapFromSchedule(schedule),
                     capacity: String(schedule.capacity || 1),
                     lessonsCount: String(schedule.lessonsCount || 1),
                   })
@@ -610,6 +658,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   /* SCHEDULE CARD */
+  assistantHeadBlock: {
+    gap: 8,
+    paddingTop: 4,
+  },
   scheduleCard: {
     backgroundColor: '#ffffff',
     borderWidth: 1,

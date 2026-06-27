@@ -399,8 +399,16 @@ export default function TrainerPerformanceOpsScreen() {
 
         <Text style={styles.label}>Tip</Text>
         <View style={styles.chipRow}>
-          {['training', 'race'].map((item) => (
-            <ActionButton key={item} label={item} variant={type === item ? 'primary' : 'secondary'} onPress={() => setType(item)} />
+          {[
+            { key: 'training', label: 'Antrenman derecesi' },
+            { key: 'competition', label: 'Yaris derecesi' },
+          ].map((item) => (
+            <ActionButton
+              key={item.key}
+              label={item.label}
+              variant={type === item.key ? 'primary' : 'secondary'}
+              onPress={() => setType(item.key)}
+            />
           ))}
         </View>
 
@@ -477,7 +485,14 @@ export default function TrainerPerformanceOpsScreen() {
                 <View key={item.key} style={[styles.reportRow, passed ? styles.reportRowPassed : styles.reportRowMissed]}>
                   <Text style={styles.reportBadge}>{passed ? 'OK' : 'NO'}</Text>
                   <View style={styles.flexOne}>
-                    <Text style={styles.itemTitle}>{item.key.replaceAll('_', ' | ')}</Text>
+                    <Text style={styles.itemTitle}>{
+                      item.key.split('_').map((part, idx) => {
+                        if (idx === 2) {
+                          return part === 'competition' ? 'YARIS' : 'ANTRENMAN';
+                        }
+                        return idx === 1 ? `${part}m` : part;
+                      }).join(' | ')
+                    }</Text>
                     <Text style={styles.itemText}>En iyi: {item.best?.time || '-'}</Text>
                     <Text style={styles.itemText}>Son: {item.latest?.time || '-'}</Text>
                     {trend ? <Text style={[styles.itemText, trend.faster ? styles.arrowFaster : styles.arrowSlower]}>{trend.faster ? '▲' : '▼'} {trend.label}</Text> : null}

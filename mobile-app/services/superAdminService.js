@@ -669,6 +669,97 @@ export async function listRaceImportOverview() {
   };
 }
 
+function normalizeBulkStandardTime(value) {
+  return String(value || '').trim().replace(',', '.');
+}
+
+function parseBulkStandardRow(rawRow) {
+  const text = String(rawRow || '').trim();
+  if (!text || text.startsWith('#') || text.startsWith('//')) return null;
+  const parts = text.split(/[\t;,|]\s*/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 5) {
+    throw new Error('Beklenen format: Cinsiyet, Dogum Yili, Stil, Mesafe, Sure (opsiyonel Baraj Adi)');
+  }
+  const [genderRaw, birthYearRaw, styleRaw, distanceRaw, timeRaw, ...nameParts] = parts;
+  const gender = /^(e|m|er)/i.test(genderRaw) ? 'Erkek' : /^(k|f|kı|ki)/i.test(genderRaw) ? 'Kiz' : genderRaw;
+  const birthYear = toNumber(birthYearRaw);
+  if (!birthYear || birthYear < 1980 || birthYear > 2040) {
+    throw new Error(`Gecersiz dogum yili: ${birthYearRaw}`);
+  }
+  const distance = toNumber(distanceRaw);
+  if (!distance) {
+    throw new Error(`Gecersiz mesafe: ${distanceRaw}`);
+  }
+  const time = normalizeBulkStandardTime(timeRaw);
+  if (!/^\d{1,2}:\d{2}\.\d{1,2}$/.test(time) && !/^\d{1,2}\.\d{1,2}$/.test(time)) {
+    throw new Error(`Gecersiz sure: ${timeRaw}`);
+  }
+  return {
+    name: nameParts.join(' ').trim() || 'Toplu Eklenen Baraj',
+    birthYear,
+    gender,
+    style: styleRaw.trim() || 'Serbest',
+    distance,
+    time: time.includes(':') ? time : `0:${time.padStart(5, '0')}`,
+  };
+}
+
+export function parseBulkStandardsText(text) {
+  const preview = [];
+  const errors = [];
+  const lines = String(text || '').split(/\r?\n/);
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    try {
+      const item = parseBulkStandardRow(trimmed);
+      if (item) preview.push(item);
+    } catch (error) {
+      errors.push({ line: index + 1, reason: error.message, rawLine: trimmed });
+    }
+  });
+  return { preview, errors };
+}
+
+export async function bulkImportStandards({ items, currentSuperAdminId }) {
+  if (!Array.isArray(items) || !items.length) {
+    throw new Error('Kaydedilecek baraj bulunamadi.');
+  }
+  const importBatchId = `bulk-${Date.now()}`;
+  let imported = 0;
+  for (const item of items) {
+    await addDoc(collection(db, 'standards'), {
+      ...item,
+      scopeType: 'global',
+      adminId: null,
+      sourceType: 'bulk-mobile',
+      createdAt: nowIso(),
+      createdBy: currentSuperAdminId,
+      createdByRole: 'superadmin',
+      importBatchId,
+    });
+    imported += 1;
+  }
+  return { imported, importBatchId };
+}
+
+export async function submitStandardsPdfUploadRequest({ fileName, fileSize, dataUrl, currentSuperAdminId }) {
+  if (!dataUrl) {
+    throw new Error('Yuklenecek PDF dosyasi bulunamadi.');
+  }
+  const created = await addDoc(collection(db, 'standards_pdf_uploads'), {
+    fileName: fileName || 'baraj.pdf',
+    fileSize: Number(fileSize || 0),
+    dataUrl,
+    status: 'pending-web-processing',
+    submittedBy: currentSuperAdminId,
+    submittedByRole: 'superadmin',
+    submittedFrom: 'mobile',
+    createdAt: nowIso(),
+  });
+  return { id: created.id };
+}
+
 export async function getExchangeRateSettings() {
   const snapshot = await getDoc(doc(db, 'app_settings', 'credit_exchange_rate'));
   if (!snapshot.exists()) {

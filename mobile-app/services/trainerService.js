@@ -24,6 +24,7 @@ import {
   normalizeMarketOrder,
 } from './marketService';
 import { createAppNotification } from './notificationService';
+import { getScheduleDisplayLabel } from '../utils/scheduleDisplay';
 import { nowIso, sortByDateDesc, todayIsoDate } from '../utils/date';
 
 const dayLabels = {
@@ -296,6 +297,31 @@ function normalizeTrainerAssignments(schedule) {
   ];
 }
 
+function studentBelongsToTrainerScope(student, schedule, trainer) {
+  if (!student || !trainer) return false;
+  const studentTrainerId = student.trainerId || '';
+  const scopeHeadId = student.headTrainerId || '';
+
+  if (scopeHeadId && (scopeHeadId === trainer.uid || scopeHeadId === trainer.docId || scopeHeadId === trainer.id)) {
+    return true;
+  }
+
+  if (studentTrainerId && (studentTrainerId === trainer.uid || studentTrainerId === trainer.docId || studentTrainerId === trainer.id)) {
+    return true;
+  }
+
+  const assignments = normalizeTrainerAssignments(schedule);
+  const assistantAssignment = assignments.find(
+    (item) => item.role === 'assistant' && (item.trainerId === studentTrainerId || item.trainerDocId === studentTrainerId)
+  );
+  if (assistantAssignment) {
+    const headId = assistantAssignment.headTrainerId || assistantAssignment.headTrainerDocId || '';
+    return headId === trainer.uid || headId === trainer.docId || headId === trainer.id;
+  }
+
+  return scheduleBelongsToTrainer(schedule, trainer);
+}
+
 function scheduleBelongsToTrainer(schedule, trainer) {
   if (!schedule || !trainer) return false;
   const directIds = [schedule.trainerId, schedule.trainerDocId, ...(Array.isArray(schedule.trainerIds) ? schedule.trainerIds : [])].filter(Boolean);
@@ -481,7 +507,7 @@ function buildCompletionRows(students, schedules, branches, attendanceRecords) {
         studentId: student.id,
         studentName: [student.name, student.surname].filter(Boolean).join(' ') || 'Ogrenci',
         branchName: branch?.name || 'Bilinmiyor',
-        scheduleName: schedule.time || '-',
+        scheduleName: getScheduleDisplayLabel(schedule, branch),
         startDate: formatIsoDate(startDate),
         endDate: formatIsoDate(endDate),
         daysLeft: daysUntilDate(endDate),
@@ -521,7 +547,7 @@ function summarizeTrainerSalary(schedules, trainer) {
       summary.rows.push({
         scheduleId: schedule.id,
         branchName,
-        time: schedule.time || '-',
+        time: getScheduleDisplayLabel(schedule, branchName ? { name: branchName } : null),
         lessonsCount: totalLessons,
         trainerRate: rate,
         hasConfiguredRate: rate > 0,
@@ -738,7 +764,12 @@ export async function getTrainerDashboardData(profile) {
 
   const trainerSchedules = schedules.filter((schedule) => scheduleBelongsToTrainer(schedule, trainer));
   const trainerScheduleIds = new Set(trainerSchedules.map((schedule) => schedule.id));
-  const trainerStudents = students.filter((student) => trainerScheduleIds.has(student.scheduleId));
+  const scheduleMap = new Map(trainerSchedules.map((item) => [item.id, item]));
+  const trainerStudents = students.filter((student) => {
+    if (!trainerScheduleIds.has(student.scheduleId)) return false;
+    const schedule = scheduleMap.get(student.scheduleId);
+    return studentBelongsToTrainerScope(student, schedule, trainer);
+  });
   const branchMap = buildTrainerBranchMap(branches);
   const salaryInput = trainerSchedules.map((item) => ({ ...item }));
   const salarySummary = summarizeTrainerSalary(
@@ -760,7 +791,7 @@ export async function getTrainerDashboardData(profile) {
       .map((schedule) => ({
         id: schedule.id,
         branchName: branches.find((item) => item.id === schedule.branchId)?.name || 'Bilinmiyor',
-        time: schedule.time || '-',
+        time: getScheduleDisplayLabel(schedule, branches.find((item) => item.id === schedule.branchId)),
         daysLabel: formatDayList(schedule.days || schedule.scheduleDays || []),
         lessonTypeLabel: getScheduleLessonTypeLabel(schedule),
         capacity: toNumber(schedule.capacity, 0),
@@ -789,7 +820,11 @@ export async function getTrainerClassesOverview(profile) {
 
   const trainerSchedules = schedules.filter((schedule) => scheduleBelongsToTrainer(schedule, trainer));
   const trainerScheduleIds = new Set(trainerSchedules.map((item) => item.id));
-  const trainerStudents = students.filter((student) => trainerScheduleIds.has(student.scheduleId));
+  const scheduleMap = new Map(trainerSchedules.map((item) => [item.id, item]));
+  const trainerStudents = students.filter((student) => {
+    if (!trainerScheduleIds.has(student.scheduleId)) return false;
+    return studentBelongsToTrainerScope(student, scheduleMap.get(student.scheduleId), trainer);
+  });
   const templateDocs = await Promise.all(
     branches.map(async (branch) => {
       const snapshot = await getDoc(doc(db, 'trainer_time_programs', `${trainer.adminId}_${branch.id}`));
@@ -1033,6 +1068,7 @@ export async function saveTrainerPerformance({ profile, studentId, style, distan
     throw new Error('Derece formati hatali. Ornek: 1:20.45');
   }
 
+  const normalizedType = type === 'race' || type === 'competition' ? 'competition' : 'training';
   const payload = {
     studentId,
     trainerId: trainer.uid,
@@ -1040,7 +1076,7 @@ export async function saveTrainerPerformance({ profile, studentId, style, distan
     style,
     distance: toNumber(distance, 0),
     time: String(time).trim(),
-    type: type || 'training',
+    type: normalizedType,
     date,
     createdAt: nowIso(),
   };
@@ -1145,9 +1181,10 @@ function buildPerformanceStandardStatus(student, performance, standards) {
 
 export async function getTrainerCommerceOverview(profile) {
   const trainer = await resolveTrainerContext(profile);
-  const [branches, schedules, workouts, allSales, products, creditPackages, orders, creditRequests, withdrawals, workoutLibrary, creditInfo, bankSettings, exchangeRate, favorites, campaigns] = await Promise.all([
+  const [branches, schedules, students, workouts, allSales, products, creditPackages, orders, creditRequests, withdrawals, workoutLibrary, creditInfo, bankSettings, exchangeRate, favorites, campaigns] = await Promise.all([
     listAll('branches', [where('adminId', '==', trainer.adminId)]),
     listAll('schedules', [where('adminId', '==', trainer.adminId)]),
+    listAll('students', [where('adminId', '==', trainer.adminId)]),
     listAll('workouts', [where('trainerId', '==', trainer.uid)]),
     listAll('workout_sales'),
     listAll('products'),
@@ -1171,10 +1208,16 @@ export async function getTrainerCommerceOverview(profile) {
     .filter((sale) => sale.status === 'active' && sale.sellerId !== trainer.uid && (!trainer.adminId || sale.adminId === trainer.adminId))
     .sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime());
 
+  const trainerScopedStudents = students.filter((student) => {
+    const studentSchedule = trainerSchedules.find((item) => item.id === student.scheduleId);
+    return studentBelongsToTrainerScope(student, studentSchedule, trainer);
+  });
+
   return {
     trainer,
     branches,
     schedules: trainerSchedules,
+    students: trainerScopedStudents,
     creditBalance: creditInfo.balance,
     blockedCredits: creditInfo.blockedCredits,
     workouts: sortByDateDesc(workouts),
@@ -1873,7 +1916,8 @@ export function buildTrainerPerformanceReport(students, performances, standards)
       .sort((left, right) => new Date(right.date || 0).getTime() - new Date(left.date || 0).getTime());
 
     const grouped = studentPerformances.reduce((result, performance) => {
-      const key = `${performance.style}_${performance.distance}_${performance.type || 'training'}`;
+      const performanceType = performance.type === 'race' ? 'competition' : (performance.type || 'training');
+      const key = `${performance.style}_${performance.distance}_${performanceType}`;
       const current = result[key] || {
         latest: null,
         previous: null,
@@ -1978,7 +2022,11 @@ export async function getTrainerStudentsOverview(profile) {
 
   const trainerSchedules = schedules.filter((schedule) => scheduleBelongsToTrainer(schedule, trainer));
   const trainerScheduleIds = new Set(trainerSchedules.map((item) => item.id));
-  const trainerStudents = students.filter((student) => trainerScheduleIds.has(student.scheduleId));
+  const scheduleMap = new Map(trainerSchedules.map((item) => [item.id, item]));
+  const trainerStudents = students.filter((student) => {
+    if (!trainerScheduleIds.has(student.scheduleId)) return false;
+    return studentBelongsToTrainerScope(student, scheduleMap.get(student.scheduleId), trainer);
+  });
   const attendanceCountMap = buildTrainerAttendanceLessonCountMap(attendance);
 
   const groupedMap = {};
@@ -1993,7 +2041,7 @@ export async function getTrainerStudentsOverview(profile) {
         branchId: schedule.branchId || '',
         branchName: branch?.name || 'Bilinmiyor',
         scheduleId: schedule.id,
-        scheduleName: schedule.time || '-',
+        scheduleName: getScheduleDisplayLabel(schedule, branch),
         lessonTypeLabel: getScheduleLessonTypeLabel(schedule),
         lessonsCount: getScheduleLessonCount(schedule),
         postponementCount: getSchedulePostponementCount(schedule),

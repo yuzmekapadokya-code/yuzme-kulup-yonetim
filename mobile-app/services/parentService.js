@@ -22,6 +22,7 @@ import {
   normalizeMarketOrder,
 } from './marketService';
 import { createAppNotification } from './notificationService';
+import { getScheduleDisplayLabel } from '../utils/scheduleDisplay';
 import { nowIso, sortByDateDesc } from '../utils/date';
 
 const reviewLabels = {
@@ -484,7 +485,7 @@ export async function getParentDashboardData(profile) {
       fullName: `${data.student.name || ''} ${data.student.surname || ''}`.trim() || 'Ogrenci',
       age: getStudentAge(data.student),
       branchName: branch?.name || 'Bilinmiyor',
-      scheduleName: schedule?.time || 'Program yok',
+      scheduleName: getScheduleDisplayLabel(schedule, branch),
     },
     stats: [
       { label: 'Toplam Tutar', value: `₺${totalAmount.toFixed(2)}` },
@@ -514,8 +515,13 @@ export async function getParentProgressData(profile) {
   const assignedTrainers = getAssignedTrainerOptions(data.student, data.schedules, data.trainers);
   const reviews = buildParentReviews(data.reviews, data.comments, assignedTrainers);
 
-  const performanceCards = Object.values(data.performances.reduce((result, performance) => {
-    const key = `${normalizePerformanceStyle(performance.style)}_${performance.distance}`;
+  const normalizedPerformances = data.performances.map((performance) => ({
+    ...performance,
+    type: performance.type === 'race' ? 'competition' : (performance.type || 'training'),
+  }));
+
+  const performanceCards = Object.values(normalizedPerformances.reduce((result, performance) => {
+    const key = `${normalizePerformanceStyle(performance.style)}_${performance.distance}_${performance.type}`;
     if (!result[key]) result[key] = [];
     result[key].push(performance);
     return result;
@@ -527,9 +533,11 @@ export async function getParentProgressData(profile) {
     const latest = sortedByDate[0];
     const standardState = getStandardMatchForPerformance(visibleStandards, data.performances, data.student, best);
     return {
-      key: `${best.style}_${best.distance}`,
+      key: `${best.style}_${best.distance}_${best.type}`,
       styleLabel: normalizePerformanceStyle(best.style),
       distance: best.distance,
+      type: best.type,
+      typeLabel: best.type === 'competition' ? 'Yaris' : 'Antrenman',
       bestTime: best.time,
       latestTime: latest.time,
       latestDate: latest.date || latest.createdAt,
@@ -542,7 +550,10 @@ export async function getParentProgressData(profile) {
         : null,
       history: sortedByDate,
     };
-  }).sort((left, right) => left.distance - right.distance);
+  }).sort((left, right) => {
+    if (left.type !== right.type) return left.type === 'competition' ? -1 : 1;
+    return left.distance - right.distance;
+  });
 
   const bestOverall = data.performances.reduce((best, current) => {
     if (!best) return current;
@@ -659,7 +670,7 @@ export async function getParentDailyData(profile) {
         workoutName: workout?.name || 'Isimsiz Antrenman',
         exercises: workout?.exercises || [],
         branchName: branch?.name || 'Bilinmiyor',
-        scheduleName: schedule?.time || '-',
+        scheduleName: getScheduleDisplayLabel(schedule, branch),
       };
     }),
   };

@@ -1,4 +1,13 @@
 (function () {
+    window.refreshMobileLayout = function refreshMobileLayout() {
+        if (window.PanelEnhancements?.ensureTableResponsiveWrappers) {
+            window.PanelEnhancements.ensureTableResponsiveWrappers();
+        }
+        if (window.PanelEnhancements?.convertTablesToMobileCards) {
+            window.PanelEnhancements.convertTablesToMobileCards();
+        }
+    };
+
     const MOBILE_BREAKPOINT = 768;
     const ACTIVE_LINK_PADDING = 20;
     const CONTENT_SCROLL_PADDING = 14;
@@ -49,6 +58,15 @@
         return toggle;
     }
 
+    function syncBottomNavMoreState(open) {
+        const moreButton = document.querySelector('.mobile-bottom-nav-item[data-page="__more__"]');
+        if (!moreButton) {
+            return;
+        }
+        moreButton.classList.toggle('active', !!open);
+        moreButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
     function setSidebarState(open) {
         const { body, sidebar } = getElements();
         const overlay = ensureOverlay();
@@ -65,6 +83,7 @@
             if (toggle) {
                 toggle.setAttribute('aria-expanded', 'false');
             }
+            syncBottomNavMoreState(false);
             return;
         }
 
@@ -74,6 +93,7 @@
         if (toggle) {
             toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
+        syncBottomNavMoreState(!!open);
     }
 
     function getResolvedScrollBehavior(behavior = 'smooth') {
@@ -398,7 +418,19 @@
                 return;
             }
 
-            if (!sidebar.contains(event.target) && !currentToggle.contains(event.target)) {
+            const target = event.target;
+            if (!target || target.nodeType !== 1) {
+                return;
+            }
+
+            // Alt menudeki "Menu" butonu sidebar'i acmak icin de kapatmak icin de kullanilabilir;
+            // outside-click kontrolu bu alani disari tiklama saymamali.
+            const bottomNav = target.closest && target.closest('.mobile-bottom-nav');
+            if (bottomNav) {
+                return;
+            }
+
+            if (!sidebar.contains(target) && !currentToggle.contains(target)) {
                 setSidebarState(false);
             }
         });

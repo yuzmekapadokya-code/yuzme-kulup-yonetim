@@ -3,9 +3,11 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Antrenör Paneli</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/premium-system.css">
+    <link rel="stylesheet" href="../css/mobile-compact.css">
     <link rel="stylesheet" href="../css/trainer.css">
     <style>
         .modal {
@@ -204,7 +206,7 @@
         }
     </style>
 </head>
-<body>
+<body data-panel-role="trainer">
     <div class="dashboard">
         <!-- Sidebar -->
         <div class="sidebar">
@@ -346,8 +348,8 @@
 
                     <h3 style="margin-bottom: 8px;">Ders Bitiş Takvimi</h3>
                     <p style="margin: 0 0 12px; color: #7f8c8d; font-size: 0.95em;">Öğrenci başlangıç tarihine göre dersin bitişini ve boşalabilecek saatleri gösterir.</p>
-                    <div style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
-                        <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
+                    <div class="table-responsive" style="overflow-x: auto; border: 1px solid #edf2f7; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
                                     <th style="padding: 10px; text-align: left;">Öğrenci</th>
@@ -692,22 +694,21 @@
                     <div class="trainer-ai-hero-inner">
                         <div class="trainer-ai-hero-copy">
                             <div class="trainer-ai-kicker">AI destekli workout uretimi</div>
-                            <h2>Yapay Zeka Workout Asistani</h2>
+                            <h2>Yapay Zeka Antrenman Asistani</h2>
                             <p>
-                                Bu ekran Super Admin tarafindan yuklenen ortak bilgi bankasi ile platform genelindeki workout ve satis orneklerinden beslenir.
-                                Eksik bilgi varsa chat icinde senden tamamlamani ister, yeterli veri gelince detayli workoutu cikarir.
+                                Grubun antrenman ve yaris derecelerini okur, bilgi bankasini ve internet kaynaklarini tarar,
+                                sureli (dakika bazli) antrenman plani uretir. Kaynaklar duzenli guncellenir.
                             </p>
                         </div>
                         <div class="trainer-ai-hero-side">
                             <div id="trainerAiKnowledgeBadge" class="trainer-ai-badge">Bilgi bankasi hazirlaniyor</div>
                             <div class="trainer-ai-info-card">
-                                <strong>En hizli sonuc icin sunlari yaz</strong>
+                                <strong>En hizli sonuc icin</strong>
                                 <ul class="trainer-ai-guidance-list">
-                                    <li>yas grubu</li>
-                                    <li>seviye</li>
-                                    <li>hedef</li>
-                                    <li>sure</li>
-                                    <li>varsa stil veya teknik odak</li>
+                                    <li>once ders grubunu sec</li>
+                                    <li>hedef ve sureyi yaz</li>
+                                    <li>antrenman / yaris dereceleri otomatik okunur</li>
+                                    <li>plan dakika ve set bazli gelir</li>
                                 </ul>
                             </div>
                         </div>
@@ -729,6 +730,16 @@
 
                     <div class="trainer-ai-layout">
                         <section class="trainer-ai-chat-panel">
+                            <div class="trainer-ai-panel-block">
+                                <div class="trainer-ai-section-label">Ders grubu ve performans</div>
+                                <div class="form-group" style="margin-bottom:10px;">
+                                    <label>Ders grubu (antrenman/yaris dereceleri icin)</label>
+                                    <select id="trainerAiSchedule">
+                                        <option value="">-- Ders grubu seciniz --</option>
+                                    </select>
+                                </div>
+                                <div id="trainerAiGroupContext" class="trainer-ai-group-context"></div>
+                            </div>
                             <div class="trainer-ai-panel-block">
                                 <div class="trainer-ai-section-label">Mesaj yardimcisi</div>
                                 <div id="trainerAiPromptChecklist" class="trainer-ai-prompt-checklist"></div>
@@ -767,12 +778,7 @@
                                 <p>
                                     Kaydedildiginde bu plan, sen manuel yazmis gibi workout listene eklenir ve secilen ders grubundaki ogrencilere dagitilir.
                                 </p>
-                                <div class="form-group">
-                                    <label>Ders grubu</label>
-                                    <select id="trainerAiSchedule">
-                                        <option value="">-- Ders grubu seciniz --</option>
-                                    </select>
-                                </div>
+                                <p class="trainer-ai-save-hint">Kayit, yukarida sectigin ders grubuna dagitilir.</p>
                                 <button type="button" class="btn btn-success" id="trainerAiSaveBtn">Workoutu Kaydet</button>
                             </div>
                         </aside>
@@ -1394,6 +1400,7 @@
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     
     <script defer src="../js/config.js"></script>
+    <script defer src="../js/panel-enhancements.js"></script>
     <script defer src="../js/mobile-responsive.js"></script>
     <script defer src="../js/trainer.js"></script>
     <script defer src="../js/global-ai.js"></script>

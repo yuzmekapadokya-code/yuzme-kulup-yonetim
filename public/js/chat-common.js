@@ -272,7 +272,10 @@
         if (clubNameCache.has(adminId)) return clubNameCache.get(adminId);
         try {
             const clubDoc = await db.collection('clubProfiles').doc(adminId).get();
-            const clubName = clubDoc.exists ? String(clubDoc.data().clubName || '').trim() : '';
+            const clubData = clubDoc.exists ? clubDoc.data() || {} : {};
+            const clubName = clubDoc.exists
+                ? String(clubData.clubName || clubData.name || '').trim()
+                : '';
             clubNameCache.set(adminId, clubName);
             return clubName;
         } catch (error) {

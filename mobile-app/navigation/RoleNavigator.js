@@ -18,6 +18,7 @@ import ParentModulesScreen from '../screens/parent/ParentModulesScreen';
 import ParentProgressOpsScreen from '../screens/parent/ParentProgressOpsScreen';
 import ParentShoppingOpsScreen from '../screens/parent/ParentShoppingOpsScreen';
 import SecretaryChatOpsScreen from '../screens/secretary/SecretaryChatOpsScreen';
+import SecretaryPreRegistrationOpsScreen from '../screens/secretary/SecretaryPreRegistrationOpsScreen';
 import SecretaryHomeScreen from '../screens/secretary/SecretaryHomeScreen';
 import SecretaryModulesScreen from '../screens/secretary/SecretaryModulesScreen';
 import SecretaryRegistrationOpsScreen from '../screens/secretary/SecretaryRegistrationOpsScreen';
@@ -48,6 +49,23 @@ import { sharedStackScreens } from './sharedScreens';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Web tarafindaki .panel-enhanced .header rengiyle birebir hizalanmis ortak stack baslik stili.
+const stackScreenOptions = {
+  headerStyle: {
+    backgroundColor: theme.colors.surface,
+  },
+  headerTintColor: theme.colors.text,
+  headerTitleStyle: {
+    fontWeight: '700',
+    fontSize: 17,
+    color: theme.colors.text,
+  },
+  headerShadowVisible: false,
+  contentStyle: {
+    backgroundColor: theme.colors.background,
+  },
+};
+
 function resolveHomeComponent(role) {
   switch (role) {
     case 'superadmin':
@@ -70,7 +88,7 @@ function HomeStack() {
   const HomeComponent = resolveHomeComponent(role);
 
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="RoleHome" component={HomeComponent} options={{ headerShown: false }} />
       {sharedStackScreens.map((screen) => (
         <Stack.Screen
@@ -115,6 +133,7 @@ function HomeStack() {
           <Stack.Screen name="SECRegistrationOps" component={SecretaryRegistrationOpsScreen} options={{ title: 'Ogrenci Kayit' }} />
           <Stack.Screen name="SECStudentsOps" component={SecretaryStudentsOpsScreen} options={{ title: 'Ogrenci ve Odeme' }} />
           <Stack.Screen name="SECChatOps" component={SecretaryChatOpsScreen} options={{ title: 'Sohbet Operasyonlari' }} />
+          <Stack.Screen name="SECPreRegistrationOps" component={SecretaryPreRegistrationOpsScreen} options={{ title: 'On Kayit Linki' }} />
         </>
       ) : null}
       {role === 'parent' ? (
@@ -134,7 +153,7 @@ function ModulesStack() {
   const role = useAuthStore((state) => state.profile?.role);
 
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="FeatureHub" component={role === 'superadmin' ? SuperAdminModulesScreen : role === 'admin' ? AdminModulesScreen : role === 'trainer' ? TrainerModulesScreen : role === 'secretary' ? SecretaryModulesScreen : role === 'parent' ? ParentModulesScreen : FeatureHubScreen} options={{ headerShown: false }} />
       {sharedStackScreens.map((screen) => (
         <Stack.Screen
@@ -179,6 +198,7 @@ function ModulesStack() {
           <Stack.Screen name="SECRegistrationOps" component={SecretaryRegistrationOpsScreen} options={{ title: 'Ogrenci Kayit' }} />
           <Stack.Screen name="SECStudentsOps" component={SecretaryStudentsOpsScreen} options={{ title: 'Ogrenci ve Odeme' }} />
           <Stack.Screen name="SECChatOps" component={SecretaryChatOpsScreen} options={{ title: 'Sohbet Operasyonlari' }} />
+          <Stack.Screen name="SECPreRegistrationOps" component={SecretaryPreRegistrationOpsScreen} options={{ title: 'On Kayit Linki' }} />
         </>
       ) : null}
       {role === 'parent' ? (
@@ -196,7 +216,7 @@ function ModulesStack() {
 
 function ChatStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ title: 'Sohbet' }} />
       <Stack.Screen name="NewChat" component={sharedStackScreens.find((item) => item.name === 'NewChat').component} options={{ title: 'Yeni Sohbet' }} />
@@ -206,7 +226,7 @@ function ChatStack() {
 
 function ProfileStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="ProfileHome" component={ProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
@@ -219,21 +239,43 @@ export default function RoleNavigator() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginBottom: 4,
+          letterSpacing: 0.2,
+        },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          height: 68,
+          borderTopWidth: 1,
+          height: 70,
           paddingBottom: 10,
-          paddingTop: 8,
+          paddingTop: 6,
+          shadowColor: '#0f172a',
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -2 },
+          elevation: 8,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarItemStyle: {
+          paddingTop: 4,
+        },
+        tabBarIcon: ({ color, focused }) => {
           const iconMap = {
-            HomeTab: 'home-outline',
-            ModulesTab: 'grid-outline',
-            ChatTab: 'chatbubble-ellipses-outline',
-            ProfileTab: 'person-circle-outline',
+            HomeTab: focused ? 'home' : 'home-outline',
+            ModulesTab: focused ? 'grid' : 'grid-outline',
+            ChatTab: focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline',
+            ProfileTab: focused ? 'person-circle' : 'person-circle-outline',
           };
-          return <Ionicons name={iconMap[route.name]} size={size} color={color} />;
+          return (
+            <Ionicons
+              name={iconMap[route.name]}
+              size={focused ? 26 : 22}
+              color={color}
+            />
+          );
         },
       })}
     >

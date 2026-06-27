@@ -201,10 +201,21 @@ Genel kocluk ilkeleri:
         medley: 'Karma'
     };
     const QUICK_CHAT_PROMPTS = [
+        'Grubum icin olimpiyat seviyesinde teknik antrenman, sure 60 dakika',
         'Yas grubu 9-10 yas, seviye orta, hedef teknik, sure 60 dakika, odak serbest nefes ritmi',
         '12-13 yas, ileri seviye, hedef sprint, sure 75 dakika, odak cikis ve hizlanma',
-        'Performans grubu, hedef yaris, sure 90 dakika, odak yaris temposu ve donus kalitesi',
-        '8-9 yas, baslangic, hedef genel gelisim, sure 45 dakika, odak su hissi ve ayak vurusu'
+        'Performans grubu, hedef yaris, sure 90 dakika, odak yaris temposu ve donus kalitesi'
+    ];
+    const OLYMPIC_COACH_LIVE_RESEARCH_URLS = [
+        { label: 'Yuzme sporu referansi', url: 'https://en.wikipedia.org/wiki/Swimming_(sport)' },
+        { label: 'Antrenman periodizasyonu', url: 'https://en.wikipedia.org/wiki/Periodization_(training)' },
+        { label: 'Serbest stil teknik', url: 'https://en.wikipedia.org/wiki/Freestyle_swimming' },
+        { label: 'Sprint antrenmani', url: 'https://en.wikipedia.org/wiki/Sprint_(running)' }
+    ];
+    const OLYMPIC_COACH_SEED_FEEDS = [
+        { label: 'World Aquatics haber', url: 'https://www.worldaquatics.com/news', intervalHours: 24 },
+        { label: 'Swimming World antrenman', url: 'https://www.swimmingworldmagazine.com/category/training/', intervalHours: 48 },
+        { label: 'USA Swimming teknik', url: 'https://www.usaswimming.org/news', intervalHours: 48 }
     ];
     const STRUCTURED_PROMPT_TEMPLATE = [
         'Yas grubu: 9-10 yas',
@@ -231,7 +242,9 @@ Genel kocluk ilkeleri:
         messages: [],
         profile: {},
         lastPlan: null,
-        loading: false
+        loading: false,
+        groupContext: null,
+        selectedScheduleId: ''
     };
 
     const superAdminUiState = {
@@ -1622,13 +1635,16 @@ Genel kocluk ilkeleri:
         renderTrainerInputGuidance(input.value);
     }
 
-    function buildSearchProfile(input) {
+    function buildSearchProfile(input, groupContext = null) {
         const text = [
             input.ageGroupLabel,
             input.goalKey ? GOAL_LABELS[input.goalKey] : '',
             input.focusStyle,
             input.levelKey ? LEVEL_LABELS[input.levelKey] : '',
-            input.notes
+            input.notes,
+            groupContext?.performanceSearchText || '',
+            groupContext?.trainingSummaryText || '',
+            groupContext?.competitionSummaryText || ''
         ].filter(Boolean).join(' ');
 
         return {
@@ -1638,6 +1654,446 @@ Genel kocluk ilkeleri:
             styleTags: input.focusStyle ? [normalizeText(input.focusStyle)] : [],
             goalTags: input.goalKey ? [normalizeText(input.goalKey)] : []
         };
+    }
+
+    function getStudentAgeLocal(student) {
+        if (!student) {
+            return null;
+        }
+        if (typeof window.getStudentAge === 'function') {
+            return window.getStudentAge(student);
+        }
+        const birthYear = Number(student.birthYear);
+        if (Number.isFinite(birthYear) && birthYear > 1950) {
+            return new Date().getFullYear() - birthYear;
+        }
+        const age = Number(student.age);
+        return Number.isFinite(age) ? age : null;
+    }
+
+    function parsePerformanceTimeToSeconds(timeValue) {
+        const raw = String(timeValue || '').trim();
+        const match = raw.match(/^(\d{1,2}):(\d{2})\.(\d{1,2})$/);
+        if (!match) {
+            return null;
+        }
+        return (Number(match[1]) * 60) + Number(match[2]) + (Number(match[3]) / 100);
+    }
+
+    function formatPerformanceTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            return '-';
+        }
+        const minutes = Math.floor(seconds / 60);
+        const remainder = seconds - (minutes * 60);
+        const wholeSeconds = Math.floor(remainder);
+        const hundredths = Math.round((remainder - wholeSeconds) * 100);
+        return `${minutes}:${String(wholeSeconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
+    }
+
+    function buildAgeGroupLabelFromAges(ages) {
+        const validAges = (ages || []).filter(age => Number.isFinite(age));
+        if (!validAges.length) {
+            return '';
+        }
+        const minAge = Math.min(...validAges);
+        const maxAge = Math.max(...validAges);
+        if (minAge === maxAge) {
+            return `${minAge} yas`;
+        }
+        return `${minAge}-${maxAge} yas`;
+    }
+
+    function summarizePerformanceRows(performances, typeLabel) {
+        const grouped = {};
+        performances.forEach(performance => {
+            const style = performance.style || 'Karma';
+            const distance = Number(performance.distance) || 0;
+            const seconds = parsePerformanceTimeToSeconds(performance.time);
+            if (!distance || !Number.isFinite(seconds)) {
+                return;
+            }
+            const key = `${style}_${distance}`;
+            if (!grouped[key] || seconds < grouped[key].bestSeconds) {
+                grouped[key] = {
+                    style,
+                    distance,
+                    bestSeconds: seconds,
+                    bestTime: performance.time,
+                    typeLabel
+                };
+            }
+        });
+
+        return Object.values(grouped)
+            .sort((left, right) => left.distance - right.distance || left.bestSeconds - right.bestSeconds)
+            .slice(0, 6);
+    }
+
+    function inferLevelKeyFromGroupContext(groupContext) {
+        if (!groupContext) {
+            return '';
+        }
+        const avgAge = Number(groupContext.averageAge);
+        const competitionRows = groupContext.competitionRows || [];
+        const trainingRows = groupContext.trainingRows || [];
+
+        if (competitionRows.some(row => row.distance >= 100 && row.bestSeconds <= 75)) {
+            return 'performance';
+        }
+        if (competitionRows.length >= 2 || trainingRows.length >= 4) {
+            return 'advanced';
+        }
+        if (Number.isFinite(avgAge) && avgAge <= 9) {
+            return 'beginner';
+        }
+        if (Number.isFinite(avgAge) && avgAge <= 11) {
+            return 'intermediate';
+        }
+        return 'intermediate';
+    }
+
+    async function fetchPerformancesForStudents(studentIds) {
+        if (!Array.isArray(studentIds) || !studentIds.length || typeof db === 'undefined') {
+            return [];
+        }
+
+        const performances = [];
+        for (let index = 0; index < studentIds.length; index += 10) {
+            const batch = studentIds.slice(index, index + 10);
+            const snapshot = await db.collection('performances').where('studentId', 'in', batch).get();
+            snapshot.forEach(doc => {
+                performances.push({ id: doc.id, ...doc.data() });
+            });
+        }
+
+        return performances.sort((left, right) => String(right.date || right.createdAt || '').localeCompare(String(left.date || left.createdAt || '')));
+    }
+
+    async function buildGroupPerformanceContext(scheduleId) {
+        const context = getTrainerContext();
+        const students = (context.allStudents || []).filter(student => student.scheduleId === scheduleId);
+        if (!students.length) {
+            return null;
+        }
+
+        const schedule = (context.allSchedules || []).find(item => item.id === scheduleId);
+        const branch = (context.allBranches || []).find(item => item.id === schedule?.branchId);
+        const performances = await fetchPerformancesForStudents(students.map(student => student.id));
+        const ages = students.map(student => getStudentAgeLocal(student)).filter(age => Number.isFinite(age));
+        const trainingPerformances = performances.filter(item => item.type === 'training');
+        const competitionPerformances = performances.filter(item => item.type === 'competition');
+        const trainingRows = summarizePerformanceRows(trainingPerformances, 'Antrenman derecesi');
+        const competitionRows = summarizePerformanceRows(competitionPerformances, 'Yaris derecesi');
+        const averageAge = ages.length
+            ? Math.round(ages.reduce((sum, age) => sum + age, 0) / ages.length)
+            : null;
+        const ageGroupLabel = buildAgeGroupLabelFromAges(ages) || (Number.isFinite(averageAge) ? getAgeBucket(averageAge) : '');
+        const trainingSummaryText = trainingRows.map(row => `${row.style} ${row.distance}m antrenman ${row.bestTime}`).join(' | ');
+        const competitionSummaryText = competitionRows.map(row => `${row.style} ${row.distance}m yaris ${row.bestTime}`).join(' | ');
+
+        return {
+            scheduleId,
+            scheduleLabel: `${branch?.name || 'Sube'} - ${schedule?.customName || schedule?.time || 'Ders'}`,
+            studentCount: students.length,
+            studentNames: students.map(student => `${student.name || ''} ${student.surname || ''}`.trim()).filter(Boolean).slice(0, 8),
+            ages,
+            averageAge,
+            ageGroupLabel,
+            suggestedLevelKey: inferLevelKeyFromGroupContext({ averageAge, trainingRows, competitionRows }),
+            trainingRows,
+            competitionRows,
+            trainingSummaryText,
+            competitionSummaryText,
+            performanceSearchText: [
+                ageGroupLabel,
+                trainingSummaryText,
+                competitionSummaryText,
+                schedule?.lessonType === 'private' ? 'ozel ders' : 'grup dersi'
+            ].filter(Boolean).join(' ')
+        };
+    }
+
+    function autoFillProfileFromGroupContext(profile, groupContext) {
+        if (!groupContext) {
+            return { ...profile };
+        }
+
+        const nextProfile = { ...profile };
+        if (!Number.isFinite(Number(nextProfile.age)) && Number.isFinite(Number(groupContext.averageAge))) {
+            nextProfile.age = Number(groupContext.averageAge);
+        }
+        if (!nextProfile.ageGroupLabel && groupContext.ageGroupLabel) {
+            nextProfile.ageGroupLabel = groupContext.ageGroupLabel;
+        }
+        if (!nextProfile.levelKey && groupContext.suggestedLevelKey) {
+            nextProfile.levelKey = groupContext.suggestedLevelKey;
+        }
+        if (!nextProfile.focusStyle && groupContext.trainingRows?.[0]?.style) {
+            nextProfile.focusStyle = groupContext.trainingRows[0].style;
+        }
+        if (!nextProfile.notes) {
+            nextProfile.notes = [
+                groupContext.trainingSummaryText ? `Antrenman dereceleri: ${groupContext.trainingSummaryText}` : '',
+                groupContext.competitionSummaryText ? `Yaris dereceleri: ${groupContext.competitionSummaryText}` : ''
+            ].filter(Boolean).join(' | ');
+        } else {
+            nextProfile.notes = [
+                nextProfile.notes,
+                groupContext.trainingSummaryText ? `Antrenman dereceleri: ${groupContext.trainingSummaryText}` : '',
+                groupContext.competitionSummaryText ? `Yaris dereceleri: ${groupContext.competitionSummaryText}` : ''
+            ].filter(Boolean).join(' | ');
+        }
+        return nextProfile;
+    }
+
+    function buildLiveResearchUrlList(profile, groupContext) {
+        const styleToken = normalizeStyleKey(profile.focusStyle || groupContext?.trainingRows?.[0]?.style || 'serbest') || 'serbest';
+        const goalToken = profile.goalKey || 'genel';
+        const prioritized = [
+            OLYMPIC_COACH_LIVE_RESEARCH_URLS[goalToken === 'sprint' || goalToken === 'yaris' ? 3 : 0],
+            OLYMPIC_COACH_LIVE_RESEARCH_URLS[1],
+            OLYMPIC_COACH_LIVE_RESEARCH_URLS[styleToken === 'serbest' ? 2 : 0]
+        ].filter(Boolean);
+
+        return uniqByUrl([
+            ...prioritized,
+            ...OLYMPIC_COACH_LIVE_RESEARCH_URLS
+        ]).slice(0, 3);
+    }
+
+    function uniqByUrl(items) {
+        const seen = new Set();
+        return items.filter(item => {
+            if (!item?.url || seen.has(item.url)) {
+                return false;
+            }
+            seen.add(item.url);
+            return true;
+        });
+    }
+
+    async function researchWorkoutKnowledgeLive(profile, groupContext) {
+        const urls = buildLiveResearchUrlList(profile, groupContext);
+        const snippets = [];
+
+        for (const item of urls) {
+            try {
+                const remoteResult = await fetchRemoteKnowledgeText(item.url);
+                const translationResult = await maybeTranslateTextToTurkish(remoteResult.text);
+                const text = String(translationResult.text || '').trim().slice(0, 5000);
+                if (!text) {
+                    continue;
+                }
+                snippets.push({
+                    label: item.label,
+                    url: item.url,
+                    text,
+                    sets: parseWorkoutSetsFromKnowledgeText(text)
+                });
+            } catch (error) {
+                snippets.push({
+                    label: item.label,
+                    url: item.url,
+                    text: '',
+                    error: error.message || 'Kaynak okunamadi',
+                    sets: []
+                });
+            }
+        }
+
+        return {
+            snippets,
+            sourceCount: snippets.filter(item => item.text).length
+        };
+    }
+
+    function parseWorkoutSetsFromKnowledgeText(text) {
+        const sets = [];
+        const sourceText = String(text || '');
+        const regex = /(\d{1,2})\s*[x×]\s*(\d{2,4})\s*(?:m\b)?(?:\s*(serbest|sirtustu|sirt|kurbaga|kelebek|karma))?/gi;
+        let match;
+
+        while ((match = regex.exec(sourceText)) !== null && sets.length < 8) {
+            const repeat = Math.max(1, Number(match[1]) || 1);
+            const distance = Math.max(25, Number(match[2]) || 50);
+            const nearbyText = sourceText.slice(match.index, match.index + 140);
+            const restMatch = nearbyText.match(/(\d{1,3})\s*(?:sn|saniye|sec|dinlen)/i);
+            const style = parseStyleFromWorkoutText(match[3] || '') || 'Karma';
+            sets.push(createRepeatedSet(
+                repeat,
+                distance,
+                style,
+                restMatch ? Number(restMatch[1]) : 20,
+                'Kanit havuzu / canli arastirma'
+            ));
+        }
+
+        return sets;
+    }
+
+    function augmentBlocksWithKnowledge(blocks, knowledgeSets) {
+        if (!Array.isArray(blocks) || !knowledgeSets.length) {
+            return blocks;
+        }
+
+        const mainBlock = blocks.find(block => block.title === 'Ana set');
+        if (!mainBlock) {
+            return blocks;
+        }
+
+        const curatedSets = knowledgeSets
+            .filter(set => Number(set.distance) >= 25 && Number(set.repeat) >= 1)
+            .slice(0, 3);
+
+        if (!curatedSets.length) {
+            return blocks;
+        }
+
+        mainBlock.sets = [
+            ...curatedSets,
+            ...mainBlock.sets.slice(0, Math.max(1, mainBlock.sets.length - 1))
+        ];
+        mainBlock.focus = 'Olimpiyat seviyesi kanit havuzu ve guncel arastirma ile desteklenen ana yuklenme.';
+        return blocks;
+    }
+
+    function estimateSetSwimSeconds(distance, levelKey) {
+        const pacePer100 = {
+            beginner: 125,
+            intermediate: 108,
+            advanced: 95,
+            performance: 82
+        }[levelKey] || 108;
+        return Math.max(20, Math.round((Number(distance) / 100) * pacePer100));
+    }
+
+    function applySessionTimeline(blocks, profile) {
+        const sessionDuration = Number(profile.sessionDuration) || 60;
+        let usedMinutes = 0;
+
+        blocks.forEach(block => {
+            let blockSwimSeconds = 0;
+            let blockRestSeconds = 0;
+
+            block.sets.forEach(set => {
+                const repeat = Math.max(1, Number(set.repeat) || 1);
+                const swimSeconds = estimateSetSwimSeconds(set.distance, profile.levelKey) * repeat;
+                const restSeconds = Math.max(0, Number(set.restSeconds) || 15) * Math.max(0, repeat - 1);
+                set.estimatedSwimSeconds = swimSeconds;
+                set.estimatedRestSeconds = restSeconds;
+                set.estimatedTotalSeconds = swimSeconds + restSeconds;
+                set.estimatedMinutes = Math.max(1, Math.ceil(set.estimatedTotalSeconds / 60));
+                blockSwimSeconds += swimSeconds;
+                blockRestSeconds += restSeconds;
+            });
+
+            block.estimatedSwimMinutes = Math.max(1, Math.ceil(blockSwimSeconds / 60));
+            block.estimatedRestMinutes = Math.max(0, Math.ceil(blockRestSeconds / 60));
+            block.estimatedMinutes = Math.max(1, block.estimatedSwimMinutes + block.estimatedRestMinutes);
+            block.startMinute = usedMinutes;
+            block.endMinute = usedMinutes + block.estimatedMinutes;
+            usedMinutes = block.endMinute;
+        });
+
+        const scaleFactor = usedMinutes > sessionDuration + 8
+            ? (sessionDuration / usedMinutes)
+            : 1;
+
+        if (scaleFactor < 1) {
+            blocks.forEach(block => {
+                block.estimatedMinutes = Math.max(1, Math.round(block.estimatedMinutes * scaleFactor));
+                block.sets.forEach(set => {
+                    set.estimatedMinutes = Math.max(1, Math.round((set.estimatedMinutes || 1) * scaleFactor));
+                });
+            });
+            usedMinutes = blocks.reduce((sum, block) => sum + Number(block.estimatedMinutes || 0), 0);
+        }
+
+        return {
+            plannedMinutes: usedMinutes,
+            targetMinutes: sessionDuration,
+            fitsSession: usedMinutes <= sessionDuration + 5
+        };
+    }
+
+    function rebuildExercisesFromBlocks(blocks) {
+        const exercises = [];
+        blocks.forEach(block => {
+            block.sets.forEach(set => {
+                const repeatCount = Math.max(1, Number(set.repeat) || 1);
+                for (let index = 0; index < repeatCount; index += 1) {
+                    exercises.push({
+                        distance: Number(set.distance) || 50,
+                        style: set.style || 'Karma',
+                        restSeconds: Number(set.restSeconds) || 15,
+                        estimatedMinutes: set.estimatedMinutes || 1,
+                        focus: block.title,
+                        note: set.note || block.focus
+                    });
+                }
+            });
+        });
+        return exercises;
+    }
+
+    function buildOlympicCoachingNotes(profile, groupContext, research, timeline) {
+        return [
+            'Olimpiyat seviyesi yuzme koçu modu: kanit havuzu + canli arastirma + grup performans verisi birlestirildi.',
+            groupContext
+                ? `Secilen grup: ${groupContext.scheduleLabel} | ${groupContext.studentCount} sporcu | ${groupContext.ageGroupLabel || 'yas grubu belirleniyor'}`
+                : 'Grup secilmedi: genel plan uretildi.',
+            groupContext?.trainingRows?.length
+                ? `Antrenman derecesi ozeti: ${groupContext.trainingRows.map(row => `${row.style} ${row.distance}m ${row.bestTime}`).join(', ')}`
+                : '',
+            groupContext?.competitionRows?.length
+                ? `Yaris derecesi ozeti: ${groupContext.competitionRows.map(row => `${row.style} ${row.distance}m ${row.bestTime}`).join(', ')}`
+                : '',
+            research?.sourceCount
+                ? `Canli arastirma: ${research.sourceCount} kaynak tarandi, bulgular ana sete yansitildi.`
+                : 'Canli arastirma: kaynaklar sinirli; mevcut bilgi bankasi agirlikli kullanildi.',
+            timeline
+                ? `Sure plani: ${timeline.plannedMinutes} dk / hedef ${timeline.targetMinutes} dk`
+                : '',
+            profile.notes ? `Ek not: ${profile.notes}` : ''
+        ].filter(Boolean);
+    }
+
+    async function ensureOlympicCoachFeedsSeeded() {
+        if (typeof db === 'undefined') {
+            return { seeded: 0 };
+        }
+
+        let seeded = 0;
+        for (const feed of OLYMPIC_COACH_SEED_FEEDS) {
+            const feedId = buildMonitoredFeedId(normalizeUrl(feed.url));
+            const docRef = db.collection(AI_FEEDS_COLLECTION).doc(feedId);
+            const existingDoc = await docRef.get();
+            if (existingDoc.exists) {
+                continue;
+            }
+
+            await docRef.set({
+                feedId,
+                scopeType: GLOBAL_SCOPE,
+                url: normalizeUrl(feed.url),
+                label: feed.label,
+                notes: 'Olimpiyat seviyesi AI koç havuzu',
+                intervalHours: feed.intervalHours || 24,
+                enabled: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                nextSyncAt: new Date().toISOString(),
+                lastSyncStatus: 'pending',
+                ownerRole: 'system',
+                ownerId: 'olympic-coach-seed',
+                uploadedByName: 'AI Olympic Coach'
+            }, { merge: true });
+            seeded += 1;
+        }
+
+        invalidateFeedCache();
+        return { seeded };
     }
 
     function scoreChunkAgainstProfile(chunk, profile) {
@@ -1687,7 +2143,9 @@ Genel kocluk ilkeleri:
             return [];
         }
 
-        const profile = buildSearchProfile(profileInput);
+        const profile = profileInput?.tokens
+            ? profileInput
+            : buildSearchProfile(profileInput, trainerUiState.groupContext);
         return chunks
             .map(chunk => ({
                 ...chunk,
@@ -2077,7 +2535,7 @@ Genel kocluk ilkeleri:
         return 'Serbest';
     }
 
-    function buildWorkoutBlocks(profile, insights) {
+    function buildWorkoutBlocks(profile, insights, options = {}) {
         const focusStyle = profile.focusStyle || (insights.topStyle ? parseStyleFromWorkoutText(insights.topStyle) : 'Karma') || 'Karma';
         const supportStyle = chooseSupportStyle(focusStyle);
         const goalKey = profile.goalKey || 'genel';
@@ -2125,7 +2583,7 @@ Genel kocluk ilkeleri:
             ];
         }
 
-        const blocks = [
+        let blocks = [
             {
                 title: 'Isinma',
                 focus: 'Nabzi ac, eklemleri hazirla ve ilk teknik temaslari oturt.',
@@ -2165,27 +2623,16 @@ Genel kocluk ilkeleri:
             }
         ];
 
-        const exercises = [];
-        blocks.forEach(block => {
-            block.sets.forEach(set => {
-                const repeatCount = Math.max(1, Number(set.repeat) || 1);
-                for (let index = 0; index < repeatCount; index += 1) {
-                    exercises.push({
-                        distance: Number(set.distance) || 50,
-                        style: set.style || focusStyle,
-                        restSeconds: Number(set.restSeconds) || 15,
-                        focus: block.title,
-                        note: set.note || block.focus
-                    });
-                }
-            });
-        });
+        blocks = augmentBlocksWithKnowledge(blocks, options.knowledgeSets || []);
+        const timeline = applySessionTimeline(blocks, profile);
+        const exercises = rebuildExercisesFromBlocks(blocks);
 
         return {
             blocks,
             exercises,
             totalDistance: exercises.reduce((sum, exercise) => sum + Number(exercise.distance || 0), 0),
-            focusStyle
+            focusStyle,
+            timeline
         };
     }
 
@@ -2195,35 +2642,54 @@ Genel kocluk ilkeleri:
         return `${ageLabel} ${focusStyle || 'Karma'} ${goalLabel} antrenmani`;
     }
 
-    async function generateWorkoutPlan(profile) {
-        const [matches, insights] = await Promise.all([
-            getRankedKnowledgeMatches(profile, MAX_SEARCH_RESULTS),
-            buildGlobalLearningInsights()
+    async function generateWorkoutPlan(profile, options = {}) {
+        const scheduleId = options.scheduleId || trainerUiState.selectedScheduleId || '';
+        let groupContext = options.groupContext || trainerUiState.groupContext || null;
+        if (scheduleId && !groupContext) {
+            groupContext = await buildGroupPerformanceContext(scheduleId);
+            trainerUiState.groupContext = groupContext;
+        }
+
+        const enrichedProfile = autoFillProfileFromGroupContext({ ...profile }, groupContext);
+
+        const [matches, insights, research] = await Promise.all([
+            getRankedKnowledgeMatches(enrichedProfile, MAX_SEARCH_RESULTS),
+            buildGlobalLearningInsights(),
+            researchWorkoutKnowledgeLive(enrichedProfile, groupContext).catch(() => ({ snippets: [], sourceCount: 0 }))
         ]);
 
-        const { blocks, exercises, totalDistance, focusStyle } = buildWorkoutBlocks(profile, insights);
+        const knowledgeSets = [
+            ...matches.flatMap(match => parseWorkoutSetsFromKnowledgeText(match.text || '')),
+            ...(research.snippets || []).flatMap(item => item.sets || [])
+        ].slice(0, 8);
+
+        const { blocks, exercises, totalDistance, focusStyle, timeline } = buildWorkoutBlocks(enrichedProfile, insights, { knowledgeSets });
+        const researchMatches = (research.snippets || [])
+            .filter(item => item.text)
+            .map(item => ({
+                sourceName: item.label,
+                text: item.text,
+                sourceId: item.url,
+                sourceType: 'live-research'
+            }));
+
         return {
-            name: buildWorkoutName(profile, focusStyle),
+            name: buildWorkoutName(enrichedProfile, focusStyle),
             createdAt: new Date().toISOString(),
             profile: {
-                ...profile,
+                ...enrichedProfile,
                 focusStyle
             },
+            groupContext,
             totalDistance,
             exercises,
             workoutBlocks: blocks,
-            evidenceMatches: matches,
-            evidenceSummary: summarizeEvidence(matches),
+            sessionTimeline: timeline,
+            evidenceMatches: [...matches, ...researchMatches].slice(0, MAX_SEARCH_RESULTS),
+            evidenceSummary: summarizeEvidence([...matches, ...researchMatches]),
+            researchSummary: research,
             insights,
-            coachingNotes: [
-                `Yas grubu: ${profile.ageGroupLabel || getAgeBucket(profile.age)}`,
-                `Seviye: ${LEVEL_LABELS[profile.levelKey] || profile.levelKey}`,
-                `Hedef: ${GOAL_LABELS[profile.goalKey] || profile.goalKey}`,
-                `Odak stil: ${focusStyle}`,
-                profile.notes ? `Ek notlar: ${profile.notes}` : '',
-                insights.topGoal ? `Platformta en sik satilan hedef: ${insights.topGoal}` : '',
-                insights.topStyle ? `Platformta en sik kullanilan stil: ${insights.topStyle}` : ''
-            ].filter(Boolean)
+            coachingNotes: buildOlympicCoachingNotes(enrichedProfile, groupContext, research, timeline)
         };
     }
 
@@ -2237,6 +2703,7 @@ Genel kocluk ilkeleri:
                 <li style="margin-bottom:8px; color:#445566; line-height:1.55;">
                     <strong>${set.repeat} x ${set.distance}m ${escapeHtml(set.style)}</strong>
                     <span style="color:#6f8091;"> | ${set.restSeconds}sn dinlenme</span>
+                    <span style="color:#1b7f5c; font-weight:600;"> | ~${set.estimatedMinutes || 1} dk</span>
                     <div style="font-size:0.92em; color:#607080; margin-top:4px;">${escapeHtml(set.note || '')}</div>
                 </li>
             `).join('');
@@ -2247,6 +2714,7 @@ Genel kocluk ilkeleri:
                         <div>
                             <div style="font-weight:700; color:#2c3e50;">${escapeHtml(block.title)}</div>
                             <div style="font-size:0.92em; color:#6f8091; margin-top:4px;">${escapeHtml(block.focus)}</div>
+                            <div style="font-size:0.88em; color:#1b7f5c; margin-top:4px;">Blok suresi: ~${block.estimatedMinutes || 1} dk${Number.isFinite(block.startMinute) ? ` | ${block.startMinute}-${block.endMinute}. dk` : ''}</div>
                         </div>
                     </div>
                     <ul style="margin:0; padding-left:18px;">${setsHtml}</ul>
@@ -2280,7 +2748,10 @@ Genel kocluk ilkeleri:
                             <span>${escapeHtml(plan.profile.focusStyle || 'Karma')}</span>
                         </div>
                     </div>
-                    <div style="padding:10px 14px; border-radius:999px; background:#fff; border:1px solid #dbe7f3; color:#2c3e50; font-weight:700;">${plan.totalDistance}m toplam</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <div style="padding:10px 14px; border-radius:999px; background:#fff; border:1px solid #dbe7f3; color:#2c3e50; font-weight:700;">${plan.totalDistance}m toplam</div>
+                        ${plan.sessionTimeline ? `<div style="padding:10px 14px; border-radius:999px; background:#eaf7ef; border:1px solid #b8edd8; color:#14543f; font-weight:700;">~${plan.sessionTimeline.plannedMinutes} dk</div>` : ''}
+                    </div>
                 </div>
                 ${blocksHtml}
                 <div style="padding:14px; border-radius:12px; background:#fff; border:1px solid #dbe7f3;">
@@ -2351,9 +2822,10 @@ Genel kocluk ilkeleri:
         trainerUiState.profile = {};
         trainerUiState.lastPlan = null;
         appendTrainerMessage('assistant', `
-            <div style="font-weight:700; margin-bottom:8px;">Hazirim.</div>
+            <div style="font-weight:700; margin-bottom:8px;">Olimpiyat seviyesi yuzme kocun hazir.</div>
             <div style="line-height:1.6; color:#5f6c7b;">
-                Bana yas grubu, seviye, hedef ve sureyi yaz. Eksik bilgi varsa seni durdurup tamamlatirim; yeterli veri gelince detayli workoutu cikaririm.
+                Once ders grubunu sec; grubun antrenman ve yaris derecelerini otomatik okurum. Sonra hedef ve sureyi yaz.
+                Internetten guncel antrenman bilgisi tarar, bilgi bankasini kullanir ve sureli (dakika bazli) plan cikaririm.
             </div>
         `, true);
         renderTrainerPlan();
@@ -2371,6 +2843,84 @@ Genel kocluk ilkeleri:
         }
     }
 
+    function getScheduleOptionLabel(schedule, branch) {
+        const customName = String(schedule?.customName || '').trim();
+        const timeLabel = schedule?.time || '';
+        const dayLabel = Array.isArray(schedule?.days) ? schedule.days.join(', ') : (schedule?.day || '');
+        const title = customName ? `${customName} (${timeLabel})` : `${dayLabel} ${timeLabel}`.trim();
+        return `${branch ? branch.name : 'Sube'} - ${title || 'Ders grubu'}`;
+    }
+
+    async function handleTrainerScheduleContextChange() {
+        const select = q('trainerAiSchedule');
+        const scheduleId = select?.value || '';
+        trainerUiState.selectedScheduleId = scheduleId;
+
+        if (!scheduleId) {
+            trainerUiState.groupContext = null;
+            renderTrainerGroupContext(null);
+            return;
+        }
+
+        const status = q('trainerAiChatStatus');
+        if (status) {
+            status.innerHTML = 'Grup sporcu ve derece verileri okunuyor...';
+        }
+
+        try {
+            const groupContext = await buildGroupPerformanceContext(scheduleId);
+            trainerUiState.groupContext = groupContext;
+            trainerUiState.profile = autoFillProfileFromGroupContext(trainerUiState.profile, groupContext);
+            renderTrainerGroupContext(groupContext);
+            renderTrainerInputGuidance(String(q('trainerAiChatInput')?.value || ''));
+            if (status) {
+                status.innerHTML = groupContext
+                    ? `${groupContext.studentCount} sporcu icin antrenman/yaris dereceleri yuklendi.`
+                    : 'Bu grupta sporcu bulunamadi.';
+            }
+        } catch (error) {
+            if (status) {
+                status.innerHTML = `Grup verisi okunamadi: ${escapeHtml(error.message)}`;
+            }
+        }
+    }
+
+    function renderTrainerGroupContext(groupContext) {
+        const container = q('trainerAiGroupContext');
+        if (!container) {
+            return;
+        }
+
+        if (!groupContext) {
+            container.innerHTML = '<div class="trainer-ai-group-empty">Ders grubu secildiginde antrenman ve yaris dereceleri burada gorunur.</div>';
+            return;
+        }
+
+        const trainingHtml = groupContext.trainingRows.length
+            ? groupContext.trainingRows.map(row => `<li>${escapeHtml(row.style)} ${row.distance}m: ${escapeHtml(row.bestTime)}</li>`).join('')
+            : '<li>Antrenman derecesi kaydi yok</li>';
+        const competitionHtml = groupContext.competitionRows.length
+            ? groupContext.competitionRows.map(row => `<li>${escapeHtml(row.style)} ${row.distance}m: ${escapeHtml(row.bestTime)}</li>`).join('')
+            : '<li>Yaris derecesi kaydi yok</li>';
+
+        container.innerHTML = `
+            <div class="trainer-ai-group-card">
+                <strong>${escapeHtml(groupContext.scheduleLabel)}</strong>
+                <div class="trainer-ai-group-meta">${groupContext.studentCount} sporcu | ${escapeHtml(groupContext.ageGroupLabel || 'yas grubu belirleniyor')} | onerilen seviye: ${escapeHtml(LEVEL_LABELS[groupContext.suggestedLevelKey] || '-')}</div>
+                <div class="trainer-ai-group-columns">
+                    <div>
+                        <div class="trainer-ai-group-title">Antrenman dereceleri</div>
+                        <ul>${trainingHtml}</ul>
+                    </div>
+                    <div>
+                        <div class="trainer-ai-group-title">Yaris dereceleri</div>
+                        <ul>${competitionHtml}</ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     function renderTrainerScheduleOptions() {
         const select = q('trainerAiSchedule');
         if (!select) {
@@ -2380,15 +2930,20 @@ Genel kocluk ilkeleri:
         const context = getTrainerContext();
         const schedules = Array.isArray(context.allSchedules) ? context.allSchedules : [];
         const branches = Array.isArray(context.allBranches) ? context.allBranches : [];
+        const previousValue = select.value;
         select.innerHTML = '<option value="">-- Ders grubu seciniz --</option>';
 
         schedules.forEach(schedule => {
             const branch = branches.find(item => item.id === schedule.branchId);
             const option = document.createElement('option');
             option.value = schedule.id;
-            option.textContent = `${branch ? branch.name : 'Brans'} - ${schedule.day || ''} ${schedule.time || ''}`.trim();
+            option.textContent = getScheduleOptionLabel(schedule, branch);
             select.appendChild(option);
         });
+
+        if (previousValue) {
+            select.value = previousValue;
+        }
     }
 
     async function refreshTrainerKnowledgeSummary() {
@@ -2440,22 +2995,29 @@ Genel kocluk ilkeleri:
             return;
         }
 
+        const scheduleSelect = q('trainerAiSchedule');
+        trainerUiState.selectedScheduleId = scheduleSelect?.value || trainerUiState.selectedScheduleId || '';
+
         if (status) {
-            status.innerHTML = 'Ortak bilgi bankasi ve workout sinyalleri taraniyor...';
+            status.innerHTML = 'Grup dereceleri, bilgi bankasi ve internet kaynaklari taraniyor...';
         }
 
         trainerUiState.loading = true;
         try {
-            const plan = await generateWorkoutPlan(trainerUiState.profile);
+            const plan = await generateWorkoutPlan(trainerUiState.profile, {
+                scheduleId: trainerUiState.selectedScheduleId
+            });
             trainerUiState.lastPlan = plan;
+            trainerUiState.profile = plan.profile;
             renderTrainerPlan();
+            renderTrainerGroupContext(plan.groupContext);
             appendTrainerMessage('assistant', `
-                <div style="font-weight:700; margin-bottom:8px;">Plan hazir.</div>
+                <div style="font-weight:700; margin-bottom:8px;">Olimpiyat seviyesi plan hazir.</div>
                 <div style="line-height:1.6; color:#5f6c7b; margin-bottom:6px;">${escapeHtml(plan.evidenceSummary)}</div>
                 <div style="line-height:1.6; color:#5f6c7b;">Asagida detayli plani ve kaydetme panelini aciyorum. Ders grubunu secip kaydedersen bu workout, sen manuel yazmis gibi sisteme eklenir ve ogrencilere dagitilir.</div>
             `, true);
             if (status) {
-                status.innerHTML = `Plan hazirlandi. ${plan.totalDistance}m toplam hacim.`;
+                status.innerHTML = `Plan hazirlandi. ${plan.totalDistance}m | ~${plan.sessionTimeline?.plannedMinutes || plan.profile.sessionDuration || '-'} dk.`;
             }
         } catch (error) {
             console.error('AI workout generation error:', error);
@@ -3088,6 +3650,13 @@ Genel kocluk ilkeleri:
 
         renderTrainerQuickPrompts();
         renderTrainerScheduleOptions();
+        const scheduleSelect = q('trainerAiSchedule');
+        if (scheduleSelect && !scheduleSelect.dataset.bound) {
+            scheduleSelect.dataset.bound = 'true';
+            scheduleSelect.addEventListener('change', () => {
+                handleTrainerScheduleContextChange();
+            });
+        }
         resetTrainerConversation();
         trainerUiState.initialized = true;
     }
@@ -3101,9 +3670,11 @@ Genel kocluk ilkeleri:
         }
         await ensureLearningExamplesBackfilled();
         await ensureCuratedWorkoutLibrarySeeded();
+        await ensureOlympicCoachFeedsSeeded();
+        await syncDueMonitoredFeeds().catch(() => null);
         await refreshTrainerKnowledgeSummary();
         if (status) {
-            status.innerHTML = 'Mesajini gonder. Eksik alan kalirsa burada isteyecegim; yukarida da algilanan bilgileri goreceksin.';
+            status.innerHTML = 'Ders grubunu sec, sonra mesaj gonder. Eksik alan kalirsa burada isteyecegim.';
         }
         renderTrainerInputGuidance(String(q('trainerAiChatInput')?.value || ''));
     }

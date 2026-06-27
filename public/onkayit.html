@@ -2,10 +2,17 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Kulup On Kayit Formu</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/premium-system.css">
+    <link rel="stylesheet" href="css/mobile-compact.css">
     <style>
+        :root {
+            --pre-reg-accent: #0b7ea8;
+            --pre-reg-accent-soft: rgba(11, 126, 168, 0.1);
+        }
+
         body {
             min-height: 100vh;
             margin: 0;
@@ -29,22 +36,64 @@
             padding: 28px;
         }
 
+        .pre-registration-branding {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .pre-registration-logo-wrap {
+            display: none;
+            width: 88px;
+            height: 88px;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid #dbe4ef;
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(15, 41, 66, 0.08);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pre-registration-logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .pre-registration-video-wrap {
+            display: none;
+            width: min(100%, 520px);
+            margin: 0 auto;
+        }
+
+        .pre-registration-video-wrap iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: 0;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(15, 41, 66, 0.12);
+        }
+
         .pre-registration-eyebrow {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
             border-radius: 999px;
-            background: #eef7ff;
-            color: #24619c;
+            background: var(--pre-reg-accent-soft);
+            color: var(--pre-reg-accent);
             font-weight: 700;
             font-size: 0.92em;
-            margin-bottom: 14px;
+            margin-bottom: 0;
         }
 
         .pre-registration-card h1 {
             margin: 0 0 10px;
-            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            font-size: clamp(1.5rem, 3vw, 2.1rem);
             color: #183b63;
         }
 
@@ -110,6 +159,50 @@
             color: #6c7a89;
         }
 
+        .pre-registration-lesson-type {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .pre-registration-lesson-type label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #d9e7f4;
+            background: #f8fbff;
+            cursor: pointer;
+            font-weight: 600;
+            color: #34495e;
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+        }
+
+        .pre-registration-lesson-type label:hover {
+            border-color: var(--pre-reg-accent);
+        }
+
+        .pre-registration-lesson-type input[type="radio"] {
+            accent-color: var(--pre-reg-accent);
+            width: 16px;
+            height: 16px;
+        }
+
+        .pre-registration-lesson-type label.is-active {
+            border-color: var(--pre-reg-accent);
+            background: var(--pre-reg-accent-soft);
+            color: var(--pre-reg-accent);
+            box-shadow: 0 4px 12px rgba(11, 126, 168, 0.12);
+        }
+
+        #publicBranchGroup[hidden] {
+            display: none !important;
+        }
+
         @media (max-width: 720px) {
             .pre-registration-card {
                 padding: 22px 18px;
@@ -128,14 +221,43 @@
 <body>
     <main class="pre-registration-shell">
         <section class="pre-registration-card">
-            <div class="pre-registration-eyebrow">On kayit formu</div>
-            <h1 id="preRegistrationTitle">Kulup on kayit formu</h1>
-            <p id="preRegistrationDescription">Bilgilerinizi gonderin. Kulup ekibi basvurunuzu sekreter ekraninda gorup uygun ders grubunu, odeme planini ve antrenor atamasini sizinle teyit ederek tamamlayacaktir.</p>
+            <div class="pre-registration-branding">
+                <div id="preRegistrationLogoWrap" class="pre-registration-logo-wrap">
+                    <img id="preRegistrationLogo" alt="Kulup logosu">
+                </div>
+                <div class="pre-registration-eyebrow" id="preRegistrationEyebrow">On kayit formu</div>
+                <h1 id="preRegistrationTitle">Kulup on kayit formu</h1>
+                <p id="preRegistrationDescription">Bilgilerinizi gonderin. Kulup ekibi basvurunuzu inceleyip sizinle iletisime gececektir.</p>
+                <div id="preRegistrationVideoWrap" class="pre-registration-video-wrap">
+                    <iframe id="preRegistrationVideo" title="Tanıtım videosu" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
 
             <div id="preRegistrationStatus" class="pre-registration-status info visible">Form hazirlaniyor...</div>
 
             <form id="publicPreRegistrationForm" style="display: none;">
                 <div class="pre-registration-form-grid">
+                    <div class="form-group full">
+                        <label>Ders Türü</label>
+                        <div class="pre-registration-lesson-type" id="publicLessonTypeRow">
+                            <label data-lesson-type="group">
+                                <input type="radio" name="publicLessonType" value="group" checked>
+                                <span>Grup Dersi</span>
+                            </label>
+                            <label data-lesson-type="private">
+                                <input type="radio" name="publicLessonType" value="private">
+                                <span>Özel Ders</span>
+                            </label>
+                        </div>
+                        <p class="pre-registration-inline-note">Grup dersi seçerseniz tercih ettiğiniz şubeyi seçebilirsiniz.</p>
+                    </div>
+                    <div class="form-group full" id="publicBranchGroup">
+                        <label for="publicBranchSelect">Tercih Ettiğiniz Şube</label>
+                        <select id="publicBranchSelect">
+                            <option value="">-- Şube Seçiniz --</option>
+                        </select>
+                        <p class="pre-registration-inline-note" id="publicBranchHint">Şubeler yükleniyor...</p>
+                    </div>
                     <div class="form-group">
                         <label for="publicStudentName">Ogrenci Adi</label>
                         <input type="text" id="publicStudentName" required>
@@ -164,11 +286,10 @@
                         <label for="publicInstallmentCount">Odeme Dusunceniz</label>
                         <select id="publicInstallmentCount" required>
                             <option value="">-- Seciniz --</option>
-                            <option value="cash">Pesin / elden</option>
+                            
                             <option value="1">1 taksit</option>
                             <option value="2">2 taksit</option>
-                            <option value="3">3 taksit</option>
-                            <option value="4">4 taksit</option>
+                          
                         </select>
                     </div>
                     <div class="form-group full">
@@ -228,6 +349,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="js/club-profile-helpers.js"></script>
     <script defer src="js/config.js"></script>
     <script defer src="js/public-pre-registration.js"></script>
 </body>

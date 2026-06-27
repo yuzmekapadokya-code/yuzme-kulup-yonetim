@@ -2,9 +2,11 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Veli Paneli</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/premium-system.css">
+    <link rel="stylesheet" href="../css/mobile-compact.css">
     <link rel="stylesheet" href="../css/parent.css">
     <style>
         .modal {
@@ -144,7 +146,7 @@
         }
     </style>
 </head>
-<body>
+<body data-panel-role="parent">
     <div class="dashboard">
         <!-- Sidebar -->
         <div class="sidebar">
@@ -656,6 +658,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     
     <script defer src="../js/config.js"></script>
+    <script defer src="../js/panel-enhancements.js"></script>
     <script defer src="../js/mobile-responsive.js"></script>
     <script defer src="../js/parent.js"></script>
     <script defer src="../js/profile-common.js"></script>

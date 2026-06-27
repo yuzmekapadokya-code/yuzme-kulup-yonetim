@@ -23,6 +23,13 @@ import {
   submitWorkoutOffer,
   updateWorkout,
 } from '../../services/trainerService';
+import {
+  GOAL_OPTIONS as AI_GOAL_OPTIONS,
+  LEVEL_OPTIONS as AI_LEVEL_OPTIONS,
+  STYLE_OPTIONS as AI_STYLE_OPTIONS,
+  generateAiWorkoutPlan,
+  planToWorkoutBuilderBlocks,
+} from '../../services/aiWorkoutService';
 import { useAuthStore } from '../../store/authStore';
 
 const strokeOptions = ['Serbest', 'Sirt', 'Kurbaga', 'Kelebek', 'Karisik'];
@@ -257,6 +264,16 @@ export default function TrainerWorkoutOpsScreen({ navigation }) {
   const [offerAmount, setOfferAmount] = useState('');
   const [offerMessage, setOfferMessage] = useState('');
   const [approvalPrices, setApprovalPrices] = useState({});
+  const [aiProfile, setAiProfile] = useState({
+    goalKey: 'genel',
+    levelKey: 'intermediate',
+    focusStyle: 'Karma',
+    sessionDuration: '60',
+    age: '',
+    notes: '',
+  });
+  const [aiPlan, setAiPlan] = useState(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   useEffect(() => {
     if (commerceQuery.data?.schedules?.length && !scheduleId) {
@@ -552,6 +569,41 @@ export default function TrainerWorkoutOpsScreen({ navigation }) {
     return schedule ? `${branch?.name || 'Sube'} | ${schedule.time || '-'}` : '-';
   }
 
+  async function handleAiGenerate() {
+    setAiGenerating(true);
+    try {
+      const profilePayload = {
+        goalKey: aiProfile.goalKey,
+        levelKey: aiProfile.levelKey,
+        focusStyle: aiProfile.focusStyle,
+        sessionDuration: Number(aiProfile.sessionDuration) || 60,
+        age: aiProfile.age ? Number(aiProfile.age) : null,
+        notes: aiProfile.notes || '',
+      };
+      const plan = await generateAiWorkoutPlan({
+        profile: profilePayload,
+        scheduleId,
+        students: commerceQuery.data?.students || [],
+        schedules: commerceQuery.data?.schedules || [],
+        branches: commerceQuery.data?.branches || [],
+      });
+      setAiPlan(plan);
+    } catch (error) {
+      Alert.alert('AI Plani', error.message || 'Plan uretilemedi.');
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
+  function applyAiPlanToBuilder() {
+    if (!aiPlan) return;
+    const builderBlocks = planToWorkoutBuilderBlocks(aiPlan);
+    if (!builderBlocks.length) return;
+    setWorkoutName(aiPlan.name || workoutName);
+    setWorkoutBlocks(builderBlocks.map((block) => initialWorkoutBlock(block)));
+    Alert.alert('AI Plani', 'Plan workout duzenleyiciye aktarildi.');
+  }
+
   async function exportWorkoutPdf(workout) {
     try {
       const html = buildWorkoutPdfHtml(workout, { scheduleLabel: scheduleLabel(workout.scheduleId) });
@@ -602,6 +654,112 @@ export default function TrainerWorkoutOpsScreen({ navigation }) {
             <Text style={styles.summaryValue}>{data.creditBalance}</Text>
           </View>
         </View>
+      </View>
+
+      <SectionHeader title="Olimpiyat Seviyesi AI Antrenor" caption="Grup performansini, yas grubunu ve hedefi degerlendirip sureli plan ureteyim" />
+      <View style={styles.card}>
+        <Text style={styles.label}>Hedef</Text>
+        <View style={styles.chipRow}>
+          {AI_GOAL_OPTIONS.map((option) => (
+            <ActionButton
+              key={option.key}
+              label={option.label}
+              variant={aiProfile.goalKey === option.key ? 'primary' : 'secondary'}
+              onPress={() => setAiProfile((current) => ({ ...current, goalKey: option.key }))}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>Seviye</Text>
+        <View style={styles.chipRow}>
+          {AI_LEVEL_OPTIONS.map((option) => (
+            <ActionButton
+              key={option.key}
+              label={option.label}
+              variant={aiProfile.levelKey === option.key ? 'primary' : 'secondary'}
+              onPress={() => setAiProfile((current) => ({ ...current, levelKey: option.key }))}
+            />
+          ))}
+        </View>
+        <Text style={styles.label}>Odak stili</Text>
+        <View style={styles.chipRow}>
+          {AI_STYLE_OPTIONS.map((option) => (
+            <ActionButton
+              key={option}
+              label={option}
+              variant={aiProfile.focusStyle === option ? 'primary' : 'secondary'}
+              onPress={() => setAiProfile((current) => ({ ...current, focusStyle: option }))}
+            />
+          ))}
+        </View>
+        <View style={styles.inlineFieldRow}>
+          <View style={styles.fieldColumn}>
+            <Text style={styles.label}>Seans suresi (dk)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              placeholder="60"
+              value={aiProfile.sessionDuration}
+              onChangeText={(text) => setAiProfile((current) => ({ ...current, sessionDuration: text }))}
+            />
+          </View>
+          <View style={styles.fieldColumn}>
+            <Text style={styles.label}>Yas (opsiyonel)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              placeholder="12"
+              value={aiProfile.age}
+              onChangeText={(text) => setAiProfile((current) => ({ ...current, age: text }))}
+            />
+          </View>
+        </View>
+        <Text style={styles.label}>Ek not / odak</Text>
+        <TextInput
+          style={[styles.input, { minHeight: 64 }]}
+          multiline
+          placeholder="Orn. nefes ritmi, baslangic gucu, donus disiplini..."
+          value={aiProfile.notes}
+          onChangeText={(text) => setAiProfile((current) => ({ ...current, notes: text }))}
+        />
+        <Text style={styles.itemText}>Ders grubu secili olursa plan, gruptaki sporcularin antrenman ve yaris derecelerine gore otomatik ayarlanir.</Text>
+        <ActionButton
+          label={aiGenerating ? 'Plan uretiliyor...' : 'AI Plan Uret'}
+          onPress={handleAiGenerate}
+          disabled={aiGenerating}
+          fullWidth
+        />
+        {aiPlan ? (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>{aiPlan.name}</Text>
+            <Text style={styles.itemText}>Toplam: {aiPlan.totalDistance}m | Hedef sure: {aiPlan.sessionTimeline?.targetMinutes || 60} dk | Planlanan: {aiPlan.sessionTimeline?.plannedMinutes || 0} dk</Text>
+            {aiPlan.groupContext ? (
+              <View>
+                <Text style={styles.itemText}>Grup: {aiPlan.groupContext.scheduleLabel} | {aiPlan.groupContext.studentCount} sporcu | {aiPlan.groupContext.ageGroupLabel || '-'}</Text>
+                {aiPlan.groupContext.trainingSummaryText ? <Text style={styles.itemText}>Antrenman: {aiPlan.groupContext.trainingSummaryText}</Text> : null}
+                {aiPlan.groupContext.competitionSummaryText ? <Text style={styles.itemText}>Yaris: {aiPlan.groupContext.competitionSummaryText}</Text> : null}
+              </View>
+            ) : null}
+            {(aiPlan.workoutBlocks || []).map((block, idx) => (
+              <View key={`${block.title}-${idx}`} style={{ marginTop: 6 }}>
+                <Text style={styles.itemTitle}>{block.title} ({block.estimatedMinutes || 1} dk)</Text>
+                <Text style={styles.itemText}>{block.focus}</Text>
+                {block.sets.map((set, sidx) => (
+                  <Text key={sidx} style={styles.itemText}>
+                    • {set.repeat} x {set.distance}m {set.style} | {set.restSeconds}sn dinlenme | ~{set.estimatedMinutes || 1} dk
+                  </Text>
+                ))}
+              </View>
+            ))}
+            {(aiPlan.coachingNotes || []).length ? (
+              <View style={{ marginTop: 8 }}>
+                {aiPlan.coachingNotes.map((note, nidx) => (
+                  <Text key={nidx} style={styles.itemText}>• {note}</Text>
+                ))}
+              </View>
+            ) : null}
+            <ActionButton label="Bu plani duzenleyiciye al" onPress={applyAiPlanToBuilder} fullWidth />
+          </View>
+        ) : null}
       </View>
 
       <SectionHeader title="Workout olustur" caption="Blok tekrari, set arasi dinlenme ve duzenleme desteklenir" />

@@ -1,0 +1,308 @@
+/**
+ * 5–6" telefonlar (360–414px) — tüm paneller ve formlar
+ * premium-system + panel-enhancements ile birlikte yüklenir.
+ */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body.panel-enhanced,
+body.landing-page,
+body.login-page {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+body.panel-enhanced .dashboard,
+body.panel-enhanced .main-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+body.panel-enhanced .page-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Taşan inline grid / flex */
+body.panel-enhanced .card,
+body.panel-enhanced .modal-content {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+body.panel-enhanced img,
+body.panel-enhanced video,
+body.panel-enhanced iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Tablo sarmalayıcı — kart modu veya yatay kaydırma */
+body.panel-enhanced .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+    body.panel-enhanced table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    body.panel-enhanced .table-responsive:not(.use-mobile-cards) table {
+        min-width: min(100%, 520px) !important;
+        width: max-content !important;
+    }
+
+    body.panel-enhanced .table-responsive.use-mobile-cards table {
+        display: none !important;
+        min-width: 0 !important;
+    }
+
+    /* Inline min-width tabloları */
+    body.panel-enhanced table[style*="min-width"] {
+        min-width: 0 !important;
+    }
+
+    body.panel-enhanced .modal {
+        padding: 8px !important;
+        align-items: flex-end !important;
+    }
+
+    body.panel-enhanced .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: min(92dvh, 720px) !important;
+        margin: 0 !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    body.panel-enhanced .stats-grid,
+    body.panel-enhanced .form-row,
+    body.panel-enhanced .filter-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    body.panel-enhanced .btn-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.panel-enhanced .btn-group .btn {
+        width: 100%;
+    }
+
+    /* Yan yana buton grupları — sadece toolbar tam genişlik */
+    body.panel-enhanced .page-toolbar-actions .btn {
+        width: 100%;
+    }
+
+    body.panel-enhanced .mobile-data-card-actions .btn {
+        width: auto;
+        min-width: calc(50% - 4px);
+    }
+
+    body.panel-enhanced [style*="min-width: 180px"],
+    body.panel-enhanced [style*="min-width:180px"],
+    body.panel-enhanced [style*="min-width: 200px"],
+    body.panel-enhanced [style*="min-width:200px"] {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    body.panel-enhanced .trainer-ai-layout,
+    body.panel-enhanced .trainer-ai-workspace-card .trainer-ai-layout {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    body.panel-enhanced .trainer-ai-chat-panel,
+    body.panel-enhanced .trainer-ai-result-panel {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.panel-enhanced .hour-grid,
+    body.panel-enhanced .trainer-ai-quick-prompts {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    body.panel-enhanced .hour-btn,
+    body.panel-enhanced .trainer-ai-quick-prompts .btn {
+        flex: 1 1 calc(33.333% - 8px);
+        min-width: 72px;
+    }
+}
+
+@media (max-width: 480px) {
+    body.panel-enhanced .header h1,
+    body.panel-enhanced #pageTitle {
+        font-size: 1rem !important;
+        line-height: 1.3;
+    }
+
+    body.panel-enhanced .card {
+        padding: 12px !important;
+    }
+
+    body.panel-enhanced input,
+    body.panel-enhanced select,
+    body.panel-enhanced textarea {
+        font-size: 16px !important;
+    }
+
+    /* style.css 480px tüm btn %100 — kart içi hariç */
+    body.panel-enhanced .card > .btn:not(.btn-group .btn),
+    body.panel-enhanced .form-group > .btn {
+        width: 100%;
+    }
+
+    body.panel-enhanced .mobile-data-card-actions .btn,
+    body.panel-enhanced .chip-row .btn,
+    body.panel-enhanced .trainer-ai-status-row .btn {
+        width: auto !important;
+        min-width: 0;
+    }
+
+    body.panel-enhanced .trainer-ai-status-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.panel-enhanced .trainer-ai-status-row .btn {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 414px) {
+    .mobile-bottom-nav-inner {
+        grid-template-columns: repeat(var(--mobile-nav-cols, 5), minmax(0, 1fr)) !important;
+        gap: 2px !important;
+    }
+
+    .mobile-bottom-nav-item {
+        padding: 4px 2px !important;
+        font-size: 0.58rem !important;
+    }
+
+    .mobile-bottom-nav-item .nav-icon {
+        font-size: 1rem !important;
+    }
+
+    body.panel-enhanced .main-content {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .mobile-data-card-actions .btn {
+        min-width: 100% !important;
+        flex: 1 1 100%;
+    }
+
+    body.panel-enhanced .stat-card .value {
+        font-size: 1.25em !important;
+    }
+}
+
+/* ---------------------------------------------------------------
+ * Sticky header: ust seritteki "Dashboard", rol etiketi, profil
+ * ayarlari butonu ve avatar sayfanin scroll'unda her zaman tepeye
+ * yapisik kalir. style.css'in eski mobil kurallari (position:
+ * relative; top: 8px) sticky davranisi bozuyordu; burada tum
+ * panellerde guclu sekilde override ediyoruz.
+ * --------------------------------------------------------------- */
+body.panel-enhanced .main-content > .header,
+body.panel-enhanced .header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 60 !important;
+    margin-bottom: 16px !important;
+    background: #ffffff !important;
+}
+
+/* main-content scroll context'inde sticky header viewport'in 0'ina
+ * yapisirken padding-top onunde bos alan birakmasin. */
+body.panel-enhanced .main-content {
+    scroll-padding-top: 84px;
+    padding-top: 0 !important;
+}
+
+/* Sticky header'in arkasinda kaybolmadan once sayfa ust margin ile
+ * baslasin (.header'in kendi margin-bottom'i bos alani saglar). */
+body.panel-enhanced .main-content > .header:first-child {
+    margin-top: 0 !important;
+}
+
+@media (max-width: 768px) {
+    /* Mobilde header genis padding aliyordu; sticky kalsin ve scroll
+     * altinda kalan icerigin uzerini ortmesi icin daha siki tutalim. */
+    body.panel-enhanced .main-content > .header,
+    body.panel-enhanced .header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 60 !important;
+        padding: 12px 14px 12px 58px !important;
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+        align-items: center !important;
+    }
+
+    /* style.css mobilde main-content'e 74px padding-top koyuyordu.
+     * Sticky header zaten kendi yerini tuttugu icin bu fazla padding
+     * sayfa basinda buyuk bir bosluk biraktiriyordu; tutarli azaltiyoruz. */
+    body.panel-enhanced .main-content {
+        padding-top: 12px !important;
+        scroll-padding-top: 72px;
+    }
+
+    /* Sidebar toggle butonu sticky header'in sol icindeyken sabit kalsin. */
+    .sidebar-toggle {
+        position: fixed !important;
+        top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+        left: 12px !important;
+        z-index: 70 !important;
+    }
+}
+
+@media (max-width: 414px) {
+    body.panel-enhanced .main-content > .header,
+    body.panel-enhanced .header {
+        padding: 10px 12px 10px 56px !important;
+    }
+    body.panel-enhanced .main-content {
+        padding-top: 10px !important;
+        scroll-padding-top: 68px;
+    }
+}
+
+/* Ön kayıt / landing */
+body:not(.panel-enhanced) .login-container,
+body:not(.panel-enhanced) .pre-registration-shell {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+}
+
+@media (max-width: 480px) {
+    body.landing-page .hero h1,
+    body.landing-page h1 {
+        font-size: 1.75rem !important;
+    }
+
+    body.login-page .login-box {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}

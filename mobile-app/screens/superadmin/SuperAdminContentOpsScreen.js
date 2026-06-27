@@ -1,3 +1,5 @@
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -11,6 +13,7 @@ import SectionHeader from '../../components/SectionHeader';
 import { theme } from '../../config/theme';
 import {
   activateHomepageAdvertisement,
+  bulkImportStandards,
   clearHomepageAdvertisement,
   deleteAdvertisement,
   deleteProduct,
@@ -19,9 +22,11 @@ import {
   listProductsOverview,
   listRaceImportOverview,
   listStandardsOverview,
+  parseBulkStandardsText,
   saveAdvertisement,
   saveProduct,
   saveStandard,
+  submitStandardsPdfUploadRequest,
 } from '../../services/superAdminService';
 import { useAuthStore } from '../../store/authStore';
 
@@ -53,6 +58,8 @@ export default function SuperAdminContentOpsScreen() {
   const [adForm, setAdForm] = useState(defaultAdvertisement());
   const [standardForm, setStandardForm] = useState(defaultStandard());
   const [standardFilter, setStandardFilter] = useState({ name: '', gender: '', style: '', distance: '', birthYear: '' });
+  const [bulkText, setBulkText] = useState('');
+  const [bulkPreview, setBulkPreview] = useState({ preview: [], errors: [] });
 
   function invalidateContent() {
     queryClient.invalidateQueries({ queryKey: ['sa-products'] });
@@ -95,6 +102,49 @@ export default function SuperAdminContentOpsScreen() {
   const deleteProductMutation = useMutation({ mutationFn: deleteProduct, onSuccess: invalidateContent });
   const deleteAdMutation = useMutation({ mutationFn: deleteAdvertisement, onSuccess: invalidateContent });
   const deleteStandardMutation = useMutation({ mutationFn: deleteStandard, onSuccess: invalidateContent });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: () => bulkImportStandards({ items: bulkPreview.preview, currentSuperAdminId: profile.uid }),
+    onSuccess: (result) => {
+      Alert.alert('Toplu Baraj', `${result.imported} kayit eklendi.`);
+      setBulkText('');
+      setBulkPreview({ preview: [], errors: [] });
+      invalidateContent();
+    },
+    onError: (error) => Alert.alert('Toplu Baraj', error.message || 'Toplu baraj kaydedilemedi.'),
+  });
+
+  const pdfUploadMutation = useMutation({
+    mutationFn: async () => {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        multiple: false,
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) {
+        throw new Error('PDF dosyasi secilmedi.');
+      }
+      const asset = result.assets[0];
+      if (!asset.uri) {
+        throw new Error('PDF dosyasi okunamadi.');
+      }
+      if (Number(asset.size || 0) > 900 * 1024) {
+        throw new Error('PDF boyutu 900 KB sinirini asiyor. Daha kucuk bir dosya secin.');
+      }
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const dataUrl = `data:application/pdf;base64,${base64}`;
+      return submitStandardsPdfUploadRequest({
+        fileName: asset.name,
+        fileSize: asset.size,
+        dataUrl,
+        currentSuperAdminId: profile.uid,
+      });
+    },
+    onSuccess: () => {
+      Alert.alert('PDF Yuklendi', 'Baraj PDF dosyaniz yukleme kuyruguna alindi. Web panelinde "Baraj PDF import" ekranindan analiz baslatabilirsiniz.');
+    },
+    onError: (error) => Alert.alert('PDF Yukleme', error.message || 'PDF yuklenemedi.'),
+  });
 
   const filteredStandards = useMemo(() => {
     const all = standardsQuery.data || [];
@@ -289,6 +339,59 @@ export default function SuperAdminContentOpsScreen() {
               </View>
             ))
           )}
+        </View>
+
+        <SectionHeader title="Toplu Baraj Aktarimi" caption="Satir satir veya CSV format ile barajlari topluca ekle" />
+        <View style={styles.card}>
+          <Text style={styles.cardText}>Bicim: Cinsiyet, Dogum Yili, Stil, Mesafe, Sure, Baraj Adi (opsiyonel)</Text>
+          <Text style={styles.cardText}>Ornek: Erkek, 2010, Serbest, 50, 00:32.50, 2026 Yaz Kampi Baraji</Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            multiline
+            placeholder={`Erkek, 2010, Serbest, 50, 00:32.50, 2026 Yaz Kampi\nKiz, 2011, Sirtustu, 100, 01:18.30`}
+            value={bulkText}
+            onChangeText={setBulkText}
+          />
+          <View style={styles.buttonRow}>
+            <ActionButton
+              label="On izle"
+              variant="secondary"
+              onPress={() => setBulkPreview(parseBulkStandardsText(bulkText))}
+            />
+            <ActionButton
+              label={bulkImportMutation.isPending ? 'Kaydediliyor...' : `Kaydet (${bulkPreview.preview.length})`}
+              onPress={() => bulkImportMutation.mutate()}
+              disabled={!bulkPreview.preview.length || bulkImportMutation.isPending}
+            />
+            <ActionButton label="Temizle" variant="secondary" onPress={() => { setBulkText(''); setBulkPreview({ preview: [], errors: [] }); }} />
+          </View>
+          {bulkPreview.errors.length ? (
+            <View>
+              <Text style={styles.cardText}>Hata satirlari:</Text>
+              {bulkPreview.errors.slice(0, 12).map((err, idx) => (
+                <Text key={idx} style={[styles.cardText, { color: theme.colors.danger }]}>Satir {err.line}: {err.reason}</Text>
+              ))}
+            </View>
+          ) : null}
+          {bulkPreview.preview.length ? (
+            <View>
+              <Text style={styles.cardText}>On izleme ({bulkPreview.preview.length} kayit, ilk 6):</Text>
+              {bulkPreview.preview.slice(0, 6).map((item, idx) => (
+                <Text key={idx} style={styles.cardText}>{item.gender} | {item.birthYear} | {item.style} | {item.distance}m | {item.time} | {item.name}</Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <SectionHeader title="PDF Baraj Yukleme" caption="Mobilden PDF yukleyin; web tarafindaki gelismis analizci bunu otomatik tarayacak" />
+        <View style={styles.card}>
+          <Text style={styles.cardText}>PDF dosyaniz mobil cihazinizdan secilip Firestore uzerinden web tarafindaki PDF.js analizine teslim edilir.</Text>
+          <ActionButton
+            label={pdfUploadMutation.isPending ? 'Yukleniyor...' : 'PDF Sec ve Yukle'}
+            onPress={() => pdfUploadMutation.mutate()}
+            disabled={pdfUploadMutation.isPending}
+            fullWidth
+          />
         </View>
 
         <SectionHeader title="Yaris sonucu import izleme" caption="PDF analizinden sonra olusan import ve performans kayitlari" />

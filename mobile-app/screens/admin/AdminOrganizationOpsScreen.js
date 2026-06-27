@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import ActionButton from '../../components/ActionButton';
 import EmptyState from '../../components/EmptyState';
@@ -45,7 +46,7 @@ export default function AdminOrganizationOpsScreen() {
   useEffect(() => {
     if (overviewQuery.data?.clubProfile) {
       setClubValues({
-        clubName: overviewQuery.data.clubProfile.clubName || '',
+        clubName: overviewQuery.data.clubProfile.clubName || overviewQuery.data.clubProfile.name || '',
         logoUrl: overviewQuery.data.clubProfile.logoUrl || '',
       });
     }
@@ -92,6 +93,23 @@ export default function AdminOrganizationOpsScreen() {
   });
   const deleteTrainerMutation = useMutation({ mutationFn: deleteTrainer, onSuccess: invalidate, onError: (error) => Alert.alert('Antrenor silme', error.message || 'Antrenor silinemedi.') });
 
+  async function pickClubLogo() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Logo', 'Galeri izni gerekli.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+    setClubValues((current) => ({ ...current, logoUrl: dataUrl }));
+  }
+
   if (overviewQuery.isLoading) {
     return <LoadingBlock label="Organizasyon modulu yukleniyor..." />;
   }
@@ -101,10 +119,12 @@ export default function AdminOrganizationOpsScreen() {
   return (
     <ScreenLayout title="Organizasyon" subtitle="Kulup profili, ekip kurulumu ve temel yapilanma.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.stack}>
-        <SectionHeader title="Kulup profili" caption="Kulup adi ve logo URL bilgisi" />
+        <SectionHeader title="Kulup profili" caption="Kulup adi ve logo" />
         <View style={styles.card}>
           <TextInput style={styles.input} placeholder="Kulup adi" value={clubValues.clubName} onChangeText={(text) => setClubValues((current) => ({ ...current, clubName: text }))} />
-          <TextInput style={styles.input} placeholder="Logo URL" value={clubValues.logoUrl} onChangeText={(text) => setClubValues((current) => ({ ...current, logoUrl: text }))} />
+          {clubValues.logoUrl ? <Image source={{ uri: clubValues.logoUrl }} style={styles.logoPreview} resizeMode="contain" /> : null}
+          <ActionButton label="Logodan Sec" variant="secondary" onPress={pickClubLogo} fullWidth />
+          <TextInput style={styles.input} placeholder="Logo URL (istege bagli)" value={clubValues.logoUrl} onChangeText={(text) => setClubValues((current) => ({ ...current, logoUrl: text }))} />
           <ActionButton label={clubMutation.isPending ? 'Kaydediliyor...' : 'Kulup Profilini Kaydet'} onPress={() => clubMutation.mutate()} fullWidth />
         </View>
 
@@ -223,6 +243,12 @@ const styles = StyleSheet.create({
   },
   itemText: {
     color: theme.colors.textMuted,
+  },
+  logoPreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: theme.radius.md,
+    backgroundColor: '#f4f7fb',
   },
   input: {
     minHeight: 48,

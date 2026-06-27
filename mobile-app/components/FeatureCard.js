@@ -4,18 +4,28 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../config/theme';
 
 export default function FeatureCard({ feature, onPress }) {
-  const accentColor = feature.accentColor || theme.colors.primaryDeep;
-  const iconTint = feature.iconTint || '#dff1fc';
+  const accentColor = feature.accentColor || theme.colors.primary;
+  const iconTint = feature.iconTint || theme.colors.primaryLight;
   const cardTint = feature.cardTint || theme.colors.surface;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: cardTint, borderLeftColor: accentColor }, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: cardTint, borderLeftColor: accentColor },
+        theme.shadow.sm,
+        pressed && styles.pressed,
+      ]}
+    >
       <View style={[styles.iconWrap, { backgroundColor: iconTint }]}>
-        <Ionicons name={feature.icon} size={20} color={accentColor} />
+        <Ionicons name={feature.icon} size={22} color={accentColor} />
       </View>
       <View style={styles.body}>
-        <Text style={styles.title}>{feature.title}</Text>
-        <Text style={styles.caption}>{feature.caption || 'Kayitlari incele ve guncelle'}</Text>
+        <Text style={styles.title} numberOfLines={1}>{feature.title}</Text>
+        <Text style={styles.caption} numberOfLines={2}>
+          {feature.caption || 'Kayitlari incele ve guncelle'}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
     </Pressable>
@@ -25,23 +35,23 @@ export default function FeatureCard({ feature, onPress }) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderLeftWidth: 5,
+    borderLeftWidth: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    ...theme.shadow.card,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
   },
   iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#dff1fc',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -51,11 +61,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.bold,
   },
   caption: {
     color: theme.colors.textMuted,
-    fontSize: 13,
+    fontSize: theme.fontSize.sm,
+    lineHeight: 18,
   },
 });

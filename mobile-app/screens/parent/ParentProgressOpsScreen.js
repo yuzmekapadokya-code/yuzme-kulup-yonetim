@@ -108,26 +108,37 @@ export default function ParentProgressOpsScreen() {
         {!data.performances.length ? (
           <EmptyState title="Performans yok" description="Henuz performans kaydi bulunmuyor." />
         ) : (
-          data.performances.map((performance) => (
-            <View key={performance.key} style={styles.card}>
-              <Text style={styles.cardTitle}>{performance.distance}m {performance.styleLabel}</Text>
-              <Text style={styles.bestValue}>{performance.bestTime}</Text>
-              <Text style={styles.cardText}>Son derece: {performance.latestTime} | {formatDate(performance.latestDate)}</Text>
-              {performance.status ? (
-                <Text style={[styles.cardText, performance.status.passed ? styles.success : styles.warning]}>
-                  {performance.status.title} | {performance.status.passed ? `${performance.status.deltaLabel} farkla gecti` : `${performance.status.deltaLabel} geride`}
-                </Text>
-              ) : (
-                <Text style={styles.cardText}>Baraj eslesmesi yok.</Text>
-              )}
-              {performance.history.map((item) => (
-                <View key={item.id} style={styles.subRow}>
-                  <Text style={styles.cardText}>{item.time}</Text>
-                  <Text style={styles.cardText}>{formatDate(item.date || item.createdAt)}</Text>
+          data.performances.map((performance) => {
+            const isCompetition = performance.type === 'competition';
+            return (
+              <View
+                key={performance.key}
+                style={[styles.card, isCompetition ? styles.cardCompetition : styles.cardTraining]}
+              >
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardTitle}>{performance.distance}m {performance.styleLabel}</Text>
+                  <Text style={[styles.typeBadge, isCompetition ? styles.typeBadgeCompetition : styles.typeBadgeTraining]}>
+                    {isCompetition ? 'YARIS' : 'ANTRENMAN'}
+                  </Text>
                 </View>
-              ))}
-            </View>
-          ))
+                <Text style={styles.bestValue}>{performance.bestTime}</Text>
+                <Text style={styles.cardText}>Son derece: {performance.latestTime} | {formatDate(performance.latestDate)}</Text>
+                {performance.status ? (
+                  <Text style={[styles.cardText, performance.status.passed ? styles.success : styles.warning]}>
+                    {performance.status.title} | {performance.status.passed ? `${performance.status.deltaLabel} farkla gecti` : `${performance.status.deltaLabel} geride`}
+                  </Text>
+                ) : (
+                  <Text style={styles.cardText}>Baraj eslesmesi yok.</Text>
+                )}
+                {performance.history.map((item) => (
+                  <View key={item.id} style={styles.subRow}>
+                    <Text style={styles.cardText}>{item.time}</Text>
+                    <Text style={styles.cardText}>{formatDate(item.date || item.createdAt)}</Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })
         )}
       </View>
 
@@ -302,6 +313,35 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     gap: 8,
+  },
+  cardTraining: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#3498db',
+  },
+  cardCompetition: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#e74c3c',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  typeBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
+    color: '#fff',
+  },
+  typeBadgeTraining: {
+    backgroundColor: '#3498db',
+  },
+  typeBadgeCompetition: {
+    backgroundColor: '#e74c3c',
   },
   cardTitle: {
     color: theme.colors.text,
