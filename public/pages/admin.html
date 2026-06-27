@@ -18,6 +18,7 @@
                 <li><a class="nav-link active" data-page="dashboard">Dashboard</a></li>
                 <li><a class="nav-link" data-page="club" id="clubNavLink">Kulüp Profili</a></li>
                 <li><a class="nav-link" data-page="secretaries">Sekreterler</a></li>
+                <li><a class="nav-link" data-page="education_models">🎓 Eğitim Modelleri</a></li>
                 <li><a class="nav-link" data-page="branches">Şubeler</a></li>
                 <li><a class="nav-link" data-page="trainers">Antrenörler</a></li>
                 <li><a class="nav-link" data-page="schedules">Ders Saatleri</a></li>
@@ -122,6 +123,47 @@
                                 </tr>
                             </thead>
                             <tbody id="secretariesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Education Models Page -->
+            <div id="education_models-page" class="page-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h2 style="margin:0;">🎓 Eğitim Modelleri</h2>
+                            <p style="margin: 6px 0 0; color:#5d7285;">Şubelerinizde sunabileceğiniz ders türlerini yönetin. Eklediğiniz her model, şube ayarlarında ve ders saati eklerken seçilebilir olur.</p>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fbff; border:1px solid #dbe7f5; padding:14px 16px; border-radius:10px; margin-top:14px;">
+                        <h3 style="margin:0 0 8px;">Yeni Eğitim Modeli Ekle</h3>
+                        <form id="educationModelForm" style="display:grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items:end;">
+                            <div class="form-group" style="margin:0;">
+                                <label for="educationModelName">Model Adı</label>
+                                <input type="text" id="educationModelName" placeholder="Örn: DP Grup Dersi, Yarış Hazırlık" required>
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label for="educationModelDefaultQuota">Antrenör Başına Varsayılan Kontenjan</label>
+                                <input type="number" id="educationModelDefaultQuota" min="1" max="50" value="8" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">+ Ekle</button>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top: 16px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Model Adı</th>
+                                    <th>Varsayılan Kontenjan / Antrenör</th>
+                                    <th>Tip</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="educationModelsTable"></tbody>
                         </table>
                     </div>
                 </div>
@@ -615,30 +657,11 @@
 
                 <div class="form-group">
                     <label>Bu Şubede Yapılan Ders Türleri:</label>
-                    <div class="branch-lesson-types" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
-                        <label class="branch-lesson-type-option" data-lesson-type="group" style="flex:1 1 180px; display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #d8e3ee; border-radius:10px; background:#f8fbff; cursor:pointer;">
-                            <input type="checkbox" id="branchLessonTypeGroup" value="group" checked>
-                            <span><strong>Grup Dersi</strong></span>
-                        </label>
-                        <label class="branch-lesson-type-option" data-lesson-type="private" style="flex:1 1 180px; display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #d8e3ee; border-radius:10px; background:#f8fbff; cursor:pointer;">
-                            <input type="checkbox" id="branchLessonTypePrivate" value="private">
-                            <span><strong>Özel Ders</strong></span>
-                        </label>
-                    </div>
-                    <p class="form-hint" style="margin-top:6px;">Bu şubede yapılacak ders türlerini işaretleyin. Bu seçim, sekreter ön kayıt akışında ve ders saati eklenirken kullanılacak.</p>
+                    <div id="branchLessonTypesContainer" class="branch-lesson-types" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;"></div>
+                    <p class="form-hint" style="margin-top:6px;">Bu şubede yapılacak ders türlerini işaretleyin. Listeye yeni model eklemek için "Eğitim Modelleri" sayfasını kullanın.</p>
                 </div>
 
-                <div class="form-group" id="branchGroupQuotaGroup">
-                    <label>Grup Dersi — Antrenör Başına Kontenjan:</label>
-                    <input type="number" id="branchGroupQuota" min="1" max="50" value="8" required>
-                    <p class="form-hint" style="margin-top:6px;">Grup dersinde bir antrenörün eş zamanlı eğitebileceği maksimum öğrenci sayısı. Ders saati eklenirken kapasite otomatik (antrenör sayısı × bu sayı) hesaplanacak.</p>
-                </div>
-
-                <div class="form-group" id="branchPrivateQuotaGroup" style="display:none;">
-                    <label>Özel Ders — Antrenör Başına Kontenjan:</label>
-                    <input type="number" id="branchPrivateQuota" min="1" max="20" value="1">
-                    <p class="form-hint" style="margin-top:6px;">Özel derste bir antrenörün eş zamanlı eğitebileceği maksimum öğrenci sayısı. Genellikle 1 olur.</p>
-                </div>
+                <div id="branchQuotasContainer"></div>
 
                 <div class="btn-group">
                     <button type="submit" class="btn btn-success">Kaydet</button>

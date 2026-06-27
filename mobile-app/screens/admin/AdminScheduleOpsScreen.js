@@ -213,6 +213,7 @@ export default function AdminScheduleOpsScreen() {
           ...overrideValues,
           trainers: scheduleQuery.data.trainers,
           branches: scheduleQuery.data.branches,
+          educationModels: scheduleQuery.data.educationModels || [],
         },
         currentAdminId: profile.uid,
       });
@@ -321,11 +322,16 @@ export default function AdminScheduleOpsScreen() {
                 label={branch.name}
                 variant={scheduleForm.branchId === branch.id ? 'primary' : 'secondary'}
                 onPress={() => {
-                  const types = getBranchLessonTypes(branch);
+                  const models = data.educationModels || [];
+                  const types = getBranchLessonTypes(branch, models);
                   setScheduleForm((current) => {
-                    const nextLessonType = types[current.lessonType] ? current.lessonType : (types.group ? 'group' : (types.private ? 'private' : current.lessonType));
+                    let nextLessonType = current.lessonType;
+                    if (!types[nextLessonType]) {
+                      const firstAllowed = models.find((m) => types[m.id]);
+                      nextLessonType = firstAllowed?.id || nextLessonType;
+                    }
                     const trainerCount = current.trainerIds.length || 1;
-                    const perTrainer = getBranchPerTrainerQuota(branch, nextLessonType);
+                    const perTrainer = getBranchPerTrainerQuota(branch, nextLessonType, models);
                     return {
                       ...current,
                       branchId: branch.id,
@@ -341,7 +347,9 @@ export default function AdminScheduleOpsScreen() {
           {(() => {
             const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
             const branchName = selectedBranch?.name || '';
-            const lessonLabel = scheduleForm.lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi';
+            const models = data.educationModels || [];
+            const currentModel = models.find((m) => m.id === scheduleForm.lessonType);
+            const lessonLabel = currentModel?.name || (scheduleForm.lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi');
             const autoName = branchName && scheduleForm.time
               ? `${branchName} • ${lessonLabel} • ${scheduleForm.time}`
               : branchName ? `${branchName} • ${lessonLabel}` : 'Sube ve saat seciniz';
@@ -358,32 +366,24 @@ export default function AdminScheduleOpsScreen() {
 
           {(() => {
             const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
-            const types = getBranchLessonTypes(selectedBranch);
+            const models = data.educationModels || [];
+            const types = getBranchLessonTypes(selectedBranch, models);
+            const allowedModels = models.filter((m) => types[m.id]);
             return (
-              <View style={styles.buttonRow}>
-                {types.group ? (
+              <View style={styles.chipRow}>
+                {allowedModels.map((model) => (
                   <ActionButton
-                    label="Grup"
-                    variant={scheduleForm.lessonType === 'group' ? 'primary' : 'secondary'}
+                    key={model.id}
+                    label={model.name}
+                    variant={scheduleForm.lessonType === model.id ? 'primary' : 'secondary'}
                     onPress={() => setScheduleForm((current) => {
                       const trainerCount = current.trainerIds.length || 1;
-                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, 'group');
-                      return { ...current, lessonType: 'group', capacity: String(Math.max(1, perTrainer * trainerCount)) };
+                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, model.id, models);
+                      return { ...current, lessonType: model.id, capacity: String(Math.max(1, perTrainer * trainerCount)) };
                     })}
                   />
-                ) : null}
-                {types.private ? (
-                  <ActionButton
-                    label="Ozel"
-                    variant={scheduleForm.lessonType === 'private' ? 'primary' : 'secondary'}
-                    onPress={() => setScheduleForm((current) => {
-                      const trainerCount = current.trainerIds.length || 1;
-                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, 'private');
-                      return { ...current, lessonType: 'private', capacity: String(Math.max(1, perTrainer * trainerCount)) };
-                    })}
-                  />
-                ) : null}
-                {!types.group && !types.private ? (
+                ))}
+                {!allowedModels.length ? (
                   <Text style={styles.itemText}>Bu subede ders turu tanimli degil. Lutfen subeyi duzenleyin.</Text>
                 ) : null}
               </View>
@@ -424,7 +424,8 @@ export default function AdminScheduleOpsScreen() {
                         ? current.trainerIds.filter((item) => item !== trainerKey)
                         : [...current.trainerIds, trainerKey];
                       const selectedBranch = data.branches.find((item) => item.id === current.branchId);
-                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, current.lessonType);
+                      const models = data.educationModels || [];
+                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, current.lessonType, models);
                       const newCapacity = Math.max(1, perTrainer * (nextTrainerIds.length || 1));
                       return {
                         ...current,
@@ -484,7 +485,8 @@ export default function AdminScheduleOpsScreen() {
             })}
           {(() => {
             const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
-            const perTrainer = getBranchPerTrainerQuota(selectedBranch, scheduleForm.lessonType);
+            const models = data.educationModels || [];
+            const perTrainer = getBranchPerTrainerQuota(selectedBranch, scheduleForm.lessonType, models);
             const trainerCount = scheduleForm.trainerIds.length || 1;
             const auto = Math.max(1, perTrainer * trainerCount);
             return (

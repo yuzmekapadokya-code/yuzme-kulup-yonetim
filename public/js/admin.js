@@ -15,6 +15,7 @@ let adminRealtimeReloadTimer = null;
 let adminMarketCart = [];
 let allAdminMarketProducts = [];
 let adminMarketBankSettings = null;
+let currentClubProfileData = {};
 
 const EXPENSE_CATEGORIES = [
     { id: 'pool_rent', label: 'Havuz kirası' },
@@ -125,6 +126,8 @@ async function refreshActiveAdminPageData() {
         loadClubProfile();
     } else if (pageName === 'secretaries') {
         loadSecretaries();
+    } else if (pageName === 'education_models') {
+        loadEducationModels();
     } else if (pageName === 'branches') {
         loadBranches();
     } else if (pageName === 'trainers') {
@@ -288,11 +291,18 @@ function getScheduleLessonCount(schedule) {
 }
 
 function getScheduleLessonType(schedule) {
-    return schedule?.lessonType === 'private' ? 'private' : 'group';
+    const raw = String(schedule?.lessonType || '').trim();
+    return raw || 'group';
 }
 
 function getScheduleLessonTypeLabel(schedule) {
-    return getScheduleLessonType(schedule) === 'private' ? 'Özel Ders' : 'Grup Dersi';
+    const key = getScheduleLessonType(schedule);
+    if (typeof getEducationModelLabelById === 'function') {
+        return getEducationModelLabelById(key);
+    }
+    if (key === 'private') return 'Özel Ders';
+    if (key === 'group') return 'Grup Dersi';
+    return key;
 }
 
 function getSchedulePostponements(schedule) {
@@ -1761,6 +1771,8 @@ async function loadAllData() {
         allExpenses = expensesSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
         allTrainerReviews = trainerReviewsSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
+        currentClubProfileData = clubDoc && clubDoc.exists ? (clubDoc.data() || {}) : {};
+
         const clubLink = document.getElementById('clubNavLink');
         if (clubLink) {
             clubLink.style.display = 'block';
@@ -1807,6 +1819,7 @@ function switchPage(pageName) {
         'dashboard': 'Dashboard',
         'club': 'Kulüp Profili',
         'secretaries': 'Sekreterler',
+        'education_models': 'Eğitim Modelleri',
         'branches': 'Şubeler',
         'trainers': 'Antrenörler',
         'schedules': 'Ders Saatleri',
@@ -1828,6 +1841,8 @@ function switchPage(pageName) {
         loadClubProfile();
     } else if (pageName === 'secretaries') {
         loadSecretaries();
+    } else if (pageName === 'education_models') {
+        loadEducationModels();
     } else if (pageName === 'branches') {
         loadBranches();
     } else if (pageName === 'trainers') {
@@ -1880,85 +1895,306 @@ function showDashboard() {
     renderInstallmentAlerts();
 }
 
+// ======================== EDUCATION MODELS ========================
+
+async function persistCustomEducationModels(customModels) {
+    if (!currentAdmin?.id) {
+        throw new Error('Yönetici oturumu bulunamadı.');
+    }
+    const payload = {
+        educationModels: customModels.map(item => ({
+            id: item.id,
+            name: item.name,
+            defaultPerTrainerCapacity: item.defaultPerTrainerCapacity,
+            builtIn: false,
+            removable: true,
+            updatedAt: new Date().toISOString()
+        })),
+        adminId: currentAdmin.id,
+        updatedAt: new Date().toISOString()
+    };
+    await db.collection('clubProfiles').doc(currentAdmin.id).set(payload, { merge: true });
+    currentClubProfileData = { ...(currentClubProfileData || {}), educationModels: payload.educationModels };
+}
+
+function getCustomEducationModels() {
+    return getActiveEducationModels().filter(item => !item.builtIn);
+}
+
+function renderEducationModelsTable() {
+    const tbody = document.getElementById('educationModelsTable');
+    if (!tbody) return;
+
+    const models = getActiveEducationModels();
+    tbody.innerHTML = models.map(model => {
+        const typeBadge = model.builtIn
+            ? '<span class="badge" style="background:#e7eef5; color:#34495e;">Sistem</span>'
+            : '<span class="badge" style="background:#dbeefc; color:#0b7ea8;">Özel</span>';
+        const actions = model.builtIn
+            ? '<span style="color:#95a5a6;">Sistem modeli silinemez</span>'
+            : `<button class="btn btn-danger btn-sm" onclick="deleteEducationModel('${escapeHtml(model.id)}')">Sil</button>`;
+        return `
+            <tr>
+                <td><strong>${escapeHtml(model.name)}</strong></td>
+                <td>${Number(model.defaultPerTrainerCapacity) || 0} öğr./antrenör</td>
+                <td>${typeBadge}</td>
+                <td>${actions}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function loadEducationModels() {
+    renderEducationModelsTable();
+    const form = document.getElementById('educationModelForm');
+    if (form && !form.dataset.bound) {
+        form.dataset.bound = 'true';
+        form.addEventListener('submit', saveEducationModel);
+    }
+}
+
+async function saveEducationModel(event) {
+    event.preventDefault();
+    const nameInput = document.getElementById('educationModelName');
+    const quotaInput = document.getElementById('educationModelDefaultQuota');
+    if (!nameInput || !quotaInput) return;
+
+    const name = String(nameInput.value || '').trim();
+    if (!name) {
+        alert('Lütfen model adı girin.');
+        return;
+    }
+    if (name.length > 60) {
+        alert('Model adı en fazla 60 karakter olabilir.');
+        return;
+    }
+
+    const helpers = window.ClubProfileHelpers;
+    const slug = helpers && typeof helpers.slugifyEducationModelName === 'function'
+        ? helpers.slugifyEducationModelName(name)
+        : name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+    if (!slug) {
+        alert('Model adından geçerli bir kısa kod üretilemedi. Lütfen daha açıklayıcı bir ad girin.');
+        return;
+    }
+
+    const existing = getActiveEducationModels();
+    const existingByName = existing.find(item => item.name.toLowerCase('tr') === name.toLowerCase('tr')
+        || item.id.replace(/^em_/, '').startsWith(slug));
+    if (existingByName) {
+        alert('Bu isimde / benzer kodda bir model zaten var. Lütfen farklı bir ad seçin.');
+        return;
+    }
+
+    const quotaRaw = Number(quotaInput.value);
+    const defaultPerTrainerCapacity = Number.isFinite(quotaRaw) && quotaRaw > 0
+        ? Math.max(1, Math.min(50, Math.floor(quotaRaw)))
+        : 8;
+
+    const id = `em_${slug}_${Math.random().toString(36).slice(2, 6)}`;
+    const newModel = { id, name, defaultPerTrainerCapacity, builtIn: false, removable: true };
+
+    const currentCustom = getCustomEducationModels();
+    const nextCustom = [...currentCustom, newModel];
+
+    try {
+        await persistCustomEducationModels(nextCustom);
+        nameInput.value = '';
+        quotaInput.value = 8;
+        renderEducationModelsTable();
+        alert('Yeni eğitim modeli eklendi.');
+    } catch (error) {
+        console.error('Eğitim modeli kaydedilemedi:', error);
+        alert('Eğitim modeli kaydedilemedi: ' + (error.message || 'Bilinmeyen hata'));
+    }
+}
+
+async function deleteEducationModel(modelId) {
+    const target = String(modelId || '').trim();
+    if (!target) return;
+
+    const model = getActiveEducationModels().find(item => item.id === target);
+    if (!model) return;
+    if (model.builtIn) {
+        alert('Sistem modelleri silinemez.');
+        return;
+    }
+
+    const usedByBranch = allBranches.some(branch => {
+        const types = (branch && branch.lessonTypes && typeof branch.lessonTypes === 'object') ? branch.lessonTypes : {};
+        return Boolean(types[target]);
+    });
+    const usedBySchedule = allSchedules.some(schedule => String(schedule.lessonType || '') === target);
+
+    if (usedByBranch || usedBySchedule) {
+        const parts = [];
+        if (usedByBranch) parts.push('bir veya daha fazla şubede etkin');
+        if (usedBySchedule) parts.push('bir veya daha fazla ders saatinde kullanılıyor');
+        if (!confirm(`Bu eğitim modeli ${parts.join(', ')}. Yine de silmek istiyor musunuz? (Mevcut kayıtlar bozulmaz, sadece bu model artık seçilemez olur.)`)) {
+            return;
+        }
+    } else if (!confirm(`"${model.name}" modelini silmek istediğinize emin misiniz?`)) {
+        return;
+    }
+
+    const remainingCustom = getCustomEducationModels().filter(item => item.id !== target);
+    try {
+        await persistCustomEducationModels(remainingCustom);
+        renderEducationModelsTable();
+        alert('Eğitim modeli silindi.');
+    } catch (error) {
+        console.error('Eğitim modeli silinemedi:', error);
+        alert('Silme işlemi başarısız: ' + (error.message || 'Bilinmeyen hata'));
+    }
+}
+
 // ======================== BRANCHES ========================
 
 const BRANCH_DEFAULT_GROUP_QUOTA = 8;
 const BRANCH_DEFAULT_PRIVATE_QUOTA = 1;
 
-function getBranchLessonTypes(branch) {
-    if (!branch) return { group: true, private: false };
-    if (branch.lessonTypes && typeof branch.lessonTypes === 'object') {
-        return {
-            group: branch.lessonTypes.group !== false,
-            private: Boolean(branch.lessonTypes.private)
-        };
+function getActiveEducationModels() {
+    const helpers = window.ClubProfileHelpers;
+    if (helpers && typeof helpers.getEducationModels === 'function') {
+        return helpers.getEducationModels(currentClubProfileData || {});
     }
-    return { group: true, private: false };
+    return [
+        { id: 'group', name: 'Grup Dersi', defaultPerTrainerCapacity: 8, builtIn: true, removable: false },
+        { id: 'private', name: 'Özel Ders', defaultPerTrainerCapacity: 1, builtIn: true, removable: false }
+    ];
+}
+
+function getEducationModelLabelById(modelId) {
+    const helpers = window.ClubProfileHelpers;
+    if (helpers && typeof helpers.getEducationModelLabel === 'function') {
+        return helpers.getEducationModelLabel(currentClubProfileData || {}, modelId);
+    }
+    if (modelId === 'private') return 'Özel Ders';
+    if (modelId === 'group') return 'Grup Dersi';
+    return String(modelId || 'Ders');
+}
+
+function getEducationModelDefaultCapacity(modelId) {
+    const model = getActiveEducationModels().find(item => item.id === modelId);
+    if (model && Number.isFinite(Number(model.defaultPerTrainerCapacity)) && Number(model.defaultPerTrainerCapacity) > 0) {
+        return Math.floor(Number(model.defaultPerTrainerCapacity));
+    }
+    if (modelId === 'private') return BRANCH_DEFAULT_PRIVATE_QUOTA;
+    return BRANCH_DEFAULT_GROUP_QUOTA;
+}
+
+function getBranchLessonTypes(branch) {
+    const models = getActiveEducationModels();
+    const result = {};
+    if (branch && branch.lessonTypes && typeof branch.lessonTypes === 'object') {
+        models.forEach(model => {
+            result[model.id] = Boolean(branch.lessonTypes[model.id]);
+        });
+        // Built-in defaults if everything off and legacy data: default group on for legacy compatibility
+        const anySelected = Object.values(result).some(Boolean);
+        if (!anySelected) {
+            result.group = branch.lessonTypes.group !== false;
+            if (typeof branch.lessonTypes.private !== 'undefined') {
+                result.private = Boolean(branch.lessonTypes.private);
+            }
+        }
+    } else {
+        // No data: default to group only
+        models.forEach(model => {
+            result[model.id] = model.id === 'group';
+        });
+    }
+    return result;
 }
 
 function getBranchPerTrainerQuota(branch, lessonType) {
-    const lessonKey = lessonType === 'private' ? 'private' : 'group';
-    const defaults = lessonKey === 'private' ? BRANCH_DEFAULT_PRIVATE_QUOTA : BRANCH_DEFAULT_GROUP_QUOTA;
+    const lessonKey = String(lessonType || 'group');
+    const fallback = getEducationModelDefaultCapacity(lessonKey);
     if (!branch || !branch.perTrainerCapacity || typeof branch.perTrainerCapacity !== 'object') {
-        return defaults;
+        return fallback;
     }
     const raw = Number(branch.perTrainerCapacity[lessonKey]);
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : defaults;
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
 }
 
 function syncBranchLessonTypeUi() {
-    const groupCheck = document.getElementById('branchLessonTypeGroup');
-    const privateCheck = document.getElementById('branchLessonTypePrivate');
-    const groupQuotaWrap = document.getElementById('branchGroupQuotaGroup');
-    const privateQuotaWrap = document.getElementById('branchPrivateQuotaGroup');
-    const groupQuota = document.getElementById('branchGroupQuota');
-    const privateQuota = document.getElementById('branchPrivateQuota');
-
-    if (groupQuotaWrap) groupQuotaWrap.style.display = groupCheck && groupCheck.checked ? '' : 'none';
-    if (privateQuotaWrap) privateQuotaWrap.style.display = privateCheck && privateCheck.checked ? '' : 'none';
-    if (groupQuota) groupQuota.required = Boolean(groupCheck && groupCheck.checked);
-    if (privateQuota) privateQuota.required = Boolean(privateCheck && privateCheck.checked);
-
     document.querySelectorAll('.branch-lesson-type-option').forEach(label => {
         const input = label.querySelector('input[type="checkbox"]');
         label.style.borderColor = input && input.checked ? '#0b7ea8' : '#d8e3ee';
         label.style.background = input && input.checked ? 'rgba(11,126,168,0.08)' : '#f8fbff';
+
+        const modelId = label.dataset.modelId;
+        const quotaWrap = document.getElementById(`branchQuotaWrap-${modelId}`);
+        const quotaInput = document.getElementById(`branchQuotaInput-${modelId}`);
+        if (quotaWrap) quotaWrap.style.display = input && input.checked ? '' : 'none';
+        if (quotaInput) quotaInput.required = Boolean(input && input.checked);
     });
+}
+
+function renderBranchLessonTypeOptions(branch = null) {
+    const typesContainer = document.getElementById('branchLessonTypesContainer');
+    const quotasContainer = document.getElementById('branchQuotasContainer');
+    if (!typesContainer || !quotasContainer) return;
+
+    const models = getActiveEducationModels();
+    const currentTypes = branch ? getBranchLessonTypes(branch) : null;
+
+    typesContainer.innerHTML = '';
+    quotasContainer.innerHTML = '';
+
+    models.forEach(model => {
+        const isChecked = currentTypes
+            ? Boolean(currentTypes[model.id])
+            : (model.id === 'group');
+
+        const optionLabel = document.createElement('label');
+        optionLabel.className = 'branch-lesson-type-option';
+        optionLabel.dataset.modelId = model.id;
+        optionLabel.style.cssText = 'flex:1 1 180px; display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #d8e3ee; border-radius:10px; background:#f8fbff; cursor:pointer;';
+        optionLabel.innerHTML = `
+            <input type="checkbox" data-model-id="${escapeHtml(model.id)}" ${isChecked ? 'checked' : ''}>
+            <span><strong>${escapeHtml(model.name)}</strong>${model.builtIn ? '' : ' <small style="color:#7f8c8d;">(özel)</small>'}</span>
+        `;
+        typesContainer.appendChild(optionLabel);
+
+        const quotaValue = branch ? getBranchPerTrainerQuota(branch, model.id) : (Number(model.defaultPerTrainerCapacity) || 8);
+        const quotaWrap = document.createElement('div');
+        quotaWrap.className = 'form-group';
+        quotaWrap.id = `branchQuotaWrap-${model.id}`;
+        quotaWrap.style.display = isChecked ? '' : 'none';
+        quotaWrap.innerHTML = `
+            <label>${escapeHtml(model.name)} — Antrenör Başına Kontenjan:</label>
+            <input type="number" id="branchQuotaInput-${escapeHtml(model.id)}" min="1" max="50" value="${quotaValue}" ${isChecked ? 'required' : ''}>
+            <p class="form-hint" style="margin-top:6px;">Bir antrenörün eş zamanlı eğitebileceği maksimum öğrenci sayısı. Ders saati eklenirken kapasite otomatik (antrenör sayısı × bu sayı) hesaplanır.</p>
+        `;
+        quotasContainer.appendChild(quotaWrap);
+
+        const checkbox = optionLabel.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.addEventListener('change', syncBranchLessonTypeUi);
+        }
+    });
+
+    syncBranchLessonTypeUi();
 }
 
 function openBranchModal(branchId = null) {
     document.getElementById('branchForm').reset();
     document.getElementById('branchModal').classList.add('active');
-    
-    const groupCheck = document.getElementById('branchLessonTypeGroup');
-    const privateCheck = document.getElementById('branchLessonTypePrivate');
-    const groupQuota = document.getElementById('branchGroupQuota');
-    const privateQuota = document.getElementById('branchPrivateQuota');
 
-    if (branchId) {
-        const branch = allBranches.find(b => b.id === branchId);
-        if (branch) {
-            document.getElementById('branchName').value = branch.name;
-            document.getElementById('branchAddress').value = branch.address;
-            document.getElementById('branchPhone').value = branch.phone;
-            const types = getBranchLessonTypes(branch);
-            if (groupCheck) groupCheck.checked = types.group;
-            if (privateCheck) privateCheck.checked = types.private;
-            if (groupQuota) groupQuota.value = getBranchPerTrainerQuota(branch, 'group');
-            if (privateQuota) privateQuota.value = getBranchPerTrainerQuota(branch, 'private');
-            document.getElementById('branchForm').dataset.branchId = branchId;
-        }
+    const branch = branchId ? allBranches.find(b => b.id === branchId) : null;
+
+    if (branch) {
+        document.getElementById('branchName').value = branch.name;
+        document.getElementById('branchAddress').value = branch.address;
+        document.getElementById('branchPhone').value = branch.phone;
+        document.getElementById('branchForm').dataset.branchId = branchId;
     } else {
-        if (groupCheck) groupCheck.checked = true;
-        if (privateCheck) privateCheck.checked = false;
-        if (groupQuota) groupQuota.value = BRANCH_DEFAULT_GROUP_QUOTA;
-        if (privateQuota) privateQuota.value = BRANCH_DEFAULT_PRIVATE_QUOTA;
         delete document.getElementById('branchForm').dataset.branchId;
     }
 
-    syncBranchLessonTypeUi();
-    if (groupCheck) groupCheck.onchange = syncBranchLessonTypeUi;
-    if (privateCheck) privateCheck.onchange = syncBranchLessonTypeUi;
+    renderBranchLessonTypeOptions(branch);
 }
 
 function closeBranchModal() {
@@ -1969,32 +2205,37 @@ async function saveBranch(e) {
     e.preventDefault();
     
     const branchId = document.getElementById('branchForm').dataset.branchId;
-    const groupChecked = Boolean(document.getElementById('branchLessonTypeGroup')?.checked);
-    const privateChecked = Boolean(document.getElementById('branchLessonTypePrivate')?.checked);
+    const models = getActiveEducationModels();
 
-    if (!groupChecked && !privateChecked) {
-        alert('Lütfen şubede en az bir ders türü (Grup veya Özel) seçin.');
+    const lessonTypes = {};
+    const perTrainerCapacity = {};
+    let anySelected = false;
+
+    models.forEach(model => {
+        const checkbox = document.querySelector(`#branchLessonTypesContainer input[data-model-id="${CSS.escape(model.id)}"]`);
+        const checked = Boolean(checkbox && checkbox.checked);
+        lessonTypes[model.id] = checked;
+        if (checked) anySelected = true;
+
+        const quotaInput = document.getElementById(`branchQuotaInput-${model.id}`);
+        const fallback = Number(model.defaultPerTrainerCapacity) || 8;
+        const raw = Number(quotaInput?.value || fallback);
+        const value = Number.isFinite(raw) && raw > 0 ? Math.max(1, Math.min(50, Math.floor(raw))) : fallback;
+        perTrainerCapacity[model.id] = value;
+    });
+
+    if (!anySelected) {
+        alert('Lütfen şubede en az bir ders türü seçin.');
         return;
     }
-
-    const groupQuotaRaw = Number(document.getElementById('branchGroupQuota')?.value || BRANCH_DEFAULT_GROUP_QUOTA);
-    const privateQuotaRaw = Number(document.getElementById('branchPrivateQuota')?.value || BRANCH_DEFAULT_PRIVATE_QUOTA);
-    const groupQuota = Math.max(1, Math.min(50, Number.isFinite(groupQuotaRaw) ? Math.floor(groupQuotaRaw) : BRANCH_DEFAULT_GROUP_QUOTA));
-    const privateQuota = Math.max(1, Math.min(20, Number.isFinite(privateQuotaRaw) ? Math.floor(privateQuotaRaw) : BRANCH_DEFAULT_PRIVATE_QUOTA));
 
     const existingBranch = branchId ? allBranches.find(b => b.id === branchId) : null;
     const branchData = {
         name: document.getElementById('branchName').value,
         address: document.getElementById('branchAddress').value,
         phone: document.getElementById('branchPhone').value,
-        lessonTypes: {
-            group: groupChecked,
-            private: privateChecked
-        },
-        perTrainerCapacity: {
-            group: groupQuota,
-            private: privateQuota
-        },
+        lessonTypes,
+        perTrainerCapacity,
         adminId: currentAdmin.id,
         updatedAt: new Date().toISOString()
     };
@@ -2022,12 +2263,14 @@ async function saveBranch(e) {
 async function loadBranches() {
     const tbody = document.getElementById('branchesTable');
     tbody.innerHTML = '';
-    
+
+    const models = getActiveEducationModels();
+
     allBranches.forEach(branch => {
         const types = getBranchLessonTypes(branch);
-        const labels = [];
-        if (types.group) labels.push(`Grup (${getBranchPerTrainerQuota(branch, 'group')} öğr./antrenör)`);
-        if (types.private) labels.push(`Özel (${getBranchPerTrainerQuota(branch, 'private')} öğr./antrenör)`);
+        const labels = models
+            .filter(model => types[model.id])
+            .map(model => `${escapeHtml(model.name)} (${getBranchPerTrainerQuota(branch, model.id)} öğr./antrenör)`);
         const lessonSummary = labels.length
             ? `<br><small style="color:#5d7285;">${labels.join(' • ')}</small>`
             : '<br><small style="color:#c0392b;">Ders türü tanımlanmamış</small>';
@@ -2217,7 +2460,7 @@ async function deleteTrainer(trainerId) {
 // ======================== SCHEDULES ========================
 
 function getScheduleLessonTypeLabelByKey(lessonTypeKey) {
-    return lessonTypeKey === 'private' ? 'Özel Ders' : 'Grup Dersi';
+    return getEducationModelLabelById(lessonTypeKey);
 }
 
 function buildAutoScheduleName(branch, lessonTypeKey, time) {
@@ -2237,19 +2480,20 @@ function refreshScheduleLessonTypeOptions() {
     const branchId = branchSelect.value;
     const branch = branchId ? allBranches.find(item => item.id === branchId) : null;
     const types = getBranchLessonTypes(branch);
+    const models = getActiveEducationModels();
 
     const previousValue = lessonTypeSelect.value || 'group';
     lessonTypeSelect.innerHTML = '';
-    const allowedTypes = [];
-    if (types.group) allowedTypes.push({ value: 'group', label: 'Grup Dersi' });
-    if (types.private) allowedTypes.push({ value: 'private', label: 'Özel Ders' });
+    const allowedTypes = models
+        .filter(model => types[model.id])
+        .map(model => ({ value: model.id, label: model.name }));
 
     if (allowedTypes.length === 0) {
         const option = document.createElement('option');
         option.value = '';
         option.textContent = '— Şubede ders türü tanımlı değil —';
         lessonTypeSelect.appendChild(option);
-        if (hint) hint.textContent = 'Bu şubede henüz ders türü tanımlanmadı. Şubeyi düzenleyerek Grup veya Özel ders türünü işaretleyin.';
+        if (hint) hint.textContent = 'Bu şubede henüz ders türü tanımlanmadı. Şubeyi düzenleyerek bir eğitim modelini etkinleştirin.';
     } else {
         allowedTypes.forEach(item => {
             const option = document.createElement('option');
@@ -2445,15 +2689,19 @@ async function saveSchedule(e) {
     const primaryAssignment = trainerAssignments.find(item => item.role === 'head') || trainerAssignments[0];
     const selectedBranchId = document.getElementById('scheduleBranch').value;
     const selectedBranch = allBranches.find(item => item.id === selectedBranchId);
-    const selectedLessonType = document.getElementById('scheduleLessonType').value === 'private' ? 'private' : 'group';
+    const lessonTypeRaw = String(document.getElementById('scheduleLessonType').value || 'group').trim();
+    const knownModels = getActiveEducationModels();
+    const selectedLessonType = knownModels.some(model => model.id === lessonTypeRaw)
+        ? lessonTypeRaw
+        : 'group';
     const selectedTime = document.getElementById('scheduleTime').value;
 
     if (selectedBranch) {
         const allowedTypes = getBranchLessonTypes(selectedBranch);
         if (!allowedTypes[selectedLessonType]) {
-            const allowedLabels = [];
-            if (allowedTypes.group) allowedLabels.push('Grup Dersi');
-            if (allowedTypes.private) allowedLabels.push('Özel Ders');
+            const allowedLabels = knownModels
+                .filter(model => allowedTypes[model.id])
+                .map(model => model.name);
             alert(`Bu şubede sadece şu ders türleri yapılıyor: ${allowedLabels.join(', ') || 'tanımsız'}. Lütfen uygun ders türünü seçin veya şubeyi düzenleyin.`);
             return;
         }

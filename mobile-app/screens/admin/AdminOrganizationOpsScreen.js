@@ -17,19 +17,37 @@ import {
   getAdminOrganizationOverview,
   saveBranch,
   saveClubProfile,
+  saveCustomEducationModels,
   saveTrainer,
 } from '../../services/adminService';
+import { slugifyEducationModelName } from '../../utils/clubProfileHelpers';
 import { useAuthStore } from '../../store/authStore';
 
-function initialBranchForm() {
+function initialBranchForm(models = []) {
+  const lessonTypes = {};
+  const perTrainerCapacity = {};
+  (models || []).forEach((model) => {
+    lessonTypes[model.id] = model.id === 'group';
+    perTrainerCapacity[model.id] = String(model.defaultPerTrainerCapacity || (model.id === 'private' ? 1 : 8));
+  });
+  if (!Object.keys(lessonTypes).length) {
+    lessonTypes.group = true;
+    lessonTypes.private = false;
+    perTrainerCapacity.group = '8';
+    perTrainerCapacity.private = '1';
+  }
   return {
     id: null,
     name: '',
     address: '',
     phone: '',
-    lessonTypes: { group: true, private: false },
-    perTrainerCapacity: { group: '8', private: '1' },
+    lessonTypes,
+    perTrainerCapacity,
   };
+}
+
+function initialEducationModelForm() {
+  return { name: '', defaultPerTrainerCapacity: '8' };
 }
 
 function initialTrainerForm() {
@@ -49,6 +67,13 @@ export default function AdminOrganizationOpsScreen() {
   const [secretaryValues, setSecretaryValues] = useState({ name: '', email: '', password: '' });
   const [branchForm, setBranchForm] = useState(initialBranchForm());
   const [trainerForm, setTrainerForm] = useState(initialTrainerForm());
+  const [educationModelForm, setEducationModelForm] = useState(initialEducationModelForm());
+
+  useEffect(() => {
+    if (overviewQuery.data?.educationModels) {
+      setBranchForm((current) => (current.id ? current : initialBranchForm(overviewQuery.data.educationModels)));
+    }
+  }, [overviewQuery.data?.educationModels]);
 
   useEffect(() => {
     if (overviewQuery.data?.clubProfile) {
@@ -81,14 +106,71 @@ export default function AdminOrganizationOpsScreen() {
 
   const deleteSecretaryMutation = useMutation({ mutationFn: deleteSecretary, onSuccess: invalidate });
   const branchMutation = useMutation({
-    mutationFn: () => saveBranch({ adminId: profile.uid, branchId: branchForm.id, values: branchForm, currentAdminId: profile.uid }),
+    mutationFn: () => saveBranch({
+      adminId: profile.uid,
+      branchId: branchForm.id,
+      values: branchForm,
+      currentAdminId: profile.uid,
+      educationModels: overviewQuery.data?.educationModels || [],
+    }),
     onSuccess: () => {
-      setBranchForm(initialBranchForm());
+      setBranchForm(initialBranchForm(overviewQuery.data?.educationModels || []));
       invalidate();
     },
     onError: (error) => Alert.alert('Sube', error.message || 'Sube kaydedilemedi.'),
   });
   const deleteBranchMutation = useMutation({ mutationFn: deleteBranch, onSuccess: invalidate, onError: (error) => Alert.alert('Sube silme', error.message || 'Sube silinemedi.') });
+
+  const educationModelMutation = useMutation({
+    mutationFn: (nextCustomModels) => saveCustomEducationModels({
+      adminId: profile.uid,
+      customModels: nextCustomModels,
+      currentAdminId: profile.uid,
+    }),
+    onSuccess: () => {
+      setEducationModelForm(initialEducationModelForm());
+      invalidate();
+    },
+    onError: (error) => Alert.alert('Egitim modeli', error.message || 'Kaydedilemedi.'),
+  });
+
+  function addEducationModel() {
+    const name = String(educationModelForm.name || '').trim();
+    if (!name) {
+      Alert.alert('Egitim modeli', 'Lutfen model adi girin.');
+      return;
+    }
+    const slug = slugifyEducationModelName(name);
+    if (!slug) {
+      Alert.alert('Egitim modeli', 'Lutfen daha aciklayici bir ad secin.');
+      return;
+    }
+    const existing = overviewQuery.data?.educationModels || [];
+    if (existing.some((item) => item.name.toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
+      Alert.alert('Egitim modeli', 'Bu isimde bir model zaten var.');
+      return;
+    }
+    const newModel = {
+      id: `em_${slug}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      defaultPerTrainerCapacity: Math.max(1, Math.min(50, Number(educationModelForm.defaultPerTrainerCapacity) || 8)),
+      builtIn: false,
+      removable: true,
+    };
+    const nextCustom = [...existing.filter((item) => !item.builtIn), newModel];
+    educationModelMutation.mutate(nextCustom);
+  }
+
+  function removeEducationModel(modelId) {
+    const existing = overviewQuery.data?.educationModels || [];
+    const target = existing.find((item) => item.id === modelId);
+    if (!target || target.builtIn) {
+      Alert.alert('Egitim modeli', 'Sistem modelleri silinemez.');
+      return;
+    }
+    const nextCustom = existing.filter((item) => !item.builtIn && item.id !== modelId);
+    educationModelMutation.mutate(nextCustom);
+  }
 
   const trainerMutation = useMutation({
     mutationFn: () => saveTrainer({ adminId: profile.uid, trainerId: trainerForm.id, values: trainerForm, currentAdminId: profile.uid }),
@@ -154,6 +236,46 @@ export default function AdminOrganizationOpsScreen() {
           )}
         </View>
 
+        <SectionHeader title="Egitim Modelleri" caption="Sube ders turlerini ozellestirin" />
+        <View style={styles.card}>
+          <Text style={styles.label}>Yeni model ekle</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Orn: DP Grup Dersi"
+            value={educationModelForm.name}
+            onChangeText={(text) => setEducationModelForm((current) => ({ ...current, name: text }))}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Varsayilan kontenjan / antrenor (orn: 8)"
+            keyboardType="numeric"
+            value={String(educationModelForm.defaultPerTrainerCapacity || '')}
+            onChangeText={(text) => setEducationModelForm((current) => ({ ...current, defaultPerTrainerCapacity: text }))}
+          />
+          <ActionButton
+            label={educationModelMutation.isPending ? 'Ekleniyor...' : 'Yeni Egitim Modeli Ekle'}
+            onPress={addEducationModel}
+            fullWidth
+          />
+
+          {(data.educationModels || []).map((model) => (
+            <View key={model.id} style={styles.itemCard}>
+              <Text style={styles.itemTitle}>{model.name}</Text>
+              <Text style={styles.itemText}>
+                Varsayilan kontenjan: {model.defaultPerTrainerCapacity || 8} ogr./antrenor
+              </Text>
+              <Text style={[styles.itemText, { color: model.builtIn ? theme.colors.muted : theme.colors.primary }]}>
+                {model.builtIn ? 'Sistem modeli (silinemez)' : 'Ozel model'}
+              </Text>
+              {!model.builtIn ? (
+                <View style={styles.buttonRow}>
+                  <ActionButton label="Sil" variant="secondary" onPress={() => removeEducationModel(model.id)} />
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+
         <SectionHeader title="Subeler" caption="Kulubun operasyon merkezleri" />
         <View style={styles.card}>
           <TextInput style={styles.input} placeholder="Sube adi" value={branchForm.name} onChangeText={(text) => setBranchForm((current) => ({ ...current, name: text }))} />
@@ -162,74 +284,59 @@ export default function AdminOrganizationOpsScreen() {
 
           <Text style={styles.label}>Bu subede yapilan ders turleri</Text>
           <View style={styles.chipRow}>
-            <ActionButton
-              label={branchForm.lessonTypes.group ? '✓ Grup Dersi' : 'Grup Dersi'}
-              variant={branchForm.lessonTypes.group ? 'primary' : 'secondary'}
-              onPress={() =>
-                setBranchForm((current) => ({
-                  ...current,
-                  lessonTypes: { ...current.lessonTypes, group: !current.lessonTypes.group },
-                }))
-              }
-            />
-            <ActionButton
-              label={branchForm.lessonTypes.private ? '✓ Ozel Ders' : 'Ozel Ders'}
-              variant={branchForm.lessonTypes.private ? 'primary' : 'secondary'}
-              onPress={() =>
-                setBranchForm((current) => ({
-                  ...current,
-                  lessonTypes: { ...current.lessonTypes, private: !current.lessonTypes.private },
-                }))
-              }
-            />
+            {(data.educationModels || []).map((model) => {
+              const isOn = Boolean(branchForm.lessonTypes?.[model.id]);
+              return (
+                <ActionButton
+                  key={model.id}
+                  label={isOn ? `✓ ${model.name}` : model.name}
+                  variant={isOn ? 'primary' : 'secondary'}
+                  onPress={() =>
+                    setBranchForm((current) => ({
+                      ...current,
+                      lessonTypes: { ...current.lessonTypes, [model.id]: !current.lessonTypes?.[model.id] },
+                      perTrainerCapacity: {
+                        ...current.perTrainerCapacity,
+                        [model.id]: current.perTrainerCapacity?.[model.id] ?? String(model.defaultPerTrainerCapacity || 8),
+                      },
+                    }))
+                  }
+                />
+              );
+            })}
           </View>
 
-          {branchForm.lessonTypes.group ? (
-            <>
-              <Text style={styles.label}>Grup Dersi — antrenor basina kontenjan</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Orn: 8"
-                keyboardType="numeric"
-                value={String(branchForm.perTrainerCapacity.group)}
-                onChangeText={(text) =>
-                  setBranchForm((current) => ({
-                    ...current,
-                    perTrainerCapacity: { ...current.perTrainerCapacity, group: text },
-                  }))
-                }
-              />
-            </>
-          ) : null}
-
-          {branchForm.lessonTypes.private ? (
-            <>
-              <Text style={styles.label}>Ozel Ders — antrenor basina kontenjan</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Orn: 1"
-                keyboardType="numeric"
-                value={String(branchForm.perTrainerCapacity.private)}
-                onChangeText={(text) =>
-                  setBranchForm((current) => ({
-                    ...current,
-                    perTrainerCapacity: { ...current.perTrainerCapacity, private: text },
-                  }))
-                }
-              />
-            </>
-          ) : null}
+          {(data.educationModels || [])
+            .filter((model) => branchForm.lessonTypes?.[model.id])
+            .map((model) => (
+              <View key={`quota-${model.id}`}>
+                <Text style={styles.label}>{model.name} — antrenor basina kontenjan</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={`Orn: ${model.defaultPerTrainerCapacity || 8}`}
+                  keyboardType="numeric"
+                  value={String(branchForm.perTrainerCapacity?.[model.id] ?? '')}
+                  onChangeText={(text) =>
+                    setBranchForm((current) => ({
+                      ...current,
+                      perTrainerCapacity: { ...current.perTrainerCapacity, [model.id]: text },
+                    }))
+                  }
+                />
+              </View>
+            ))}
 
           <ActionButton label={branchMutation.isPending ? 'Kaydediliyor...' : branchForm.id ? 'Subeyi Guncelle' : 'Sube Ekle'} onPress={() => branchMutation.mutate()} fullWidth />
           {data.branches.map((branch) => {
-            const types = branch.lessonTypes && typeof branch.lessonTypes === 'object'
-              ? { group: branch.lessonTypes.group !== false, private: Boolean(branch.lessonTypes.private) }
-              : { group: true, private: false };
-            const quotaGroup = Number(branch?.perTrainerCapacity?.group) > 0 ? Math.floor(branch.perTrainerCapacity.group) : 8;
-            const quotaPrivate = Number(branch?.perTrainerCapacity?.private) > 0 ? Math.floor(branch.perTrainerCapacity.private) : 1;
-            const summaryParts = [];
-            if (types.group) summaryParts.push(`Grup (${quotaGroup} ogr./antrenor)`);
-            if (types.private) summaryParts.push(`Ozel (${quotaPrivate} ogr./antrenor)`);
+            const models = data.educationModels || [];
+            const summaryParts = models
+              .filter((model) => Boolean(branch?.lessonTypes?.[model.id]))
+              .map((model) => {
+                const quota = Number(branch?.perTrainerCapacity?.[model.id]) > 0
+                  ? Math.floor(branch.perTrainerCapacity[model.id])
+                  : (Number(model.defaultPerTrainerCapacity) || 8);
+                return `${model.name} (${quota} ogr./antrenor)`;
+              });
             return (
               <View key={branch.id} style={styles.itemCard}>
                 <Text style={styles.itemTitle}>{branch.name}</Text>
@@ -240,16 +347,25 @@ export default function AdminOrganizationOpsScreen() {
                   <ActionButton
                     label="Duzenle"
                     variant="secondary"
-                    onPress={() =>
+                    onPress={() => {
+                      const lessonTypes = {};
+                      const perTrainerCapacity = {};
+                      models.forEach((model) => {
+                        lessonTypes[model.id] = Boolean(branch?.lessonTypes?.[model.id]);
+                        const quotaRaw = Number(branch?.perTrainerCapacity?.[model.id]);
+                        perTrainerCapacity[model.id] = quotaRaw > 0
+                          ? String(Math.floor(quotaRaw))
+                          : String(Number(model.defaultPerTrainerCapacity) || 8);
+                      });
                       setBranchForm({
                         id: branch.id,
                         name: branch.name || '',
                         address: branch.address || '',
                         phone: branch.phone || '',
-                        lessonTypes: { group: types.group, private: types.private },
-                        perTrainerCapacity: { group: String(quotaGroup), private: String(quotaPrivate) },
-                      })
-                    }
+                        lessonTypes,
+                        perTrainerCapacity,
+                      });
+                    }}
                   />
                   <ActionButton label="Sil" variant="secondary" onPress={() => deleteBranchMutation.mutate(branch.id)} />
                 </View>

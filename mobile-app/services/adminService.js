@@ -637,8 +637,13 @@ export async function getAdminOrganizationOverview(adminId) {
     listAll('trainer_reviews', [where('adminId', '==', adminId)]),
   ]);
 
+  const clubProfileData = clubProfile.exists() ? clubProfile.data() : null;
+  const { getEducationModels } = await import('../utils/clubProfileHelpers');
+  const educationModels = getEducationModels(clubProfileData || {});
+
   return {
-    clubProfile: clubProfile.exists() ? clubProfile.data() : null,
+    clubProfile: clubProfileData,
+    educationModels,
     secretaries: secretaries.sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'tr')),
     branches: branches.sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'tr')),
     trainers: trainers
@@ -693,26 +698,44 @@ export async function deleteSecretary(secretaryId) {
 const BRANCH_DEFAULT_GROUP_QUOTA = 8;
 const BRANCH_DEFAULT_PRIVATE_QUOTA = 1;
 
-function clampBranchQuota(value, fallback, max) {
+function clampBranchQuota(value, fallback, max = 50) {
   const raw = Number(value);
   if (!Number.isFinite(raw) || raw <= 0) return fallback;
   return Math.max(1, Math.min(max, Math.floor(raw)));
 }
 
-export function getBranchLessonTypes(branch) {
-  if (!branch) return { group: true, private: false };
-  if (branch.lessonTypes && typeof branch.lessonTypes === 'object') {
-    return {
-      group: branch.lessonTypes.group !== false,
-      private: Boolean(branch.lessonTypes.private),
-    };
+export function getBranchLessonTypes(branch, models = null) {
+  const modelList = Array.isArray(models) && models.length ? models : [
+    { id: 'group', name: 'Grup Dersi', defaultPerTrainerCapacity: BRANCH_DEFAULT_GROUP_QUOTA, builtIn: true },
+    { id: 'private', name: 'Özel Ders', defaultPerTrainerCapacity: BRANCH_DEFAULT_PRIVATE_QUOTA, builtIn: true },
+  ];
+  const result = {};
+  if (branch && branch.lessonTypes && typeof branch.lessonTypes === 'object') {
+    modelList.forEach((model) => {
+      result[model.id] = Boolean(branch.lessonTypes[model.id]);
+    });
+    const anySelected = Object.values(result).some(Boolean);
+    if (!anySelected) {
+      result.group = branch.lessonTypes.group !== false;
+      if (typeof branch.lessonTypes.private !== 'undefined') {
+        result.private = Boolean(branch.lessonTypes.private);
+      }
+    }
+  } else {
+    modelList.forEach((model) => {
+      result[model.id] = model.id === 'group';
+    });
   }
-  return { group: true, private: false };
+  return result;
 }
 
-export function getBranchPerTrainerQuota(branch, lessonType) {
-  const key = lessonType === 'private' ? 'private' : 'group';
-  const fallback = key === 'private' ? BRANCH_DEFAULT_PRIVATE_QUOTA : BRANCH_DEFAULT_GROUP_QUOTA;
+export function getBranchPerTrainerQuota(branch, lessonType, models = null) {
+  const key = String(lessonType || 'group');
+  const modelList = Array.isArray(models) ? models : [];
+  const model = modelList.find((item) => item.id === key);
+  const fallback = model && Number(model.defaultPerTrainerCapacity) > 0
+    ? Math.floor(Number(model.defaultPerTrainerCapacity))
+    : (key === 'private' ? BRANCH_DEFAULT_PRIVATE_QUOTA : BRANCH_DEFAULT_GROUP_QUOTA);
   if (!branch || !branch.perTrainerCapacity || typeof branch.perTrainerCapacity !== 'object') {
     return fallback;
   }
@@ -720,19 +743,33 @@ export function getBranchPerTrainerQuota(branch, lessonType) {
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
 }
 
-export async function saveBranch({ adminId, branchId = null, values, currentAdminId }) {
-  const lessonTypes = values.lessonTypes && typeof values.lessonTypes === 'object'
-    ? { group: values.lessonTypes.group !== false, private: Boolean(values.lessonTypes.private) }
-    : { group: true, private: false };
+export async function saveBranch({ adminId, branchId = null, values, currentAdminId, educationModels = null }) {
+  const models = Array.isArray(educationModels) && educationModels.length
+    ? educationModels
+    : [
+        { id: 'group', name: 'Grup Dersi', defaultPerTrainerCapacity: BRANCH_DEFAULT_GROUP_QUOTA, builtIn: true },
+        { id: 'private', name: 'Özel Ders', defaultPerTrainerCapacity: BRANCH_DEFAULT_PRIVATE_QUOTA, builtIn: true },
+      ];
 
-  if (!lessonTypes.group && !lessonTypes.private) {
-    throw new Error('En az bir ders turunu (Grup veya Ozel) secin.');
+  const rawTypes = (values.lessonTypes && typeof values.lessonTypes === 'object') ? values.lessonTypes : { group: true };
+  const lessonTypes = {};
+  let anySelected = false;
+  models.forEach((model) => {
+    const checked = Boolean(rawTypes[model.id]);
+    lessonTypes[model.id] = checked;
+    if (checked) anySelected = true;
+  });
+
+  if (!anySelected) {
+    throw new Error('En az bir ders turu secin.');
   }
 
-  const perTrainerCapacity = {
-    group: clampBranchQuota(values?.perTrainerCapacity?.group, BRANCH_DEFAULT_GROUP_QUOTA, 50),
-    private: clampBranchQuota(values?.perTrainerCapacity?.private, BRANCH_DEFAULT_PRIVATE_QUOTA, 20),
-  };
+  const rawCapacities = (values.perTrainerCapacity && typeof values.perTrainerCapacity === 'object') ? values.perTrainerCapacity : {};
+  const perTrainerCapacity = {};
+  models.forEach((model) => {
+    const fallback = Number(model.defaultPerTrainerCapacity) > 0 ? Math.floor(Number(model.defaultPerTrainerCapacity)) : 8;
+    perTrainerCapacity[model.id] = clampBranchQuota(rawCapacities[model.id], fallback, 50);
+  });
 
   const payload = {
     name: values.name.trim(),
@@ -755,6 +792,37 @@ export async function saveBranch({ adminId, branchId = null, values, currentAdmi
     createdAt: nowIso(),
   });
   return created.id;
+}
+
+export async function getEducationModelsForAdmin(adminId) {
+  if (!adminId) return [];
+  const profileRef = doc(db, 'clubProfiles', adminId);
+  const profileSnap = await getDoc(profileRef);
+  const profileData = profileSnap.exists() ? profileSnap.data() || {} : {};
+  const { getEducationModels } = await import('../utils/clubProfileHelpers');
+  return getEducationModels(profileData);
+}
+
+export async function saveCustomEducationModels({ adminId, customModels, currentAdminId }) {
+  if (!adminId) throw new Error('Yonetici oturumu yok.');
+  const sanitized = (Array.isArray(customModels) ? customModels : [])
+    .map((item) => ({
+      id: String(item.id || '').trim(),
+      name: String(item.name || '').trim(),
+      defaultPerTrainerCapacity: clampBranchQuota(item.defaultPerTrainerCapacity, 8, 50),
+      builtIn: false,
+      removable: true,
+      updatedAt: nowIso(),
+    }))
+    .filter((item) => item.id && item.name);
+
+  await setDoc(doc(db, 'clubProfiles', adminId), {
+    educationModels: sanitized,
+    adminId,
+    updatedAt: nowIso(),
+    updatedBy: currentAdminId,
+  }, { merge: true });
+  return sanitized;
 }
 
 export async function deleteBranch(branchId) {
@@ -837,7 +905,7 @@ export async function deleteTrainer(trainerId) {
 }
 
 export async function getAdminScheduleOverview(adminId) {
-  const [branches, trainers, schedules, students, prices, templates, preferences, attendance] = await Promise.all([
+  const [branches, trainers, schedules, students, prices, templates, preferences, attendance, clubProfileSnap] = await Promise.all([
     listAll('branches', [where('adminId', '==', adminId)]),
     listAll('trainers', [where('adminId', '==', adminId)]),
     listAll('schedules', [where('adminId', '==', adminId)]),
@@ -846,7 +914,12 @@ export async function getAdminScheduleOverview(adminId) {
     listAll('trainer_time_programs', [where('adminId', '==', adminId)]),
     listAll('trainer_time_preferences', [where('adminId', '==', adminId)]),
     listAll('attendance').catch(() => []),
+    getDoc(doc(db, 'clubProfiles', adminId)),
   ]);
+
+  const clubProfileData = clubProfileSnap.exists() ? clubProfileSnap.data() : null;
+  const { getEducationModels } = await import('../utils/clubProfileHelpers');
+  const educationModels = getEducationModels(clubProfileData || {});
 
   const enrichedSchedules = schedules
     .map((schedule) => {
@@ -916,6 +989,7 @@ export async function getAdminScheduleOverview(adminId) {
     availabilityTemplates: templates,
     availabilityPreferences: preferences,
     completionCalendar,
+    educationModels,
   };
 }
 
@@ -1271,22 +1345,32 @@ export async function saveSchedule({ adminId, scheduleId = null, values, current
 
   const headAssignment = trainerAssignments.find((item) => item.role === 'head') || trainerAssignments[0];
 
-  const lessonType = values.lessonType === 'private' ? 'private' : 'group';
+  const models = Array.isArray(values.educationModels) && values.educationModels.length
+    ? values.educationModels
+    : [
+        { id: 'group', name: 'Grup Dersi', defaultPerTrainerCapacity: 8, builtIn: true },
+        { id: 'private', name: 'Özel Ders', defaultPerTrainerCapacity: 1, builtIn: true },
+      ];
+  const rawLessonType = String(values.lessonType || 'group').trim();
+  const lessonType = models.some((item) => item.id === rawLessonType) ? rawLessonType : 'group';
+  const lessonModel = models.find((item) => item.id === lessonType);
+
   const branchInfo = Array.isArray(values.branches)
     ? values.branches.find((item) => item.id === values.branchId)
     : null;
 
   if (branchInfo) {
-    const allowed = getBranchLessonTypes(branchInfo);
+    const allowed = getBranchLessonTypes(branchInfo, models);
     if (!allowed[lessonType]) {
+      const allowedLabels = models.filter((m) => allowed[m.id]).map((m) => m.name);
       throw new Error(
-        `Bu subede yapilan ders turleri: ${[allowed.group ? 'Grup' : null, allowed.private ? 'Ozel' : null].filter(Boolean).join(', ') || 'tanimsiz'}. Lutfen uygun ders turunu secin.`
+        `Bu subede yapilan ders turleri: ${allowedLabels.join(', ') || 'tanimsiz'}. Lutfen uygun ders turunu secin.`,
       );
     }
   }
 
   const branchName = branchInfo?.name ? String(branchInfo.name).trim() : '';
-  const lessonLabel = lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi';
+  const lessonLabel = lessonModel ? lessonModel.name : (lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi');
   const autoName = branchName && values.time
     ? `${branchName} • ${lessonLabel} • ${values.time}`
     : branchName
@@ -1297,7 +1381,7 @@ export async function saveSchedule({ adminId, scheduleId = null, values, current
   const finalCustomName = customName || autoName || null;
 
   const trainerCount = trainerAssignments.length || 1;
-  const perTrainer = getBranchPerTrainerQuota(branchInfo, lessonType);
+  const perTrainer = getBranchPerTrainerQuota(branchInfo, lessonType, models);
   const rawCapacity = toNumber(values.capacity, 0);
   const capacity = rawCapacity > 0 ? rawCapacity : Math.max(1, perTrainer * trainerCount);
 
