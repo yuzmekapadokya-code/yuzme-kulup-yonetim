@@ -22,7 +22,14 @@ import {
 import { useAuthStore } from '../../store/authStore';
 
 function initialBranchForm() {
-  return { id: null, name: '', address: '', phone: '' };
+  return {
+    id: null,
+    name: '',
+    address: '',
+    phone: '',
+    lessonTypes: { group: true, private: false },
+    perTrainerCapacity: { group: '8', private: '1' },
+  };
 }
 
 function initialTrainerForm() {
@@ -152,18 +159,103 @@ export default function AdminOrganizationOpsScreen() {
           <TextInput style={styles.input} placeholder="Sube adi" value={branchForm.name} onChangeText={(text) => setBranchForm((current) => ({ ...current, name: text }))} />
           <TextInput style={[styles.input, styles.textarea]} placeholder="Adres" multiline value={branchForm.address} onChangeText={(text) => setBranchForm((current) => ({ ...current, address: text }))} />
           <TextInput style={styles.input} placeholder="Telefon" value={branchForm.phone} onChangeText={(text) => setBranchForm((current) => ({ ...current, phone: text }))} />
+
+          <Text style={styles.label}>Bu subede yapilan ders turleri</Text>
+          <View style={styles.chipRow}>
+            <ActionButton
+              label={branchForm.lessonTypes.group ? '✓ Grup Dersi' : 'Grup Dersi'}
+              variant={branchForm.lessonTypes.group ? 'primary' : 'secondary'}
+              onPress={() =>
+                setBranchForm((current) => ({
+                  ...current,
+                  lessonTypes: { ...current.lessonTypes, group: !current.lessonTypes.group },
+                }))
+              }
+            />
+            <ActionButton
+              label={branchForm.lessonTypes.private ? '✓ Ozel Ders' : 'Ozel Ders'}
+              variant={branchForm.lessonTypes.private ? 'primary' : 'secondary'}
+              onPress={() =>
+                setBranchForm((current) => ({
+                  ...current,
+                  lessonTypes: { ...current.lessonTypes, private: !current.lessonTypes.private },
+                }))
+              }
+            />
+          </View>
+
+          {branchForm.lessonTypes.group ? (
+            <>
+              <Text style={styles.label}>Grup Dersi — antrenor basina kontenjan</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Orn: 8"
+                keyboardType="numeric"
+                value={String(branchForm.perTrainerCapacity.group)}
+                onChangeText={(text) =>
+                  setBranchForm((current) => ({
+                    ...current,
+                    perTrainerCapacity: { ...current.perTrainerCapacity, group: text },
+                  }))
+                }
+              />
+            </>
+          ) : null}
+
+          {branchForm.lessonTypes.private ? (
+            <>
+              <Text style={styles.label}>Ozel Ders — antrenor basina kontenjan</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Orn: 1"
+                keyboardType="numeric"
+                value={String(branchForm.perTrainerCapacity.private)}
+                onChangeText={(text) =>
+                  setBranchForm((current) => ({
+                    ...current,
+                    perTrainerCapacity: { ...current.perTrainerCapacity, private: text },
+                  }))
+                }
+              />
+            </>
+          ) : null}
+
           <ActionButton label={branchMutation.isPending ? 'Kaydediliyor...' : branchForm.id ? 'Subeyi Guncelle' : 'Sube Ekle'} onPress={() => branchMutation.mutate()} fullWidth />
-          {data.branches.map((branch) => (
-            <View key={branch.id} style={styles.itemCard}>
-              <Text style={styles.itemTitle}>{branch.name}</Text>
-              <Text style={styles.itemText}>{branch.address}</Text>
-              <Text style={styles.itemText}>{branch.phone}</Text>
-              <View style={styles.buttonRow}>
-                <ActionButton label="Duzenle" variant="secondary" onPress={() => setBranchForm({ id: branch.id, name: branch.name || '', address: branch.address || '', phone: branch.phone || '' })} />
-                <ActionButton label="Sil" variant="secondary" onPress={() => deleteBranchMutation.mutate(branch.id)} />
+          {data.branches.map((branch) => {
+            const types = branch.lessonTypes && typeof branch.lessonTypes === 'object'
+              ? { group: branch.lessonTypes.group !== false, private: Boolean(branch.lessonTypes.private) }
+              : { group: true, private: false };
+            const quotaGroup = Number(branch?.perTrainerCapacity?.group) > 0 ? Math.floor(branch.perTrainerCapacity.group) : 8;
+            const quotaPrivate = Number(branch?.perTrainerCapacity?.private) > 0 ? Math.floor(branch.perTrainerCapacity.private) : 1;
+            const summaryParts = [];
+            if (types.group) summaryParts.push(`Grup (${quotaGroup} ogr./antrenor)`);
+            if (types.private) summaryParts.push(`Ozel (${quotaPrivate} ogr./antrenor)`);
+            return (
+              <View key={branch.id} style={styles.itemCard}>
+                <Text style={styles.itemTitle}>{branch.name}</Text>
+                <Text style={styles.itemText}>{branch.address}</Text>
+                <Text style={styles.itemText}>{branch.phone}</Text>
+                {summaryParts.length ? <Text style={[styles.itemText, { color: theme.colors.primary }]}>{summaryParts.join(' • ')}</Text> : null}
+                <View style={styles.buttonRow}>
+                  <ActionButton
+                    label="Duzenle"
+                    variant="secondary"
+                    onPress={() =>
+                      setBranchForm({
+                        id: branch.id,
+                        name: branch.name || '',
+                        address: branch.address || '',
+                        phone: branch.phone || '',
+                        lessonTypes: { group: types.group, private: types.private },
+                        perTrainerCapacity: { group: String(quotaGroup), private: String(quotaPrivate) },
+                      })
+                    }
+                  />
+                  <ActionButton label="Sil" variant="secondary" onPress={() => deleteBranchMutation.mutate(branch.id)} />
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         <SectionHeader title="Antrenorler" caption="Coklu sube ve yorum ortalamasi ile" />

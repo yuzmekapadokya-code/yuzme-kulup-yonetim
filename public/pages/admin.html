@@ -612,6 +612,34 @@
                     <label>Telefon:</label>
                     <input type="tel" id="branchPhone" required>
                 </div>
+
+                <div class="form-group">
+                    <label>Bu Şubede Yapılan Ders Türleri:</label>
+                    <div class="branch-lesson-types" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
+                        <label class="branch-lesson-type-option" data-lesson-type="group" style="flex:1 1 180px; display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #d8e3ee; border-radius:10px; background:#f8fbff; cursor:pointer;">
+                            <input type="checkbox" id="branchLessonTypeGroup" value="group" checked>
+                            <span><strong>Grup Dersi</strong></span>
+                        </label>
+                        <label class="branch-lesson-type-option" data-lesson-type="private" style="flex:1 1 180px; display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #d8e3ee; border-radius:10px; background:#f8fbff; cursor:pointer;">
+                            <input type="checkbox" id="branchLessonTypePrivate" value="private">
+                            <span><strong>Özel Ders</strong></span>
+                        </label>
+                    </div>
+                    <p class="form-hint" style="margin-top:6px;">Bu şubede yapılacak ders türlerini işaretleyin. Bu seçim, sekreter ön kayıt akışında ve ders saati eklenirken kullanılacak.</p>
+                </div>
+
+                <div class="form-group" id="branchGroupQuotaGroup">
+                    <label>Grup Dersi — Antrenör Başına Kontenjan:</label>
+                    <input type="number" id="branchGroupQuota" min="1" max="50" value="8" required>
+                    <p class="form-hint" style="margin-top:6px;">Grup dersinde bir antrenörün eş zamanlı eğitebileceği maksimum öğrenci sayısı. Ders saati eklenirken kapasite otomatik (antrenör sayısı × bu sayı) hesaplanacak.</p>
+                </div>
+
+                <div class="form-group" id="branchPrivateQuotaGroup" style="display:none;">
+                    <label>Özel Ders — Antrenör Başına Kontenjan:</label>
+                    <input type="number" id="branchPrivateQuota" min="1" max="20" value="1">
+                    <p class="form-hint" style="margin-top:6px;">Özel derste bir antrenörün eş zamanlı eğitebileceği maksimum öğrenci sayısı. Genellikle 1 olur.</p>
+                </div>
+
                 <div class="btn-group">
                     <button type="submit" class="btn btn-success">Kaydet</button>
                     <button type="button" class="btn btn-primary" onclick="closeBranchModal()">İptal</button>
@@ -668,9 +696,10 @@
                         <option value="">-- Şube Seçiniz --</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Ders Adı (Opsiyonel):</label>
-                    <input type="text" id="scheduleCustomName" placeholder="Örn: Harika Dersi, Başlangıç Yüzüşü vb.">
+                <input type="hidden" id="scheduleCustomName">
+                <div class="form-group" id="scheduleAutoNamePreviewGroup">
+                    <label>Ders Adı (Otomatik):</label>
+                    <div id="scheduleAutoNamePreview" style="padding:10px 12px; border:1px dashed #cfd9e3; border-radius:8px; background:#f8fbff; color:#34495e; font-weight:600; min-height:42px; display:flex; align-items:center;">Şube ve saat seçildiğinde otomatik oluşturulacak.</div>
                 </div>
                 <div class="form-group">
                     <label>Saat:</label>
@@ -682,6 +711,7 @@
                         <option value="group">Grup Dersi</option>
                         <option value="private">Özel Ders</option>
                     </select>
+                    <p class="form-hint" id="scheduleLessonTypeHint" style="margin-top:6px;">Seçilen şubede yapılan ders türleri.</p>
                 </div>
                 <div class="form-group">
                     <label>Ders Başlangıç Tarihi:</label>
@@ -710,6 +740,7 @@
                 <div class="form-group">
                     <label>Kapasite (Toplamda kaç öğrenci alabilir):</label>
                     <input type="number" id="scheduleCapacity" min="1" required>
+                    <p class="form-hint" id="scheduleCapacityHint" style="margin-top:6px;">Şubede tanımlı "antrenör başına kontenjan" ve atanan antrenör sayısı çarpılarak otomatik hesaplanır. İsterseniz değiştirebilirsiniz.</p>
                 </div>
                 <div class="form-group">
                     <label>Ders Sayısı (Sezon boyunca toplamda kaç saat):</label>

@@ -690,11 +690,56 @@ export async function deleteSecretary(secretaryId) {
   await deleteDoc(doc(db, 'users', secretaryId));
 }
 
+const BRANCH_DEFAULT_GROUP_QUOTA = 8;
+const BRANCH_DEFAULT_PRIVATE_QUOTA = 1;
+
+function clampBranchQuota(value, fallback, max) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw) || raw <= 0) return fallback;
+  return Math.max(1, Math.min(max, Math.floor(raw)));
+}
+
+export function getBranchLessonTypes(branch) {
+  if (!branch) return { group: true, private: false };
+  if (branch.lessonTypes && typeof branch.lessonTypes === 'object') {
+    return {
+      group: branch.lessonTypes.group !== false,
+      private: Boolean(branch.lessonTypes.private),
+    };
+  }
+  return { group: true, private: false };
+}
+
+export function getBranchPerTrainerQuota(branch, lessonType) {
+  const key = lessonType === 'private' ? 'private' : 'group';
+  const fallback = key === 'private' ? BRANCH_DEFAULT_PRIVATE_QUOTA : BRANCH_DEFAULT_GROUP_QUOTA;
+  if (!branch || !branch.perTrainerCapacity || typeof branch.perTrainerCapacity !== 'object') {
+    return fallback;
+  }
+  const raw = Number(branch.perTrainerCapacity[key]);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
+}
+
 export async function saveBranch({ adminId, branchId = null, values, currentAdminId }) {
+  const lessonTypes = values.lessonTypes && typeof values.lessonTypes === 'object'
+    ? { group: values.lessonTypes.group !== false, private: Boolean(values.lessonTypes.private) }
+    : { group: true, private: false };
+
+  if (!lessonTypes.group && !lessonTypes.private) {
+    throw new Error('En az bir ders turunu (Grup veya Ozel) secin.');
+  }
+
+  const perTrainerCapacity = {
+    group: clampBranchQuota(values?.perTrainerCapacity?.group, BRANCH_DEFAULT_GROUP_QUOTA, 50),
+    private: clampBranchQuota(values?.perTrainerCapacity?.private, BRANCH_DEFAULT_PRIVATE_QUOTA, 20),
+  };
+
   const payload = {
     name: values.name.trim(),
     address: values.address?.trim() || '',
     phone: values.phone?.trim() || '',
+    lessonTypes,
+    perTrainerCapacity,
     adminId,
     updatedAt: nowIso(),
     updatedBy: currentAdminId,
@@ -1225,19 +1270,49 @@ export async function saveSchedule({ adminId, scheduleId = null, values, current
   }
 
   const headAssignment = trainerAssignments.find((item) => item.role === 'head') || trainerAssignments[0];
+
+  const lessonType = values.lessonType === 'private' ? 'private' : 'group';
+  const branchInfo = Array.isArray(values.branches)
+    ? values.branches.find((item) => item.id === values.branchId)
+    : null;
+
+  if (branchInfo) {
+    const allowed = getBranchLessonTypes(branchInfo);
+    if (!allowed[lessonType]) {
+      throw new Error(
+        `Bu subede yapilan ders turleri: ${[allowed.group ? 'Grup' : null, allowed.private ? 'Ozel' : null].filter(Boolean).join(', ') || 'tanimsiz'}. Lutfen uygun ders turunu secin.`
+      );
+    }
+  }
+
+  const branchName = branchInfo?.name ? String(branchInfo.name).trim() : '';
+  const lessonLabel = lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi';
+  const autoName = branchName && values.time
+    ? `${branchName} • ${lessonLabel} • ${values.time}`
+    : branchName
+      ? `${branchName} • ${lessonLabel}`
+      : '';
+
   const customName = String(values.customName || '').trim();
+  const finalCustomName = customName || autoName || null;
+
+  const trainerCount = trainerAssignments.length || 1;
+  const perTrainer = getBranchPerTrainerQuota(branchInfo, lessonType);
+  const rawCapacity = toNumber(values.capacity, 0);
+  const capacity = rawCapacity > 0 ? rawCapacity : Math.max(1, perTrainer * trainerCount);
+
   const payload = {
     branchId: values.branchId,
-    customName: customName || null,
+    customName: finalCustomName,
     time: values.time,
-    lessonType: values.lessonType === 'private' ? 'private' : 'group',
+    lessonType,
     startDate: values.startDate,
     days: Array.isArray(values.days) && values.days.length ? values.days : ['monday'],
     trainerId: headAssignment.trainerId,
     trainerDocId: headAssignment.trainerDocId,
     trainerAssignments,
     trainerIds: trainerAssignments.map((item) => item.trainerId),
-    capacity: toNumber(values.capacity, 1),
+    capacity,
     lessonsCount: toNumber(values.lessonsCount, 1),
     adminId,
     updatedAt: nowIso(),

@@ -480,7 +480,7 @@ function bindPreRegistrationCustomizeForm() {
     }
 }
 
-function populateLeadSchedulePicker(selectedScheduleId = '', filterBranchId = '') {
+function populateLeadSchedulePicker(selectedScheduleId = '', filterBranchId = '', filterLessonType = '') {
     const picker = document.getElementById('leadSchedulePicker');
     if (!picker) return;
 
@@ -491,14 +491,31 @@ function populateLeadSchedulePicker(selectedScheduleId = '', filterBranchId = ''
         delete picker.dataset.branchFilter;
     }
 
-    const sourceSchedules = filterId
-        ? allSchedules.filter(item => String(item.branchId || '') === filterId)
-        : allSchedules;
+    const lessonTypeFilter = String(filterLessonType || picker.dataset.lessonTypeFilter || '').toLowerCase().trim();
+    if (lessonTypeFilter === 'group' || lessonTypeFilter === 'private') {
+        picker.dataset.lessonTypeFilter = lessonTypeFilter;
+    } else if (filterLessonType === '') {
+        delete picker.dataset.lessonTypeFilter;
+    }
+
+    let sourceSchedules = allSchedules;
+    if (filterId) {
+        sourceSchedules = sourceSchedules.filter(item => String(item.branchId || '') === filterId);
+    }
+    if (lessonTypeFilter === 'group' || lessonTypeFilter === 'private') {
+        sourceSchedules = sourceSchedules.filter(item => {
+            const itemType = String(item.lessonType || 'group').toLowerCase();
+            return itemType === lessonTypeFilter;
+        });
+    }
 
     const schedules = [...sourceSchedules].sort((left, right) => getScheduleDisplayLabel(left).localeCompare(getScheduleDisplayLabel(right), 'tr'));
     const branchInfo = filterId ? allBranches.find(item => item.id === filterId) : null;
     const branchName = branchInfo?.name ? ` (${branchInfo.name})` : '';
-    picker.innerHTML = `<option value="">-- Ders Saati Seçiniz${branchName} --</option>`;
+    const lessonTypeLabel = lessonTypeFilter === 'private'
+        ? ' • Özel Ders'
+        : (lessonTypeFilter === 'group' ? ' • Grup Dersi' : '');
+    picker.innerHTML = `<option value="">-- Ders Saati Seçiniz${branchName}${lessonTypeLabel} --</option>`;
 
     schedules.forEach(schedule => {
         const option = document.createElement('option');
@@ -507,11 +524,11 @@ function populateLeadSchedulePicker(selectedScheduleId = '', filterBranchId = ''
         picker.appendChild(option);
     });
 
-    if (filterId && schedules.length === 0) {
+    if ((filterId || lessonTypeFilter) && schedules.length === 0) {
         const emptyOption = document.createElement('option');
         emptyOption.value = '';
         emptyOption.disabled = true;
-        emptyOption.textContent = 'Bu şube için ders saati tanımlı değil';
+        emptyOption.textContent = 'Bu filtreye uyan ders saati tanımlı değil';
         picker.appendChild(emptyOption);
     }
 
@@ -640,6 +657,7 @@ function clearLeadRegistrationContext() {
     if (leadSchedulePicker) {
         leadSchedulePicker.value = '';
         delete leadSchedulePicker.dataset.branchFilter;
+        delete leadSchedulePicker.dataset.lessonTypeFilter;
     }
 
     const passwordInput = document.getElementById('parentPassword');
@@ -879,6 +897,7 @@ async function transferClubApplicationToForm(applicationId) {
     document.getElementById('parentPasswordConfirm').value = generatedPassword;
 
     const lessonTypeRaw = String(application.lessonType || '').toLowerCase();
+    const isKnownLessonType = lessonTypeRaw === 'group' || lessonTypeRaw === 'private';
     const requestedBranchId = lessonTypeRaw === 'group'
         ? String(application.requestedBranchId || '').trim()
         : '';
@@ -894,7 +913,11 @@ async function transferClubApplicationToForm(applicationId) {
     document.getElementById('totalAmount').value = '';
     document.getElementById('installmentAmount').value = '';
     renderInstallmentPlanInputs();
-    populateLeadSchedulePicker('', branchExists ? requestedBranchId : '');
+    populateLeadSchedulePicker(
+        '',
+        branchExists ? requestedBranchId : '',
+        isKnownLessonType ? lessonTypeRaw : ''
+    );
     refreshRegistrationFlowUi(application);
     switchPage('registration');
     scrollMainContentToTop(document.getElementById('registrationForm'));

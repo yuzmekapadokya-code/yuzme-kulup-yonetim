@@ -544,12 +544,18 @@ function addScheduleTrainerAssignmentRow() {
     const currentAssignments = collectScheduleTrainerAssignments({ allowEmpty: true });
     currentAssignments.push({ trainerId: '', trainerDocId: '', role: currentAssignments.length === 0 ? 'head' : 'assistant' });
     renderScheduleTrainerAssignmentRows(currentAssignments);
+    if (typeof recomputeScheduleAutoCapacity === 'function') {
+        recomputeScheduleAutoCapacity();
+    }
 }
 
 function removeScheduleTrainerAssignmentRow(index) {
     const currentAssignments = collectScheduleTrainerAssignments({ allowEmpty: true });
     if (currentAssignments.length <= 1) {
         renderScheduleTrainerAssignmentRows([{ trainerId: '', trainerDocId: '', role: 'head' }]);
+        if (typeof recomputeScheduleAutoCapacity === 'function') {
+            recomputeScheduleAutoCapacity();
+        }
         return;
     }
     currentAssignments.splice(index, 1);
@@ -557,6 +563,9 @@ function removeScheduleTrainerAssignmentRow(index) {
         currentAssignments[0].role = 'head';
     }
     renderScheduleTrainerAssignmentRows(currentAssignments);
+    if (typeof recomputeScheduleAutoCapacity === 'function') {
+        recomputeScheduleAutoCapacity();
+    }
 }
 
 function collectScheduleTrainerAssignments(options = {}) {
@@ -1873,21 +1882,83 @@ function showDashboard() {
 
 // ======================== BRANCHES ========================
 
+const BRANCH_DEFAULT_GROUP_QUOTA = 8;
+const BRANCH_DEFAULT_PRIVATE_QUOTA = 1;
+
+function getBranchLessonTypes(branch) {
+    if (!branch) return { group: true, private: false };
+    if (branch.lessonTypes && typeof branch.lessonTypes === 'object') {
+        return {
+            group: branch.lessonTypes.group !== false,
+            private: Boolean(branch.lessonTypes.private)
+        };
+    }
+    return { group: true, private: false };
+}
+
+function getBranchPerTrainerQuota(branch, lessonType) {
+    const lessonKey = lessonType === 'private' ? 'private' : 'group';
+    const defaults = lessonKey === 'private' ? BRANCH_DEFAULT_PRIVATE_QUOTA : BRANCH_DEFAULT_GROUP_QUOTA;
+    if (!branch || !branch.perTrainerCapacity || typeof branch.perTrainerCapacity !== 'object') {
+        return defaults;
+    }
+    const raw = Number(branch.perTrainerCapacity[lessonKey]);
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : defaults;
+}
+
+function syncBranchLessonTypeUi() {
+    const groupCheck = document.getElementById('branchLessonTypeGroup');
+    const privateCheck = document.getElementById('branchLessonTypePrivate');
+    const groupQuotaWrap = document.getElementById('branchGroupQuotaGroup');
+    const privateQuotaWrap = document.getElementById('branchPrivateQuotaGroup');
+    const groupQuota = document.getElementById('branchGroupQuota');
+    const privateQuota = document.getElementById('branchPrivateQuota');
+
+    if (groupQuotaWrap) groupQuotaWrap.style.display = groupCheck && groupCheck.checked ? '' : 'none';
+    if (privateQuotaWrap) privateQuotaWrap.style.display = privateCheck && privateCheck.checked ? '' : 'none';
+    if (groupQuota) groupQuota.required = Boolean(groupCheck && groupCheck.checked);
+    if (privateQuota) privateQuota.required = Boolean(privateCheck && privateCheck.checked);
+
+    document.querySelectorAll('.branch-lesson-type-option').forEach(label => {
+        const input = label.querySelector('input[type="checkbox"]');
+        label.style.borderColor = input && input.checked ? '#0b7ea8' : '#d8e3ee';
+        label.style.background = input && input.checked ? 'rgba(11,126,168,0.08)' : '#f8fbff';
+    });
+}
+
 function openBranchModal(branchId = null) {
     document.getElementById('branchForm').reset();
     document.getElementById('branchModal').classList.add('active');
     
+    const groupCheck = document.getElementById('branchLessonTypeGroup');
+    const privateCheck = document.getElementById('branchLessonTypePrivate');
+    const groupQuota = document.getElementById('branchGroupQuota');
+    const privateQuota = document.getElementById('branchPrivateQuota');
+
     if (branchId) {
         const branch = allBranches.find(b => b.id === branchId);
         if (branch) {
             document.getElementById('branchName').value = branch.name;
             document.getElementById('branchAddress').value = branch.address;
             document.getElementById('branchPhone').value = branch.phone;
+            const types = getBranchLessonTypes(branch);
+            if (groupCheck) groupCheck.checked = types.group;
+            if (privateCheck) privateCheck.checked = types.private;
+            if (groupQuota) groupQuota.value = getBranchPerTrainerQuota(branch, 'group');
+            if (privateQuota) privateQuota.value = getBranchPerTrainerQuota(branch, 'private');
             document.getElementById('branchForm').dataset.branchId = branchId;
         }
     } else {
+        if (groupCheck) groupCheck.checked = true;
+        if (privateCheck) privateCheck.checked = false;
+        if (groupQuota) groupQuota.value = BRANCH_DEFAULT_GROUP_QUOTA;
+        if (privateQuota) privateQuota.value = BRANCH_DEFAULT_PRIVATE_QUOTA;
         delete document.getElementById('branchForm').dataset.branchId;
     }
+
+    syncBranchLessonTypeUi();
+    if (groupCheck) groupCheck.onchange = syncBranchLessonTypeUi;
+    if (privateCheck) privateCheck.onchange = syncBranchLessonTypeUi;
 }
 
 function closeBranchModal() {
@@ -1898,20 +1969,44 @@ async function saveBranch(e) {
     e.preventDefault();
     
     const branchId = document.getElementById('branchForm').dataset.branchId;
+    const groupChecked = Boolean(document.getElementById('branchLessonTypeGroup')?.checked);
+    const privateChecked = Boolean(document.getElementById('branchLessonTypePrivate')?.checked);
+
+    if (!groupChecked && !privateChecked) {
+        alert('Lütfen şubede en az bir ders türü (Grup veya Özel) seçin.');
+        return;
+    }
+
+    const groupQuotaRaw = Number(document.getElementById('branchGroupQuota')?.value || BRANCH_DEFAULT_GROUP_QUOTA);
+    const privateQuotaRaw = Number(document.getElementById('branchPrivateQuota')?.value || BRANCH_DEFAULT_PRIVATE_QUOTA);
+    const groupQuota = Math.max(1, Math.min(50, Number.isFinite(groupQuotaRaw) ? Math.floor(groupQuotaRaw) : BRANCH_DEFAULT_GROUP_QUOTA));
+    const privateQuota = Math.max(1, Math.min(20, Number.isFinite(privateQuotaRaw) ? Math.floor(privateQuotaRaw) : BRANCH_DEFAULT_PRIVATE_QUOTA));
+
+    const existingBranch = branchId ? allBranches.find(b => b.id === branchId) : null;
     const branchData = {
         name: document.getElementById('branchName').value,
         address: document.getElementById('branchAddress').value,
         phone: document.getElementById('branchPhone').value,
+        lessonTypes: {
+            group: groupChecked,
+            private: privateChecked
+        },
+        perTrainerCapacity: {
+            group: groupQuota,
+            private: privateQuota
+        },
         adminId: currentAdmin.id,
-        createdAt: new Date().toISOString()
+        updatedAt: new Date().toISOString()
     };
+
+    if (!existingBranch) {
+        branchData.createdAt = new Date().toISOString();
+    }
     
     try {
         if (branchId) {
-            // Update existing branch
             await db.collection('branches').doc(branchId).update(branchData);
         } else {
-            // Create new branch
             await db.collection('branches').add(branchData);
         }
         
@@ -1929,11 +2024,19 @@ async function loadBranches() {
     tbody.innerHTML = '';
     
     allBranches.forEach(branch => {
+        const types = getBranchLessonTypes(branch);
+        const labels = [];
+        if (types.group) labels.push(`Grup (${getBranchPerTrainerQuota(branch, 'group')} öğr./antrenör)`);
+        if (types.private) labels.push(`Özel (${getBranchPerTrainerQuota(branch, 'private')} öğr./antrenör)`);
+        const lessonSummary = labels.length
+            ? `<br><small style="color:#5d7285;">${labels.join(' • ')}</small>`
+            : '<br><small style="color:#c0392b;">Ders türü tanımlanmamış</small>';
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${branch.name}</td>
-            <td>${branch.address}</td>
-            <td>${branch.phone}</td>
+            <td>${escapeHtml(branch.name)}${lessonSummary}</td>
+            <td>${escapeHtml(branch.address || '')}</td>
+            <td>${escapeHtml(branch.phone || '')}</td>
             <td>
                 <button class="btn btn-info btn-sm" onclick="openBranchModal('${branch.id}')">Düzenle</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteBranch('${branch.id}')">Sil</button>
@@ -2113,16 +2216,130 @@ async function deleteTrainer(trainerId) {
 
 // ======================== SCHEDULES ========================
 
+function getScheduleLessonTypeLabelByKey(lessonTypeKey) {
+    return lessonTypeKey === 'private' ? 'Özel Ders' : 'Grup Dersi';
+}
+
+function buildAutoScheduleName(branch, lessonTypeKey, time) {
+    const branchName = branch?.name ? String(branch.name).trim() : '';
+    const lessonLabel = getScheduleLessonTypeLabelByKey(lessonTypeKey);
+    const timeLabel = time ? String(time).trim() : '';
+    if (!branchName) return '';
+    return timeLabel ? `${branchName} • ${lessonLabel} • ${timeLabel}` : `${branchName} • ${lessonLabel}`;
+}
+
+function refreshScheduleLessonTypeOptions() {
+    const branchSelect = document.getElementById('scheduleBranch');
+    const lessonTypeSelect = document.getElementById('scheduleLessonType');
+    const hint = document.getElementById('scheduleLessonTypeHint');
+    if (!branchSelect || !lessonTypeSelect) return;
+
+    const branchId = branchSelect.value;
+    const branch = branchId ? allBranches.find(item => item.id === branchId) : null;
+    const types = getBranchLessonTypes(branch);
+
+    const previousValue = lessonTypeSelect.value || 'group';
+    lessonTypeSelect.innerHTML = '';
+    const allowedTypes = [];
+    if (types.group) allowedTypes.push({ value: 'group', label: 'Grup Dersi' });
+    if (types.private) allowedTypes.push({ value: 'private', label: 'Özel Ders' });
+
+    if (allowedTypes.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '— Şubede ders türü tanımlı değil —';
+        lessonTypeSelect.appendChild(option);
+        if (hint) hint.textContent = 'Bu şubede henüz ders türü tanımlanmadı. Şubeyi düzenleyerek Grup veya Özel ders türünü işaretleyin.';
+    } else {
+        allowedTypes.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.value;
+            option.textContent = item.label;
+            lessonTypeSelect.appendChild(option);
+        });
+        lessonTypeSelect.value = allowedTypes.some(item => item.value === previousValue) ? previousValue : allowedTypes[0].value;
+        if (hint) {
+            const list = allowedTypes.map(item => item.label).join(', ');
+            hint.textContent = `Bu şubede yapılan ders türleri: ${list}.`;
+        }
+    }
+}
+
+function getAssignedScheduleTrainerCount() {
+    const rows = collectScheduleTrainerAssignments();
+    if (Array.isArray(rows) && rows.length > 0) return rows.length;
+    return 1;
+}
+
+function recomputeScheduleAutoCapacity({ force = false } = {}) {
+    const branchSelect = document.getElementById('scheduleBranch');
+    const lessonTypeSelect = document.getElementById('scheduleLessonType');
+    const capacityInput = document.getElementById('scheduleCapacity');
+    if (!branchSelect || !lessonTypeSelect || !capacityInput) return;
+
+    const branchId = branchSelect.value;
+    const branch = branchId ? allBranches.find(item => item.id === branchId) : null;
+    if (!branch) return;
+
+    const lessonType = lessonTypeSelect.value === 'private' ? 'private' : 'group';
+    const perTrainer = getBranchPerTrainerQuota(branch, lessonType);
+    const trainerCount = getAssignedScheduleTrainerCount();
+    const suggested = Math.max(1, perTrainer * trainerCount);
+
+    const userTouched = capacityInput.dataset.userTouched === 'true';
+    if (force || !userTouched) {
+        capacityInput.value = suggested;
+        capacityInput.dataset.autoValue = String(suggested);
+    }
+
+    const hint = document.getElementById('scheduleCapacityHint');
+    if (hint) {
+        hint.textContent = `Otomatik öneri: ${trainerCount} antrenör × ${perTrainer} öğrenci = ${suggested} kişi. Şubede tanımlı "antrenör başına ${perTrainer}" değeri kullanıldı. İsterseniz değiştirebilirsiniz.`;
+    }
+}
+
+function refreshScheduleAutoNamePreview() {
+    const branchSelect = document.getElementById('scheduleBranch');
+    const timeInput = document.getElementById('scheduleTime');
+    const lessonTypeSelect = document.getElementById('scheduleLessonType');
+    const customNameInput = document.getElementById('scheduleCustomName');
+    const preview = document.getElementById('scheduleAutoNamePreview');
+    if (!branchSelect || !lessonTypeSelect || !customNameInput || !preview) return;
+
+    const branchId = branchSelect.value;
+    const branch = branchId ? allBranches.find(item => item.id === branchId) : null;
+    const lessonType = lessonTypeSelect.value === 'private' ? 'private' : 'group';
+    const time = timeInput?.value || '';
+    const autoName = buildAutoScheduleName(branch, lessonType, time);
+
+    if (autoName) {
+        customNameInput.value = autoName;
+        preview.textContent = autoName;
+        preview.style.color = '#0b7ea8';
+    } else {
+        customNameInput.value = '';
+        preview.textContent = 'Şube ve saat seçildiğinde otomatik oluşturulacak.';
+        preview.style.color = '#7f8c8d';
+    }
+}
+
 function openScheduleModal(scheduleId = null) {
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleModal').classList.add('active');
-    
+
+    const capacityInput = document.getElementById('scheduleCapacity');
+    if (capacityInput) {
+        delete capacityInput.dataset.userTouched;
+        delete capacityInput.dataset.autoValue;
+    }
+
     if (scheduleId) {
         const schedule = allSchedules.find(s => s.id === scheduleId);
         if (schedule) {
             document.getElementById('scheduleCustomName').value = schedule.customName || '';
             document.getElementById('scheduleBranch').value = schedule.branchId;
             document.getElementById('scheduleTime').value = schedule.time;
+            refreshScheduleLessonTypeOptions();
             document.getElementById('scheduleLessonType').value = getScheduleLessonType(schedule);
             document.getElementById('scheduleStartDate').value = schedule.startDate || new Date().toISOString().split('T')[0];
             document.getElementById('scheduleCapacity').value = schedule.capacity;
@@ -2131,10 +2348,11 @@ function openScheduleModal(scheduleId = null) {
             renderScheduleTrainerAssignmentRows(normalizeScheduleTrainerAssignments(schedule));
             document.getElementById('scheduleForm').dataset.scheduleId = scheduleId;
             updateScheduleCalendarPreview();
+            if (capacityInput) capacityInput.dataset.userTouched = 'true';
         }
     } else {
         delete document.getElementById('scheduleForm').dataset.scheduleId;
-        document.getElementById('scheduleLessonType').value = 'group';
+        refreshScheduleLessonTypeOptions();
         document.getElementById('scheduleStartDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('scheduleLessonsCount').value = 1;
         renderScheduleDaysPicker(['monday']);
@@ -2142,7 +2360,43 @@ function openScheduleModal(scheduleId = null) {
         updateScheduleCalendarPreview();
     }
 
-    const watchedIds = ['scheduleBranch', 'scheduleTime', 'scheduleLessonType', 'scheduleStartDate', 'scheduleLessonsCount'];
+    refreshScheduleAutoNamePreview();
+    recomputeScheduleAutoCapacity({ force: !scheduleId });
+
+    const branchEl = document.getElementById('scheduleBranch');
+    if (branchEl) {
+        branchEl.onchange = () => {
+            refreshScheduleLessonTypeOptions();
+            refreshScheduleAutoNamePreview();
+            recomputeScheduleAutoCapacity({ force: true });
+            updateScheduleCalendarPreview();
+        };
+    }
+    const lessonTypeEl = document.getElementById('scheduleLessonType');
+    if (lessonTypeEl) {
+        lessonTypeEl.onchange = () => {
+            refreshScheduleAutoNamePreview();
+            recomputeScheduleAutoCapacity({ force: true });
+            updateScheduleCalendarPreview();
+        };
+    }
+    const timeEl = document.getElementById('scheduleTime');
+    if (timeEl) {
+        timeEl.oninput = () => {
+            refreshScheduleAutoNamePreview();
+            updateScheduleCalendarPreview();
+        };
+    }
+    if (capacityInput) {
+        capacityInput.oninput = () => {
+            const autoValue = capacityInput.dataset.autoValue;
+            if (autoValue && String(capacityInput.value) !== String(autoValue)) {
+                capacityInput.dataset.userTouched = 'true';
+            }
+        };
+    }
+
+    const watchedIds = ['scheduleStartDate', 'scheduleLessonsCount'];
     watchedIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -2189,11 +2443,31 @@ async function saveSchedule(e) {
     }
 
     const primaryAssignment = trainerAssignments.find(item => item.role === 'head') || trainerAssignments[0];
+    const selectedBranchId = document.getElementById('scheduleBranch').value;
+    const selectedBranch = allBranches.find(item => item.id === selectedBranchId);
+    const selectedLessonType = document.getElementById('scheduleLessonType').value === 'private' ? 'private' : 'group';
+    const selectedTime = document.getElementById('scheduleTime').value;
+
+    if (selectedBranch) {
+        const allowedTypes = getBranchLessonTypes(selectedBranch);
+        if (!allowedTypes[selectedLessonType]) {
+            const allowedLabels = [];
+            if (allowedTypes.group) allowedLabels.push('Grup Dersi');
+            if (allowedTypes.private) allowedLabels.push('Özel Ders');
+            alert(`Bu şubede sadece şu ders türleri yapılıyor: ${allowedLabels.join(', ') || 'tanımsız'}. Lütfen uygun ders türünü seçin veya şubeyi düzenleyin.`);
+            return;
+        }
+    }
+
+    const userProvidedName = String(document.getElementById('scheduleCustomName').value || '').trim();
+    const autoName = buildAutoScheduleName(selectedBranch, selectedLessonType, selectedTime);
+    const finalCustomName = userProvidedName || autoName || null;
+
     const scheduleData = {
-        customName: String(document.getElementById('scheduleCustomName').value || '').trim() || null,
-        branchId: document.getElementById('scheduleBranch').value,
-        time: document.getElementById('scheduleTime').value,
-        lessonType: document.getElementById('scheduleLessonType').value === 'private' ? 'private' : 'group',
+        customName: finalCustomName,
+        branchId: selectedBranchId,
+        time: selectedTime,
+        lessonType: selectedLessonType,
         startDate: document.getElementById('scheduleStartDate').value || new Date().toISOString().split('T')[0],
         days: selectedDays,
         trainerId: primaryAssignment.trainerId,

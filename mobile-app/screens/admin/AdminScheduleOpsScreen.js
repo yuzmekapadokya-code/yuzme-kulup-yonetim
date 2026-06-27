@@ -9,7 +9,14 @@ import ScreenLayout from '../../components/ScreenLayout';
 import SectionHeader from '../../components/SectionHeader';
 import { theme } from '../../config/theme';
 import { formatDate } from '../../utils/date';
-import { getAdminScheduleOverview, saveAvailabilityTemplate, savePrice, saveSchedule } from '../../services/adminService';
+import {
+  getAdminScheduleOverview,
+  getBranchLessonTypes,
+  getBranchPerTrainerQuota,
+  saveAvailabilityTemplate,
+  savePrice,
+  saveSchedule,
+} from '../../services/adminService';
 import { useAuthStore } from '../../store/authStore';
 
 const ALL_HOURS = Array.from({ length: 24 }, (_, hour) => {
@@ -201,7 +208,12 @@ export default function AdminScheduleOpsScreen() {
       return saveSchedule({
         adminId: profile.uid,
         scheduleId: overrideValues.id ?? scheduleForm.id,
-        values: { ...scheduleForm, ...overrideValues, trainers: scheduleQuery.data.trainers },
+        values: {
+          ...scheduleForm,
+          ...overrideValues,
+          trainers: scheduleQuery.data.trainers,
+          branches: scheduleQuery.data.branches,
+        },
         currentAdminId: profile.uid,
       });
     },
@@ -304,16 +316,79 @@ export default function AdminScheduleOpsScreen() {
           <Text style={styles.label}>Sube secimi</Text>
           <View style={styles.chipRow}>
             {data.branches.map((branch) => (
-              <ActionButton key={branch.id} label={branch.name} variant={scheduleForm.branchId === branch.id ? 'primary' : 'secondary'} onPress={() => setScheduleForm((current) => ({ ...current, branchId: branch.id }))} />
+              <ActionButton
+                key={branch.id}
+                label={branch.name}
+                variant={scheduleForm.branchId === branch.id ? 'primary' : 'secondary'}
+                onPress={() => {
+                  const types = getBranchLessonTypes(branch);
+                  setScheduleForm((current) => {
+                    const nextLessonType = types[current.lessonType] ? current.lessonType : (types.group ? 'group' : (types.private ? 'private' : current.lessonType));
+                    const trainerCount = current.trainerIds.length || 1;
+                    const perTrainer = getBranchPerTrainerQuota(branch, nextLessonType);
+                    return {
+                      ...current,
+                      branchId: branch.id,
+                      lessonType: nextLessonType,
+                      capacity: String(Math.max(1, perTrainer * trainerCount)),
+                    };
+                  });
+                }}
+              />
             ))}
           </View>
-          <TextInput style={styles.input} placeholder="Ozel program adi (istege bagli)" value={scheduleForm.customName} onChangeText={(text) => setScheduleForm((current) => ({ ...current, customName: text }))} />
+
+          {(() => {
+            const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
+            const branchName = selectedBranch?.name || '';
+            const lessonLabel = scheduleForm.lessonType === 'private' ? 'Ozel Ders' : 'Grup Dersi';
+            const autoName = branchName && scheduleForm.time
+              ? `${branchName} • ${lessonLabel} • ${scheduleForm.time}`
+              : branchName ? `${branchName} • ${lessonLabel}` : 'Sube ve saat seciniz';
+            return (
+              <View style={styles.autoNameBox}>
+                <Text style={styles.autoNameLabel}>Ders Adi (Otomatik)</Text>
+                <Text style={styles.autoNameValue}>{autoName}</Text>
+              </View>
+            );
+          })()}
+
           <TextInput style={styles.input} placeholder="Saat (18:00)" value={scheduleForm.time} onChangeText={(text) => setScheduleForm((current) => ({ ...current, time: text }))} />
           <TextInput style={styles.input} placeholder="Baslangic tarihi (YYYY-MM-DD)" value={scheduleForm.startDate} onChangeText={(text) => setScheduleForm((current) => ({ ...current, startDate: text }))} />
-          <View style={styles.buttonRow}>
-            <ActionButton label="Grup" variant={scheduleForm.lessonType === 'group' ? 'primary' : 'secondary'} onPress={() => setScheduleForm((current) => ({ ...current, lessonType: 'group' }))} />
-            <ActionButton label="Ozel" variant={scheduleForm.lessonType === 'private' ? 'primary' : 'secondary'} onPress={() => setScheduleForm((current) => ({ ...current, lessonType: 'private' }))} />
-          </View>
+
+          {(() => {
+            const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
+            const types = getBranchLessonTypes(selectedBranch);
+            return (
+              <View style={styles.buttonRow}>
+                {types.group ? (
+                  <ActionButton
+                    label="Grup"
+                    variant={scheduleForm.lessonType === 'group' ? 'primary' : 'secondary'}
+                    onPress={() => setScheduleForm((current) => {
+                      const trainerCount = current.trainerIds.length || 1;
+                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, 'group');
+                      return { ...current, lessonType: 'group', capacity: String(Math.max(1, perTrainer * trainerCount)) };
+                    })}
+                  />
+                ) : null}
+                {types.private ? (
+                  <ActionButton
+                    label="Ozel"
+                    variant={scheduleForm.lessonType === 'private' ? 'primary' : 'secondary'}
+                    onPress={() => setScheduleForm((current) => {
+                      const trainerCount = current.trainerIds.length || 1;
+                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, 'private');
+                      return { ...current, lessonType: 'private', capacity: String(Math.max(1, perTrainer * trainerCount)) };
+                    })}
+                  />
+                ) : null}
+                {!types.group && !types.private ? (
+                  <Text style={styles.itemText}>Bu subede ders turu tanimli degil. Lutfen subeyi duzenleyin.</Text>
+                ) : null}
+              </View>
+            );
+          })()}
           <Text style={styles.label}>Ders gunleri</Text>
           <View style={styles.chipRow}>
             {dayOptions.map((day) => {
@@ -344,11 +419,20 @@ export default function AdminScheduleOpsScreen() {
                   label={trainer.name || 'Antrenor'}
                   variant={selected ? 'primary' : 'secondary'}
                   onPress={() =>
-                    setScheduleForm((current) => ({
-                      ...current,
-                      trainerIds: selected ? current.trainerIds.filter((item) => item !== trainerKey) : [...current.trainerIds, trainerKey],
-                      primaryTrainerId: current.primaryTrainerId || trainerKey,
-                    }))
+                    setScheduleForm((current) => {
+                      const nextTrainerIds = selected
+                        ? current.trainerIds.filter((item) => item !== trainerKey)
+                        : [...current.trainerIds, trainerKey];
+                      const selectedBranch = data.branches.find((item) => item.id === current.branchId);
+                      const perTrainer = getBranchPerTrainerQuota(selectedBranch, current.lessonType);
+                      const newCapacity = Math.max(1, perTrainer * (nextTrainerIds.length || 1));
+                      return {
+                        ...current,
+                        trainerIds: nextTrainerIds,
+                        primaryTrainerId: current.primaryTrainerId || trainerKey,
+                        capacity: String(newCapacity),
+                      };
+                    })
                   }
                 />
               );
@@ -398,6 +482,17 @@ export default function AdminScheduleOpsScreen() {
                 </View>
               );
             })}
+          {(() => {
+            const selectedBranch = data.branches.find((item) => item.id === scheduleForm.branchId);
+            const perTrainer = getBranchPerTrainerQuota(selectedBranch, scheduleForm.lessonType);
+            const trainerCount = scheduleForm.trainerIds.length || 1;
+            const auto = Math.max(1, perTrainer * trainerCount);
+            return (
+              <Text style={styles.autoCapacityHint}>
+                Otomatik: {trainerCount} antrenor × {perTrainer} ogr = {auto} kisi
+              </Text>
+            );
+          })()}
           <TextInput style={styles.input} placeholder="Kapasite" keyboardType="numeric" value={scheduleForm.capacity} onChangeText={(text) => setScheduleForm((current) => ({ ...current, capacity: text }))} />
           <TextInput style={styles.input} placeholder="Ders sayisi" keyboardType="numeric" value={scheduleForm.lessonsCount} onChangeText={(text) => setScheduleForm((current) => ({ ...current, lessonsCount: text }))} />
           <ActionButton label={scheduleMutation.isPending ? 'Kaydediliyor...' : scheduleForm.id ? 'Ders Saatini Guncelle' : 'Ders Saati Ekle'} onPress={() => scheduleMutation.mutate()} fullWidth />
@@ -661,6 +756,33 @@ const styles = StyleSheet.create({
   assistantHeadBlock: {
     gap: 8,
     paddingTop: 4,
+  },
+  autoNameBox: {
+    backgroundColor: '#f8fbff',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cfd9e3',
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    marginVertical: 4,
+  },
+  autoNameLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  autoNameValue: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+  autoCapacityHint: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    fontStyle: 'italic',
+    marginTop: 2,
+    marginBottom: -2,
   },
   scheduleCard: {
     backgroundColor: '#ffffff',
